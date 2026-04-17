@@ -1,0 +1,134 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>RL2Archipelago</AssemblyName>
+    <RootNamespace>RL2Archipelago</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <!-- Let NuGet package DLLs copy to output so we can deploy them alongside our DLL -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <NoWarn>MSB3270</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <!--
+    Game and BepInEx paths. Override these in RL2Archipelago.csproj.user:
+      <PropertyGroup>
+        <RL2GameDir>D:\SteamLibrary\steamapps\common\Rogue Legacy 2</RL2GameDir>
+      </PropertyGroup>
+  -->
+  <PropertyGroup>
+    <RL2GameDir Condition="'$(RL2GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Rogue Legacy 2</RL2GameDir>
+    <BepInExDir>$(RL2GameDir)\BepInEx</BepInExDir>
+    <ManagedDir>$(RL2GameDir)\Rogue Legacy 2_Data\Managed</ManagedDir>
+  </PropertyGroup>
+
+  <!-- NuGet packages (AP client, JSON) -->
+  <ItemGroup>
+    <PackageReference Include="Archipelago.MultiClient.Net" Version="6.7.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <!-- Framework assemblies missing from Rogue Legacy's Unity Mono runtime — must be deployed with the plugin -->
+  <ItemGroup>
+    <Reference Include="System.Numerics">
+      <Private>true</Private>
+      <HintPath>libs\System.Numerics.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.Serialization">
+      <Private>true</Private>
+      <HintPath>libs\System.Runtime.Serialization.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Data">
+      <Private>true</Private>
+      <HintPath>libs\System.Data.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <!-- BepInEx references — not copied to output (already in BepInEx/core at runtime) -->
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(BepInExDir)\core\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(BepInExDir)\core\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Game DLL references — not copied to output -->
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(ManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(ManagedDir)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(ManagedDir)\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(ManagedDir)\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(ManagedDir)\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(ManagedDir)\Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(ManagedDir)\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!--
+    Post-build: deploy to BepInEx plugins folder for quick testing.
+    Creates BepInEx/plugins/RL2Archipelago/ and copies our DLL + AP client dependency.
+  -->
+  <Target Name="DeployToPlugins" AfterTargets="PostBuildEvent" Condition="'$(OS)' == 'Windows_NT'">
+    <PropertyGroup>
+      <PluginDir>$(BepInExDir)\plugins\RL2Archipelago</PluginDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(PluginDir)" />
+    <Copy SourceFiles="$(TargetDir)$(TargetFileName)"
+          DestinationFolder="$(PluginDir)"
+          SkipUnchangedFiles="true" />
+    <!-- Copy AP client and its transitive deps (Newtonsoft.Json, websocket-sharp) -->
+    <Copy SourceFiles="$(TargetDir)Archipelago.MultiClient.Net.dll"
+          DestinationFolder="$(PluginDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(TargetDir)Archipelago.MultiClient.Net.dll')" />
+    <Copy SourceFiles="$(TargetDir)Newtonsoft.Json.dll"
+          DestinationFolder="$(PluginDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(TargetDir)Newtonsoft.Json.dll')" />
+    <Copy SourceFiles="$(TargetDir)websocket-sharp.dll"
+          DestinationFolder="$(PluginDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(TargetDir)websocket-sharp.dll')" />
+    <Copy SourceFiles="$(TargetDir)System.Numerics.dll"
+          DestinationFolder="$(PluginDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(TargetDir)System.Numerics.dll')" />
+    <Message Text="Deployed to $(PluginDir)" Importance="high" />
+  </Target>
+
+</Project>

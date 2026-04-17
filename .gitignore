@@ -1,0 +1,28 @@
+# Build output
+bin/
+obj/
+*.user
+
+# Archipelago Server Build Output
+apworld/rogue_legacy_2.apworld
+
+# VS Code
+.vscode/
+
+# Claude Code local settings (personal/machine-specific)
+.claude/settings.local.json
+
+# Rider / VS
+.vs/
+.idea/
+*.suo
+
+# NuGet
+packages/
+*.nupkg
+
+# Don't commit game DLLs
+GameLibs/
+
+# BepInEx output (local deploy)
+deploy/
