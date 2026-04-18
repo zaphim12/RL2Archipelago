@@ -5,6 +5,7 @@ using Archipelago.MultiClient.Net.MessageLog.Messages;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 
 namespace RL2Archipelago;
 
@@ -20,6 +21,15 @@ public static class APClient
     public static Dictionary<string, object> SlotData { get; private set; }
 
     public static bool IsConnected => Session?.Socket?.Connected ?? false;
+
+    /// <summary>True while an AP session's save directory is active; controls the SaveFileSystem path redirect.</summary>
+    public static bool APSaveActive { get; private set; }
+
+    /// <summary>Sanitized "{RoomId}_{SlotName}" used as the save subdirectory name.</summary>
+    public static string APSaveDirectoryName { get; private set; }
+
+    // Profile slot that was active before AP mode was entered; restored on disconnect.
+    private static byte _previousProfile;
 
     /// <summary>Fired on the main thread after a successful login.</summary>
     public static event Action<ArchipelagoSession> OnSessionOpened;
@@ -96,7 +106,15 @@ public static class APClient
             Session.Items.ItemReceived += APSession_ItemReceived;
             Session.MessageLog.OnMessageReceived += APSession_OnMessageReceived;
 
-            // TODO: Sync Savedata current state with the server. 
+            // Redirect all save I/O to a directory scoped to this room + slot.
+            _previousProfile = SaveManager.ConfigData.CurrentProfile;
+            APSaveDirectoryName = SanitizeDirectoryName($"{connData.RoomId}_{connData.SlotName}");
+            APSaveActive = true;
+            SaveManager.ConfigData.CurrentProfile = 0;
+            SaveManager.LoadCurrentProfileData();
+            Plugin.Log.LogInfo($"[AP] Save redirected to AP_Saves/{APSaveDirectoryName}");
+
+            // TODO: Sync Savedata current state with the server.
             // This means updating the server of any locations which the client has checked and the server doesn't know
             // And also giving any items to the client which the server reports and client hasn't received yet
 
@@ -126,12 +144,31 @@ public static class APClient
         if (Session.Socket.Connected)
             Session.Socket.DisconnectAsync().Wait(2000);
 
+        // Deactivate the save redirect before restoring the vanilla profile so
+        // LoadCurrentProfileData reads from the original paths.
+        APSaveActive = false;
+        SaveManager.ConfigData.CurrentProfile = _previousProfile;
+        SaveManager.LoadCurrentProfileData();
+        Plugin.Log.LogInfo("[AP] Save redirect deactivated; vanilla profile restored.");
+
         Session = null;
 
         if (manual)
             OnSessionClosed?.Invoke();
 
         Plugin.Log.LogInfo("Disconnected from AP server.");
+    }
+
+    /// <summary>
+    /// Replaces invalid filename chars in the given name with underscores. TODO: Determine if this is necessary
+    /// </summary>
+    /// <param name="name">Directory name which will be sanitized</param>
+    /// <returns>The sanitized directory name</returns>
+    private static string SanitizeDirectoryName(string name)
+    {
+        foreach (char c in Path.GetInvalidFileNameChars())
+            name = name.Replace(c, '_');
+        return name;
     }
 
     /// <summary>

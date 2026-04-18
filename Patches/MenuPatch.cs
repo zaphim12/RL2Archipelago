@@ -1,4 +1,6 @@
 using HarmonyLib;
+using RL_Windows;
+using SceneManagement_RL;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -27,6 +29,11 @@ internal static class MenuPatch
 {
     private const string ButtonName = "Button-Archipelago";
 
+    // Retained so the success handler can update labels / visibility after connection.
+    private static MainMenuButton _apButton;
+    private static MainMenuButton _startLegacyButton;
+    private static MainMenuButton _saveSlotButton;
+
     // ── Patch target ───────────────────────────────────────────────────────────
 
     [HarmonyPostfix]
@@ -44,6 +51,16 @@ internal static class MenuPatch
         }
     }
 
+    // OnFocus fires after OnOpenCoroutine and unconditionally overwrites m_startingButton
+    // text with a localized string.  Re-apply our label after it runs.
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(MainMenuWindowController), "OnFocus")]
+    private static void OnFocus_Postfix()
+    {
+        if (APClient.IsConnected)
+            ApplyConnectedMenuState();
+    }
+
     // ── Implementation ─────────────────────────────────────────────────────────
 
     private static void InjectArchipelagoButton(MainMenuWindowController controller)
@@ -58,10 +75,10 @@ internal static class MenuPatch
             return;
         }
 
-        // Guard: already injected (e.g. Initialize somehow called a second time).
+        // Guard: already injected (e.g. menu reopened after returning from gameplay).
         if (buttonList.Exists(b => b != null && b.gameObject.name == ButtonName))
         {
-            Plugin.Log.LogDebug("[MenuPatch] Archipelago button already present — skipping.");
+            Plugin.Log.LogDebug("[MenuPatch] Archipelago button already present — skipping injection.");
             return;
         }
 
@@ -93,7 +110,7 @@ internal static class MenuPatch
         // Update the button's display text.
         var label = newGO.GetComponentInChildren<TMP_Text>();
         if (label != null)
-            label.text = "Archipelago";
+            label.text = "Connect to Archipelago";
 
         // Determine the new button's list index.  We're inserting at position 0,
         // so every existing button needs its Index bumped by one.
@@ -115,6 +132,9 @@ internal static class MenuPatch
         // Our AP-specific action: open the connection dialog.
         apButton.MenuButtonActivated += _ => OnArchipelagoButtonClicked(controller);
 
+        // Retain a reference so OnConnectWithData can update the label later.
+        _apButton = apButton;
+
         // Insert at the front of the list to match the sibling-index order.
         buttonList.Insert(0, apButton);
 
@@ -122,6 +142,15 @@ internal static class MenuPatch
         // type so this is technically a no-op for the list object itself, but being
         // explicit avoids future confusion if the field ever becomes a value type).
         buttonListTraverse.Value = buttonList;
+
+        // Cache the start legacy and save-slot buttons so the connection callback can
+        // update them without having to re-traverse the controller.
+        _startLegacyButton   = buttonList.Find(b => b.SelectorType == MainMenuButton.MainMenuSelectionType.Start);
+        _saveSlotButton = buttonList.Find(b => b.SelectorType == MainMenuButton.MainMenuSelectionType.SelectProfile);
+
+        // If already connected (e.g. menu was closed and reopened), apply visuals now.
+        if (APClient.IsConnected)
+            ApplyConnectedMenuState();
 
         Plugin.Log.LogInfo("[MenuPatch] Archipelago button injected into main menu.");
     }
@@ -157,6 +186,18 @@ internal static class MenuPatch
         button.MenuButtonActivated += sfxDelegate;
     }
 
+    private static void ApplyConnectedMenuState()
+    {
+        if (_apButton?.Text != null)
+            _apButton.Text.text = "Archipelago (Connected)";
+
+        if (_startLegacyButton?.Text != null)
+            _startLegacyButton.Text.text = "Play Randomizer";
+
+        // remove the profile select button because we don't want players changing profiles mid-session and causing desyncs; the AP save system will automatically load the correct profile slot on game start
+        _saveSlotButton?.gameObject.SetActive(false);
+    }
+
     // ── Button click handler ───────────────────────────────────────────────────
 
     private static void OnArchipelagoButtonClicked(MainMenuWindowController controller)
@@ -179,7 +220,21 @@ internal static class MenuPatch
             onSuccess: () =>
             {
                 Plugin.Log.LogInfo("Successfully connected to Archipelago server!");
-                // TODO: Once game flow is implemented, load the run here.
+                // Run the transition animation that typically takes place upon changing profiles
+                SceneLoader_RL.RunTransitionWithLogic(
+                    () =>
+                    {
+                        // Closing and reopening the main menu triggers OnOpenCoroutine,
+                        // which reloads profile data and syncs all visuals: NG+ background,
+                        // castle/moon/crown objects, profile slot text, and start-button copy.
+                        // OnOpenCoroutine also clears m_lockInput, so no manual unlock needed.
+                        WindowManager.SetWindowIsOpen(WindowID.MainMenu, isOpen: false);
+                        WindowManager.SetWindowIsOpen(WindowID.MainMenu, isOpen: true);
+
+                        ApplyConnectedMenuState();
+                    },
+                    TransitionID.QuickSwipe,
+                    cleanup: false);
             },
             onFailure: errorMsg =>
             {
