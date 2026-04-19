@@ -18,7 +18,8 @@ public static class LocationRegistry
     /// </summary>
     public const long BASE_ID = 0xBEEF0000L;
 
-    private const long BOSS_KILL_OFFSET = 0x100;
+    private const long BOSS_KILL_OFFSET     = 0x100;
+    private const long MINIBOSS_KILL_OFFSET = 0x200;
 
     // ── Boss kill locations ──────────────────────────────────────────────────
 
@@ -31,6 +32,13 @@ public static class LocationRegistry
     public const long GardenBossDefeated = BASE_ID + BOSS_KILL_OFFSET + 6;
     public const long FinalBossDefeated  = BASE_ID + BOSS_KILL_OFFSET + 7;
 
+    // ── Miniboss kill locations ──────────────────────────────────────────────
+
+    public const long StudyMiniboss_SwordKnight_Defeated = BASE_ID + MINIBOSS_KILL_OFFSET + 0;
+    public const long StudyMiniboss_SpearKnight_Defeated = BASE_ID + MINIBOSS_KILL_OFFSET + 1;
+    public const long CaveMiniboss_White_Defeated        = BASE_ID + MINIBOSS_KILL_OFFSET + 2;
+    public const long CaveMiniboss_Black_Defeated        = BASE_ID + MINIBOSS_KILL_OFFSET + 3;
+
     /// <summary>Human-readable name for each location ID, used in logs and UI.</summary>
     public static readonly IReadOnlyDictionary<long, string> Names = new Dictionary<long, string>
     {
@@ -42,6 +50,11 @@ public static class LocationRegistry
         [CaveBossDefeated]   = "Pishon Dry Lake - Estuary Tubal Defeated",
         [GardenBossDefeated] = "Garden of Eden - Jonah Defeated",
         [FinalBossDefeated]  = "Castle Hamson - The Traitor Defeated",
+
+        [StudyMiniboss_SwordKnight_Defeated] = "Stygian Study - Gongheads Miniboss Defeated",
+        [StudyMiniboss_SpearKnight_Defeated] = "Stygian Study - Murmur Miniboss Defeated",
+        [CaveMiniboss_White_Defeated]        = "Pishon Dry Lake - Briareus and Cottus Minibosses Defeated",
+        [CaveMiniboss_Black_Defeated]        = "Pishon Dry Lake - Gyges and Aegaeon Minibosses Defeated",
     };
 
     /// <summary>
@@ -60,6 +73,20 @@ public static class LocationRegistry
         PlayerSaveFlag.CaveBoss_Defeated   => CaveBossDefeated,
         PlayerSaveFlag.GardenBoss_Defeated => GardenBossDefeated,
         PlayerSaveFlag.FinalBoss_Defeated  => FinalBossDefeated,
+        _ => null,
+    };
+
+    /// <summary>
+    /// Maps the <see cref="PlayerSaveFlag"/> set when a miniboss is defeated
+    /// to the corresponding Archipelago location ID.
+    /// Returns <c>null</c> if the flag isn't a tracked miniboss kill.
+    /// </summary>
+    public static long? FromMinibossSaveFlag(PlayerSaveFlag flag) => flag switch
+    {
+        PlayerSaveFlag.StudyMiniboss_SwordKnight_Defeated => StudyMiniboss_SwordKnight_Defeated,
+        PlayerSaveFlag.StudyMiniboss_SpearKnight_Defeated => StudyMiniboss_SpearKnight_Defeated,
+        PlayerSaveFlag.CaveMiniboss_White_Defeated        => CaveMiniboss_White_Defeated,
+        PlayerSaveFlag.CaveMiniboss_Black_Defeated        => CaveMiniboss_Black_Defeated,
         _ => null,
     };
 }
