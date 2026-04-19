@@ -35,8 +35,14 @@ item_data_table: dict[str, RogueLegacy2ItemData] = {
     # ── Filler ──────────────────────────────────────────────────────────────
     "Filler Placeholder":           RogueLegacy2ItemData(code=BASE_ID + 3, classification=ItemClassification.filler),
 
-    # ── Events (no ID, placed by the world at matching event locations) ──────
+    # ── Events (no ID; placed by create_items at the matching event location) ─
     "Victory":                      RogueLegacy2ItemData(code=None, classification=ItemClassification.progression),
+}
+
+# Event items are placed at locations whose names differ from the item name.
+# Matches must be kept in sync with the "address=None" entries in locations_and_regions.py.
+event_item_to_location: dict[str, str] = {
+    "Victory": "Castle Hamson - The Traitor Defeated",
 }
 
 # Convenience: name→ID dict used by World.item_name_to_id
@@ -58,23 +64,15 @@ def create_items(world: "RogueLegacy2World") -> None:
     player = world.player
 
     # Place every event item at its matching event location.
-    for name, data in item_data_table.items():
-        if data.code is None:
-            multiworld.get_location(name, player).place_locked_item(create_item(player, name))
+    for item_name, location_name in event_item_to_location.items():
+        multiworld.get_location(location_name, player).place_locked_item(create_item(player, item_name))
 
-    # Count how many regular (non-event) locations need to be filled.
+    # Fill the item pool to match the number of remaining (non-event) locations.
+    # Real items will replace these placeholders as more categories come online.
     unfilled = len(multiworld.get_unfilled_locations(player))
-
-    # Build the pool of non-event items.
-    # Repeat Heirlooms and fillers until the pool size matches location count.
     pool: list[RogueLegacy2Item] = []
-
-    # Two progression heirlooms, one useful skill point, then pad with Gold Pouches.
-    pool.append(create_item(player, "Heirloom"))
-    pool.append(create_item(player, "Heirloom"))
-    pool.append(create_item(player, "Skill Point"))
-
+    pool.append(create_item(player, "Progression Item Placeholder"))
+    pool.append(create_item(player, "Useful Item Placeholder"))
     while len(pool) < unfilled:
-        pool.append(create_item(player, "Gold Pouch"))
-
+        pool.append(create_item(player, "Filler Placeholder"))
     multiworld.itempool += pool

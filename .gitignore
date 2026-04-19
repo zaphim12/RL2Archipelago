@@ -4,7 +4,7 @@ obj/
 *.user
 
 # Archipelago Server Build Output
-apworld/rogue_legacy_2.apworld
+apworld/rogue_legacy_2*.apworld
 
 # VS Code
 .vscode/

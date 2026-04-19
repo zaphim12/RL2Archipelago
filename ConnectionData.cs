@@ -21,12 +21,3 @@ public class APConnectionData
         RoomId = RoomId,
     };
 }
-
-public class APSaveData
-{
-    public APConnectionData apConnectionData { get; set; } = new();
-
-    // public Dictionary<Location, bool> LocationsChecked { get; set; } = new();
-    // public Dictionary<Item, uint> ItemsAcquired { get; set; } = new();
-    // public Dictionary<string, string[]> HintsGenerated { get; set; } = new();
-}

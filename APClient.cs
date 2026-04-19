@@ -2,10 +2,12 @@ using Archipelago.MultiClient.Net;
 using Archipelago.MultiClient.Net.Enums;
 using Archipelago.MultiClient.Net.Helpers;
 using Archipelago.MultiClient.Net.MessageLog.Messages;
+using RL2Archipelago.Locations;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace RL2Archipelago;
 
@@ -27,6 +29,9 @@ public static class APClient
 
     /// <summary>Sanitized "{RoomId}_{SlotName}" used as the save subdirectory name.</summary>
     public static string APSaveDirectoryName { get; private set; }
+
+    /// <summary>Persistent state for the active run: checked locations, received items, etc.</summary>
+    public static APRunState RunState { get; private set; }
 
     // Profile slot that was active before AP mode was entered; restored on disconnect.
     private static byte _previousProfile;
@@ -114,9 +119,14 @@ public static class APClient
             SaveManager.LoadCurrentProfileData();
             Plugin.Log.LogInfo($"[AP] Save redirected to AP_Saves/{APSaveDirectoryName}");
 
-            // TODO: Sync Savedata current state with the server.
-            // This means updating the server of any locations which the client has checked and the server doesn't know
-            // And also giving any items to the client which the server reports and client hasn't received yet
+            // Load any prior run state (checked locations, etc.) for this seed+slot.
+            RunState = APRunState.Load(APSaveDirectoryName);
+
+            // Reconcile local and server state. If the client recorded a check
+            // that never made it to the server (e.g. network drop mid-send),
+            // resend it now so the multiworld stays consistent.
+            // TODO: also sync items received the other direction once item grants are implemented.
+            ResyncCheckedLocations();
 
             // Fire the session-opened event and the caller's success callback on
             // the main thread.  We're already on the main thread here (called from UI),
@@ -151,6 +161,7 @@ public static class APClient
         SaveManager.LoadCurrentProfileData();
         Plugin.Log.LogInfo("[AP] Save redirect deactivated; vanilla profile restored.");
 
+        RunState = null;
         Session = null;
 
         if (manual)
@@ -169,6 +180,80 @@ public static class APClient
         foreach (char c in Path.GetInvalidFileNameChars())
             name = name.Replace(c, '_');
         return name;
+    }
+
+    /// <summary>
+    /// Reports a completed location check to the Archipelago server.
+    ///
+    /// Persists the check to <see cref="RunState"/> before sending so that if
+    /// the network send is lost, the next successful connect will resync it.
+    /// Repeated calls for the same location ID are no-ops.
+    /// </summary>
+    public static void SendLocationCheck(long locationId)
+    {
+        if (RunState == null)
+        {
+            Plugin.Log.LogWarning(
+                $"[AP] SendLocationCheck({locationId}) called while no run is active — ignoring.");
+            return;
+        }
+
+        var displayName = LocationRegistry.Names.TryGetValue(locationId, out var n) ? n : locationId.ToString();
+
+        // Persist first, then send. If the send is dropped, Resync will retry it.
+        if (!RunState.CheckedLocations.Add(locationId))
+        {
+            Plugin.Log.LogDebug($"[AP] Location '{displayName}' already checked — skipping re-send.");
+            return;
+        }
+        RunState.Save(APSaveDirectoryName);
+
+        if (!IsConnected)
+        {
+            Plugin.Log.LogInfo(
+                $"[AP] Not connected; queued location '{displayName}' for resync on next connect.");
+            return;
+        }
+
+        try
+        {
+            Session.Locations.CompleteLocationChecksAsync(new[] { locationId });
+            Plugin.Log.LogInfo($"[AP] Sent location check: '{displayName}' (ID {locationId})");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.LogError(
+                $"[AP] Failed to send location check '{displayName}': {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Re-sends any locally-checked locations that the server doesn't know about.
+    /// Called once after a successful connect/login.
+    /// </summary>
+    private static void ResyncCheckedLocations()
+    {
+        if (RunState == null || Session == null) return;
+
+        var serverKnown = Session.Locations.AllLocationsChecked;
+        var missing = RunState.CheckedLocations.Where(id => !serverKnown.Contains(id)).ToArray();
+
+        if (missing.Length == 0)
+        {
+            Plugin.Log.LogDebug("[AP] Checked-location state is already in sync with the server.");
+            return;
+        }
+
+        Plugin.Log.LogInfo(
+            $"[AP] Resyncing {missing.Length} location(s) the server hadn't recorded yet.");
+        try
+        {
+            Session.Locations.CompleteLocationChecksAsync(missing);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.LogError($"[AP] Resync failed: {ex.Message}");
+        }
     }
 
     /// <summary>

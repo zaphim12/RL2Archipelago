@@ -7,8 +7,15 @@ if typing.TYPE_CHECKING:
     from . import RogueLegacy2World
 
 from .items import BASE_ID
-BIOME_ID_OFFSET = 0x0
-BIOME_ID_BASE = BASE_ID + BIOME_ID_OFFSET
+
+# ---------------------------------------------------------------------------
+# Location ID offsets
+#
+# Location IDs MUST stay in lockstep with the C# mod
+# (see Locations/LocationRegistry.cs). Renumbering an ID would invalidate
+# existing multiworld seeds.
+# ---------------------------------------------------------------------------
+BOSS_KILL_OFFSET = 0x100
 
 
 class RogueLegacy2Location(Location):
@@ -22,19 +29,22 @@ class RogueLegacy2LocationData(NamedTuple):
 
 # ---------------------------------------------------------------------------
 # Location table
-# Each biome-clear is one placeholder check per biome.
-# "Victory" is an event (no address) placed in the Throne Room.
+#
+# For now, the randomizer's only real checks are the 8 main boss defeats.
+# "Victory" is an event (no address) placed at the final boss defeat.
 # ---------------------------------------------------------------------------
 location_data_table: dict[str, RogueLegacy2LocationData] = {
-    # ── Biome clears (one check each, all accessible from Overworld) ─────────
-    "Castle Hamson - Clear":        RogueLegacy2LocationData(region="Overworld", address=BIOME_ID_BASE + 1),
-    "Garden of Bloodlines - Clear": RogueLegacy2LocationData(region="Overworld", address=BIOME_ID_BASE + 2),
-    "Axis of Envy - Clear":         RogueLegacy2LocationData(region="Overworld", address=BIOME_ID_BASE + 3),
-    "Pishon Dry Lake - Clear":      RogueLegacy2LocationData(region="Overworld", address=BIOME_ID_BASE + 4),
-    "Kerguelen Plateau - Clear":    RogueLegacy2LocationData(region="Overworld", address=BIOME_ID_BASE + 5),
+    # ── Boss kills (Tier 1) ──────────────────────────────────────────────────
+    "Citadel Agartha - Estuary Lamech Defeated":    RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 0),
+    "Axis Mundi - Void Beasts Defeated":            RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 1),
+    "Kerguelen Plateau - Estuary Naamah Defeated":  RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 2),
+    "Stygian Study - Estuary Enoch Defeated":       RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 3),
+    "Sun Tower - Estuary Irad Defeated":            RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 4),
+    "Pishon Dry Lake - Estuary Tubal Defeated":     RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 5),
+    "Garden of Eden - Jonah Defeated":              RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 6),
 
-    # ── Victory event (placed by __init__.py) ────────────────────────────────
-    "Victory":                      RogueLegacy2LocationData(region="Throne Room", address=None),
+    # ── Victory event (placed by __init__.py at the Traitor fight) ───────────
+    "Castle Hamson - The Traitor Defeated":         RogueLegacy2LocationData(region="Throne Room", address=None),
 }
 
 # Convenience: name→ID dict used by World.location_name_to_id
