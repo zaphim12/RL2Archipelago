@@ -11,13 +11,18 @@
 
 ## Receiving Items:
 [ ] Heirlooms
+  [x] Ensure that when an heirloom is collected, its corresponding non-randomizer location still lets you complete an AP check
+  [ ] Ensure that statues display the respective item they're supposed to grant, not their original item
+  [x] Ensure that the statue remains empty for this and future runs
+  [x] Ensure Johan in Pishon Dry Lake only gives location check one time, after Irad is defeated
+  [x] Ensure that for Citadel Agartha rooms, relics spawn on future runs
 [ ] Portal Unlocks
 [ ] Runes and Blueprints
 [ ] Manor upgrades
 
 ## Locations:
 [x] Boss kills
-[ ] Miniboss kills
+[x] Miniboss kills
 [ ] Heirloom pick-ups
   [ ] Ensure that the post-heirloom-collection platforming challenge does not trigger, and location check counts regardless
   [ ] Ensure that the heirloom pick-up rooms are replaced with relic choice rooms when appropriate if they've been picked up before

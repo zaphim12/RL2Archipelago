@@ -10,6 +10,8 @@ if typing.TYPE_CHECKING:
 # TODO: Register an official base ID with the Archipelago project before publishing.
 BASE_ID = 0xBEEF0000
 
+HEIRLOOM_OFFSET = 0x300
+
 
 class RogueLegacy2Item(Item):
     game = "Rogue Legacy 2"
@@ -25,9 +27,13 @@ class RogueLegacy2ItemData(NamedTuple):
 # Entries with code=None are event items (placed at matching event locations).
 # ---------------------------------------------------------------------------
 item_data_table: dict[str, RogueLegacy2ItemData] = {
-    # ── Progression ─────────────────────────────────────────────────────────
-    # Placeholder: heirlooms gate access to later biomes.
-    "Progression Item Placeholder": RogueLegacy2ItemData(code=BASE_ID + 1, classification=ItemClassification.progression),
+    # ── Heirlooms (progression) ──────────────────────────────────────────────
+    "Ananke's Shawl":     RogueLegacy2ItemData(code=BASE_ID + HEIRLOOM_OFFSET + 0, classification=ItemClassification.progression),
+    "Aether's Wings":     RogueLegacy2ItemData(code=BASE_ID + HEIRLOOM_OFFSET + 1, classification=ItemClassification.progression),
+    "Aesop's Tome":       RogueLegacy2ItemData(code=BASE_ID + HEIRLOOM_OFFSET + 2, classification=ItemClassification.progression),
+    "Echo's Boots":       RogueLegacy2ItemData(code=BASE_ID + HEIRLOOM_OFFSET + 3, classification=ItemClassification.progression),
+    "Pallas' Void Bell":  RogueLegacy2ItemData(code=BASE_ID + HEIRLOOM_OFFSET + 4, classification=ItemClassification.progression),
+    "Theia's Sun Lantern":RogueLegacy2ItemData(code=BASE_ID + HEIRLOOM_OFFSET + 5, classification=ItemClassification.progression),
 
     # ── Useful ──────────────────────────────────────────────────────────────
     "Useful Item Placeholder":      RogueLegacy2ItemData(code=BASE_ID + 2, classification=ItemClassification.useful),
@@ -38,6 +44,15 @@ item_data_table: dict[str, RogueLegacy2ItemData] = {
     # ── Events (no ID; placed by create_items at the matching event location) ─
     "Victory":                      RogueLegacy2ItemData(code=None, classification=ItemClassification.progression),
 }
+
+HEIRLOOM_ITEM_NAMES = [
+    "Ananke's Shawl",
+    "Aether's Wings",
+    "Aesop's Tome",
+    "Echo's Boots",
+    "Pallas' Void Bell",
+    "Theia's Sun Lantern",
+]
 
 # Event items are placed at locations whose names differ from the item name.
 # Matches must be kept in sync with the "address=None" entries in locations_and_regions.py.
@@ -67,11 +82,10 @@ def create_items(world: "RogueLegacy2World") -> None:
     for item_name, location_name in event_item_to_location.items():
         multiworld.get_location(location_name, player).place_locked_item(create_item(player, item_name))
 
-    # Fill the item pool to match the number of remaining (non-event) locations.
-    # Real items will replace these placeholders as more categories come online.
     unfilled = len(multiworld.get_unfilled_locations(player))
     pool: list[RogueLegacy2Item] = []
-    pool.append(create_item(player, "Progression Item Placeholder"))
+    for name in HEIRLOOM_ITEM_NAMES:
+        pool.append(create_item(player, name))
     pool.append(create_item(player, "Useful Item Placeholder"))
     while len(pool) < unfilled:
         pool.append(create_item(player, "Filler Placeholder"))

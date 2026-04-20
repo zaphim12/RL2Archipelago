@@ -2,6 +2,7 @@ using Archipelago.MultiClient.Net;
 using Archipelago.MultiClient.Net.Enums;
 using Archipelago.MultiClient.Net.Helpers;
 using Archipelago.MultiClient.Net.MessageLog.Messages;
+using RL2Archipelago.Items;
 using RL2Archipelago.Locations;
 using System;
 using System.Collections.Concurrent;
@@ -42,9 +43,17 @@ public static class APClient
     /// <summary>Fired on the main thread when a session is manually closed or the application is closed.</summary>
     public static event Action OnSessionClosed;
 
-    // Item IDs received on the AP websocket thread; drained each Update() tick on
-    // the Unity main thread so that game-state mutations are thread-safe.
-    private static readonly ConcurrentBag<long> _pendingItems = new();
+    // (index, itemId) pairs received on the AP websocket thread; drained each
+    // Update() tick on the Unity main thread so game-state mutations are thread-safe.
+    private struct PendingItem { public int Index; public long ItemId; }
+    private static readonly ConcurrentQueue<PendingItem> _pendingItems = new();
+
+    // Tracks the next item index to assign. Reset to 0 on each connect because
+    // AllItems causes the server to replay from index 0 on every reconnect.
+    // Tracked locally because the server's index stores the total number of items,
+    // not the index of the item's being received. So when receiving items after a reconnect,
+    // the server's index will be higher than the index of the item being received until we catch up.
+    private static int _nextItemIndex = 0;
 
     // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -121,11 +130,14 @@ public static class APClient
 
             // Load any prior run state (checked locations, etc.) for this seed+slot.
             RunState = APRunState.Load(APSaveDirectoryName);
+            _nextItemIndex = 0;
 
             // Reconcile local and server state. If the client recorded a check
             // that never made it to the server (e.g. network drop mid-send),
             // resend it now so the multiworld stays consistent.
-            // TODO: also sync items received the other direction once item grants are implemented.
+            // Item resync is handled automatically: AllItems causes the server to
+            // replay every received item from index 0 on each connect, and
+            // ProcessPendingItems skips anything below GrantedItemCount.
             ResyncCheckedLocations();
 
             // Fire the session-opened event and the caller's success callback on
@@ -215,10 +227,20 @@ public static class APClient
             return;
         }
 
+        if (!Session.Locations.AllLocations.Contains(locationId))
+            Plugin.Log.LogWarning(
+                $"[AP] Location '{displayName}' (ID {locationId}) is not in this slot's location list — ensure the apworld defines it.");
+
         try
         {
-            Session.Locations.CompleteLocationChecksAsync(new[] { locationId });
-            Plugin.Log.LogInfo($"[AP] Sent location check: '{displayName}' (ID {locationId})");
+            Session.Locations.CompleteLocationChecksAsync(new[] { locationId })
+                .ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                        Plugin.Log.LogError($"[AP] Failed to send location check '{displayName}': {t.Exception?.Flatten().Message}");
+                    else
+                        Plugin.Log.LogInfo($"[AP] Sent location check: '{displayName}' (ID {locationId})");
+                });
         }
         catch (Exception ex)
         {
@@ -262,20 +284,46 @@ public static class APClient
     /// </summary>
     public static void ProcessPendingItems()
     {
-        while (_pendingItems.TryTake(out var itemId))
+        while (_pendingItems.TryDequeue(out var pending))
         {
-            try { GrantItem(itemId); }
+            if (RunState != null && pending.Index < RunState.GrantedItemCount)
+            {
+                var skippedName = ItemRegistry.Names.TryGetValue(pending.ItemId, out var sn) ? sn : pending.ItemId.ToString();
+                Plugin.Log.LogDebug($"[AP] Skipping already-granted item '{skippedName}' at index {pending.Index}");
+                continue;
+            }
+
+            try
+            {
+                GrantItem(pending.ItemId);
+            }
             catch (Exception ex)
             {
-                Plugin.Log.LogError($"Exception granting item {itemId}: {ex.Message}\n{ex.StackTrace}");
+                Plugin.Log.LogError($"[AP] Exception granting item {pending.ItemId}: {ex.Message}\n{ex.StackTrace}");
+            }
+
+            if (RunState != null)
+            {
+                RunState.GrantedItemCount = Math.Max(RunState.GrantedItemCount, pending.Index + 1);
+                RunState.Save(APSaveDirectoryName);
             }
         }
     }
 
     private static void GrantItem(long itemId)
     {
-        Plugin.Log.LogInfo($"[AP] Granting item ID {itemId}");
-        // TODO: apply the item to the player (set save-data flag, grant ability, add gold, etc.)
+        var displayName = ItemRegistry.Names.TryGetValue(itemId, out var n) ? n : itemId.ToString();
+
+        var heirloomType = ItemRegistry.ToHeirloomType(itemId);
+        if (heirloomType.HasValue)
+        {
+            SaveManager.PlayerSaveData.SetHeirloomLevel(heirloomType.Value, 1, additive: false, broadcast: false);
+            PlayerManager.GetPlayerController()?.InitializeAbilities();
+            Plugin.Log.LogInfo($"[AP] Granted heirloom: {displayName}");
+            return;
+        }
+
+        Plugin.Log.LogWarning($"[AP] No handler for item '{displayName}' (ID {itemId}) — ignoring.");
     }
 
     // ~~~ Websocket-thread event handlers ~~~
@@ -291,13 +339,14 @@ public static class APClient
         Plugin.Log.LogInfo("[AP] Socket opened — PollingLoop started.");
     }
 
-    private static void APSession_ItemReceived(IReceivedItemsHelper receivedItemsHelper)
+    private static void APSession_ItemReceived(IReceivedItemsHelper helper)
     {
-        while (receivedItemsHelper.PeekItem() != null)
+        while (helper.PeekItem() != null)
         {
-            var item = receivedItemsHelper.DequeueItem();
-            Plugin.Log.LogInfo($"[AP] Item received: {item.ItemName} (ID {item.ItemId})");
-            _pendingItems.Add(item.ItemId);
+            var item = helper.DequeueItem();
+            int itemIndex = _nextItemIndex++;
+            Plugin.Log.LogDebug($"[AP] Item queued: {item.ItemName} (ID {item.ItemId}) at index {itemIndex}");
+            _pendingItems.Enqueue(new PendingItem { Index = itemIndex, ItemId = item.ItemId });
         }
     }
 

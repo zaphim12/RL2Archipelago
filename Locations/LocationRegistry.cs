@@ -20,6 +20,7 @@ public static class LocationRegistry
 
     private const long BOSS_KILL_OFFSET     = 0x100;
     private const long MINIBOSS_KILL_OFFSET = 0x200;
+    private const long HEIRLOOM_OFFSET      = 0x300;
 
     // ── Boss kill locations ──────────────────────────────────────────────────
 
@@ -31,6 +32,15 @@ public static class LocationRegistry
     public const long CaveBossDefeated   = BASE_ID + BOSS_KILL_OFFSET + 5;
     public const long GardenBossDefeated = BASE_ID + BOSS_KILL_OFFSET + 6;
     public const long FinalBossDefeated  = BASE_ID + BOSS_KILL_OFFSET + 7;
+
+    // ── Heirloom interaction locations ──────────────────────────────────────
+
+    public const long HeirloomAirDash             = BASE_ID + HEIRLOOM_OFFSET + 0;
+    public const long HeirloomDoubleJump          = BASE_ID + HEIRLOOM_OFFSET + 1;
+    public const long HeirloomMemory              = BASE_ID + HEIRLOOM_OFFSET + 2;
+    public const long HeirloomBouncableDownstrike = BASE_ID + HEIRLOOM_OFFSET + 3;
+    public const long HeirloomVoidDash            = BASE_ID + HEIRLOOM_OFFSET + 4;
+    public const long HeirloomCaveLantern         = BASE_ID + HEIRLOOM_OFFSET + 5;
 
     // ── Miniboss kill locations ──────────────────────────────────────────────
 
@@ -55,6 +65,13 @@ public static class LocationRegistry
         [StudyMiniboss_SpearKnight_Defeated] = "Stygian Study - Murmur Miniboss Defeated",
         [CaveMiniboss_White_Defeated]        = "Pishon Dry Lake - Briareus and Cottus Minibosses Defeated",
         [CaveMiniboss_Black_Defeated]        = "Pishon Dry Lake - Gyges and Aegaeon Minibosses Defeated",
+
+        [HeirloomAirDash]             = "Citadel Agartha - Ananke's Shawl",
+        [HeirloomDoubleJump]          = "Kerguelen Plateau - Aether's Wings",
+        [HeirloomMemory]              = "Citadel Agartha - Aesop's Tome",
+        [HeirloomBouncableDownstrike] = "Axis Mundi - Echo's Boots",
+        [HeirloomVoidDash]            = "Stygian Study - Pallas' Void Bell",
+        [HeirloomCaveLantern]         = "Pishon Dry Lake - Theia's Sun Lantern",
     };
 
     /// <summary>
@@ -73,6 +90,21 @@ public static class LocationRegistry
         PlayerSaveFlag.CaveBoss_Defeated   => CaveBossDefeated,
         PlayerSaveFlag.GardenBoss_Defeated => GardenBossDefeated,
         PlayerSaveFlag.FinalBoss_Defeated  => FinalBossDefeated,
+        _ => null,
+    };
+
+    /// <summary>
+    /// Maps a <see cref="HeirloomType"/> to its Archipelago location ID.
+    /// Returns <c>null</c> if the heirloom isn't tracked.
+    /// </summary>
+    public static long? FromHeirloomType(HeirloomType type) => type switch
+    {
+        HeirloomType.UnlockAirDash             => HeirloomAirDash,
+        HeirloomType.UnlockDoubleJump          => HeirloomDoubleJump,
+        HeirloomType.UnlockMemory              => HeirloomMemory,
+        HeirloomType.UnlockBouncableDownstrike => HeirloomBouncableDownstrike,
+        HeirloomType.UnlockVoidDash            => HeirloomVoidDash,
+        HeirloomType.CaveLantern               => HeirloomCaveLantern,
         _ => null,
     };
 

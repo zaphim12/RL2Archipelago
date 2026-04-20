@@ -21,6 +21,13 @@ public class APRunState
     /// <summary>Set of Archipelago location IDs the player has checked in this run.</summary>
     public HashSet<long> CheckedLocations { get; set; } = new();
 
+    /// <summary>
+    /// Number of AP items that have been successfully granted. Used to skip
+    /// items that were already applied in a previous session — the AP server
+    /// replays all items from index 0 on every reconnect when using AllItems.
+    /// </summary>
+    public int GrantedItemCount { get; set; } = 0;
+
     // ── Persistence ──────────────────────────────────────────────────────────
 
     private static readonly string RootDir = Path.Combine(Paths.ConfigPath, "RL2Archipelago", "ap-runs");

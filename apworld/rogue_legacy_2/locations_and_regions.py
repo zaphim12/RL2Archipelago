@@ -18,6 +18,7 @@ from .items import BASE_ID
 # ---------------------------------------------------------------------------
 BOSS_KILL_OFFSET     = 0x100
 MINIBOSS_KILL_OFFSET = 0x200
+HEIRLOOM_OFFSET      = 0x300
 
 
 class RogueLegacy2Location(Location):
@@ -44,6 +45,14 @@ location_data_table: dict[str, RogueLegacy2LocationData] = {
     "Sun Tower - Estuary Irad Defeated":            RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 4),
     "Pishon Dry Lake - Estuary Tubal Defeated":     RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 5),
     "Garden of Eden - Jonah Defeated":              RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 6),
+
+    # ── Heirloom interactions ────────────────────────────────────────────────
+    "Citadel Agartha - Ananke's Shawl":       RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 0),
+    "Kerguelen Plateau - Aether's Wings":     RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 1),
+    "Citadel Agartha - Aesop's Tome":         RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 2),
+    "Axis Mundi - Echo's Boots":              RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 3),
+    "Stygian Study - Pallas' Void Bell":      RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 4),
+    "Pishon Dry Lake - Theia's Sun Lantern":  RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 5),
 
     # ── Miniboss kills ───────────────────────────────────────────────────────
     "Stygian Study - Gongheads Miniboss Defeated":  RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 0),
@@ -97,30 +106,175 @@ def create_regions(world: "RogueLegacy2World") -> None:
     # ── Miniboss completion events ───────────────────────────────────────────
     # Events are address=None locations with a locked item placed on them.
     # They let the generator know that of any prerequisites which are not tied
-    # the player having access to a particular item. The generator places the 
-    # locked location in a later sphere than its required events, so progression 
+    # the player having access to a particular item. The generator places the
+    # locked location in a later sphere than its required events, so progression
     # items are never locked behind a check that requires them to already be cleared.
     _add_event(regions["Overworld"], player, "Stygian Study - Murmur Miniboss Cleared")
     _add_event(regions["Overworld"], player, "Stygian Study - Gongheads Miniboss Cleared")
     _add_event(regions["Overworld"], player, "Pishon Dry Lake - Briareus and Cottus Minibosses Cleared")
     _add_event(regions["Overworld"], player, "Pishon Dry Lake - Gyges and Aegaeon Minibosses Cleared")
 
+    # ── Boss completion events ───────────────────────────────────────────────
+    _add_event(regions["Overworld"], player, "Citadel Agartha - Estuary Lamech Cleared")
+    _add_event(regions["Overworld"], player, "Axis Mundi - Void Beasts Cleared")
+    _add_event(regions["Overworld"], player, "Kerguelen Plateau - Estuary Naamah Cleared")
+    _add_event(regions["Overworld"], player, "Stygian Study - Estuary Enoch Cleared")
+    _add_event(regions["Overworld"], player, "Sun Tower - Estuary Irad Cleared")
+    _add_event(regions["Overworld"], player, "Pishon Dry Lake - Estuary Tubal Cleared")
+    _add_event(regions["Overworld"], player, "Garden of Eden - Jonah Cleared")
+
+    # ── Helper states ────────────────────────────────────────────────────────
+    def _all_six_bosses_cleared(state) -> bool:
+        return (
+            state.has("Citadel Agartha - Estuary Lamech Cleared", player) and
+            state.has("Axis Mundi - Void Beasts Cleared", player) and
+            state.has("Kerguelen Plateau - Estuary Naamah Cleared", player) and
+            state.has("Stygian Study - Estuary Enoch Cleared", player) and
+            state.has("Sun Tower - Estuary Irad Cleared", player) and
+            state.has("Pishon Dry Lake - Estuary Tubal Cleared", player)
+        )
+
     # ── Access rules ─────────────────────────────────────────────────────────
-    # Estuary Enoch is locked behind both Study miniboss doors.
+
+    # Heirloom locations
+    set_rule(
+        multiworld.get_location("Kerguelen Plateau - Aether's Wings", player),
+        lambda state: state.has("Echo's Boots", player),
+    )
+    set_rule(
+        multiworld.get_location("Stygian Study - Pallas' Void Bell", player),
+        # NOTE: "Pallas' Void Bell" as a self-referential option is valid in
+        # multiworld (another player can send it), but is unreachable in solo.
+        lambda state: state.has("Aether's Wings", player) or state.has("Pallas' Void Bell", player),
+    )
+    set_rule(
+        multiworld.get_location("Pishon Dry Lake - Theia's Sun Lantern", player),
+        lambda state: state.has("Sun Tower - Estuary Irad Cleared", player),
+    )
+
+    # Boss kills
+    set_rule(
+        multiworld.get_location("Citadel Agartha - Estuary Lamech Defeated", player),
+        lambda state: state.has("Ananke's Shawl", player) or state.has("Aether's Wings", player),
+    )
+    set_rule(
+        multiworld.get_location("Axis Mundi - Void Beasts Defeated", player),
+        lambda state: state.has("Echo's Boots", player),
+    )
+    set_rule(
+        multiworld.get_location("Kerguelen Plateau - Estuary Naamah Defeated", player),
+        lambda state: state.has("Echo's Boots", player) and state.has("Aether's Wings", player),
+    )
     set_rule(
         multiworld.get_location("Stygian Study - Estuary Enoch Defeated", player),
         lambda state: (
+            state.has("Pallas' Void Bell", player) and
             state.has("Stygian Study - Murmur Miniboss Cleared", player) and
             state.has("Stygian Study - Gongheads Miniboss Cleared", player)
         ),
     )
-    # Estuary Tubal is locked behind both Cave miniboss doors.
+    set_rule(
+        multiworld.get_location("Sun Tower - Estuary Irad Defeated", player),
+        lambda state: (
+            state.has("Ananke's Shawl", player) and
+            state.has("Echo's Boots", player) and
+            state.has("Aether's Wings", player) and
+            state.has("Pallas' Void Bell", player)
+        ),
+    )
     set_rule(
         multiworld.get_location("Pishon Dry Lake - Estuary Tubal Defeated", player),
         lambda state: (
+            state.has("Theia's Sun Lantern", player) and
             state.has("Pishon Dry Lake - Briareus and Cottus Minibosses Cleared", player) and
             state.has("Pishon Dry Lake - Gyges and Aegaeon Minibosses Cleared", player)
         ),
+    )
+    set_rule(
+        multiworld.get_location("Garden of Eden - Jonah Defeated", player),
+        _all_six_bosses_cleared,
+    )
+    set_rule(
+        multiworld.get_location("Castle Hamson - The Traitor Defeated", player),
+        lambda state: state.has("Garden of Eden - Jonah Cleared", player),
+    )
+
+    # Miniboss Defeated checks
+    set_rule(
+        multiworld.get_location("Stygian Study - Murmur Miniboss Defeated", player),
+        lambda state: state.has("Echo's Boots", player) and state.has("Pallas' Void Bell", player),
+    )
+    set_rule(
+        multiworld.get_location("Stygian Study - Gongheads Miniboss Defeated", player),
+        lambda state: state.has("Aether's Wings", player) or state.has("Pallas' Void Bell", player),
+    )
+    set_rule(
+        multiworld.get_location("Pishon Dry Lake - Briareus and Cottus Minibosses Defeated", player),
+        lambda state: state.has("Theia's Sun Lantern", player) and state.has("Echo's Boots", player),
+    )
+    set_rule(
+        multiworld.get_location("Pishon Dry Lake - Gyges and Aegaeon Minibosses Defeated", player),
+        lambda state: state.has("Pallas' Void Bell", player) and state.has("Theia's Sun Lantern", player),
+    )
+
+    # Miniboss/boss Cleared events — same requirements as their Defeated checks so that
+    # locations gated on state.has("<X> Cleared") inherit the correct item constraints.
+    set_rule(
+        multiworld.get_location("Stygian Study - Murmur Miniboss Cleared", player),
+        lambda state: state.has("Echo's Boots", player) and state.has("Pallas' Void Bell", player),
+    )
+    set_rule(
+        multiworld.get_location("Stygian Study - Gongheads Miniboss Cleared", player),
+        lambda state: state.has("Aether's Wings", player) or state.has("Pallas' Void Bell", player),
+    )
+    set_rule(
+        multiworld.get_location("Pishon Dry Lake - Briareus and Cottus Minibosses Cleared", player),
+        lambda state: state.has("Theia's Sun Lantern", player) and state.has("Echo's Boots", player),
+    )
+    set_rule(
+        multiworld.get_location("Pishon Dry Lake - Gyges and Aegaeon Minibosses Cleared", player),
+        lambda state: state.has("Pallas' Void Bell", player) and state.has("Theia's Sun Lantern", player),
+    )
+    set_rule(
+        multiworld.get_location("Citadel Agartha - Estuary Lamech Cleared", player),
+        lambda state: state.has("Ananke's Shawl", player) or state.has("Aether's Wings", player),
+    )
+    set_rule(
+        multiworld.get_location("Axis Mundi - Void Beasts Cleared", player),
+        lambda state: state.has("Echo's Boots", player),
+    )
+    set_rule(
+        multiworld.get_location("Kerguelen Plateau - Estuary Naamah Cleared", player),
+        lambda state: state.has("Echo's Boots", player) and state.has("Aether's Wings", player),
+    )
+    set_rule(
+        multiworld.get_location("Stygian Study - Estuary Enoch Cleared", player),
+        lambda state: (
+            state.has("Pallas' Void Bell", player) and
+            state.has("Stygian Study - Murmur Miniboss Cleared", player) and
+            state.has("Stygian Study - Gongheads Miniboss Cleared", player)
+        ),
+    )
+    set_rule(
+        multiworld.get_location("Sun Tower - Estuary Irad Cleared", player),
+        lambda state: (
+            state.has("Ananke's Shawl", player) and
+            state.has("Echo's Boots", player) and
+            state.has("Aether's Wings", player) and
+            state.has("Pallas' Void Bell", player)
+        ),
+    )
+    set_rule(
+        multiworld.get_location("Pishon Dry Lake - Estuary Tubal Cleared", player),
+        lambda state: (
+            state.has("Theia's Sun Lantern", player) and
+            state.has("Pishon Dry Lake - Briareus and Cottus Minibosses Cleared", player) and
+            state.has("Pishon Dry Lake - Gyges and Aegaeon Minibosses Cleared", player)
+        ),
+    )
+    set_rule(
+        multiworld.get_location("Garden of Eden - Jonah Cleared", player),
+        _all_six_bosses_cleared,
     )
 
     # ── Wire up region connections ───────────────────────────────────────────

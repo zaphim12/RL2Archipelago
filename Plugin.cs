@@ -33,13 +33,6 @@ public class Plugin : BaseUnityPlugin
         Log.LogInfo($"{PluginInfo.Name} v{PluginInfo.Version} loaded.");
     }
 
-    private void Update()
-    {
-        // Process any AP client callbacks that need to run on the Unity main thread
-        // (e.g. item grants, which touch game state that isn't thread-safe)
-        APClient.ProcessPendingItems();
-    }
-
     // ── Connection data ──────────────────────────────────────────────────────────────
 
     /// <summary>
