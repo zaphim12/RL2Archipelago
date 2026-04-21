@@ -35,6 +35,12 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
+  <!-- Embedded image assets, loaded at runtime via Assembly.GetManifestResourceStream.
+       Resource names become "<RootNamespace>.Assets.<filename>" (e.g. RL2Archipelago.Assets.ap_logo.png). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\ap_logo.png" />
+  </ItemGroup>
+
   <!-- Framework assemblies missing from Rogue Legacy's Unity Mono runtime — must be deployed with the plugin -->
   <ItemGroup>
     <Reference Include="System.Numerics">
@@ -103,6 +109,10 @@
     </Reference>
     <Reference Include="UnityEngine.TextRenderingModule">
       <HintPath>$(ManagedDir)\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>$(ManagedDir)\UnityEngine.ImageConversionModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

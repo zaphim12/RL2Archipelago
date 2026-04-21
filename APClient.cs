@@ -2,8 +2,10 @@ using Archipelago.MultiClient.Net;
 using Archipelago.MultiClient.Net.Enums;
 using Archipelago.MultiClient.Net.Helpers;
 using Archipelago.MultiClient.Net.MessageLog.Messages;
+using Archipelago.MultiClient.Net.Models;
 using RL2Archipelago.Items;
 using RL2Archipelago.Locations;
+using RL2Archipelago.UI;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -43,10 +45,24 @@ public static class APClient
     /// <summary>Fired on the main thread when a session is manually closed or the application is closed.</summary>
     public static event Action OnSessionClosed;
 
-    // (index, itemId) pairs received on the AP websocket thread; drained each
-    // Update() tick on the Unity main thread so game-state mutations are thread-safe.
-    private struct PendingItem { public int Index; public long ItemId; }
+    // Items received on the AP websocket thread; drained each Update() tick on
+    // the Unity main thread so game-state mutations are thread-safe. The display
+    // fields are captured here (not at grant time) because they're sourced from
+    // the ItemInfo we dequeue, which lives on the websocket thread.
+    private struct PendingItem
+    {
+        public int Index;
+        public long ItemId;
+        public string ItemDisplayName;
+        public int SourceSlot;
+        public string SourcePlayerName;
+    }
     private static readonly ConcurrentQueue<PendingItem> _pendingItems = new();
+
+    // Scouted item info keyed by location ID. Populated asynchronously after login so
+    // in-world graphics (e.g. heirloom pedestals) can show what item will drop at a
+    // given location. Cleared on disconnect.
+    private static readonly ConcurrentDictionary<long, ScoutedItemInfo> _scoutedItems = new();
 
     // Tracks the next item index to assign. Reset to 0 on each connect because
     // AllItems causes the server to replay from index 0 on every reconnect.
@@ -140,6 +156,10 @@ public static class APClient
             // ProcessPendingItems skips anything below GrantedItemCount.
             ResyncCheckedLocations();
 
+            // Scout every unchecked tracked location so in-world graphics
+            // (e.g. heirloom pedestals) can show the item that will drop there.
+            ScoutTrackedLocations();
+
             // Fire the session-opened event and the caller's success callback on
             // the main thread.  We're already on the main thread here (called from UI),
             // so invoke directly.
@@ -173,6 +193,8 @@ public static class APClient
         SaveManager.LoadCurrentProfileData();
         Plugin.Log.LogInfo("[AP] Save redirect deactivated; vanilla profile restored.");
 
+        APNotifications.Reset();
+        _scoutedItems.Clear();
         RunState = null;
         Session = null;
 
@@ -247,6 +269,93 @@ public static class APClient
             Plugin.Log.LogError(
                 $"[AP] Failed to send location check '{displayName}': {ex.Message}");
         }
+
+        EnqueueSendNotification(locationId);
+    }
+
+    /// <summary>
+    /// Pushes the "you sent X to Y" (or "you discovered your own item") HUD,
+    /// using the scout reply cached at connect time. Silently no-ops when the
+    /// scout hasn't returned yet — the message log still shows the activity.
+    /// </summary>
+    private static void EnqueueSendNotification(long locationId)
+    {
+        if (!_scoutedItems.TryGetValue(locationId, out var scouted))
+            return;
+
+        var itemName = scouted.ItemDisplayName ?? scouted.ItemName ?? "an item";
+        var ourSlot = Session.ConnectionInfo.Slot;
+        var isHeirloom = ItemRegistry.ToHeirloomType(scouted.ItemId).HasValue;
+
+        if (scouted.Player.Slot == ourSlot)
+        {
+            // Self-item: GrantItem will skip its own notification so this is the
+            // only HUD that fires for this check.
+            APNotifications.Enqueue(
+                title: "Item Found",
+                subtitle: itemName,
+                description: "Discovered by yourself",
+                critical: isHeirloom);
+        }
+        else
+        {
+            var recipient = !string.IsNullOrEmpty(scouted.Player.Alias)
+                ? scouted.Player.Alias
+                : (scouted.Player.Name ?? $"Player {scouted.Player.Slot}");
+            APNotifications.Enqueue(
+                title: "Item Sent",
+                subtitle: itemName,
+                description: $"Sent to {recipient}",
+                critical: isHeirloom);
+        }
+    }
+
+    /// <summary>
+    /// Returns the item that will drop at <paramref name="locationId"/>, or
+    /// <c>null</c> if the scout hasn't come back yet or the location isn't tracked.
+    /// Scouts are requested asynchronously right after a successful connect.
+    /// </summary>
+    public static ScoutedItemInfo GetScoutedItem(long locationId) =>
+        _scoutedItems.TryGetValue(locationId, out var info) ? info : null;
+
+    /// <summary>
+    /// Asynchronously scouts every location in <see cref="LocationRegistry.Names"/>
+    /// and caches the result in <see cref="_scoutedItems"/>. Consumers (e.g. the
+    /// heirloom-statue icon swap) should handle the cache being empty if the
+    /// player enters the area before the scout reply arrives.
+    /// </summary>
+    private static void ScoutTrackedLocations()
+    {
+        if (Session == null) return;
+
+        // Only scout locations the server actually knows about (AllLocations is
+        // the slot's location list). Filtering here avoids a warning from the
+        // library when an ID isn't in this slot.
+        var ids = LocationRegistry.Names.Keys
+            .Where(Session.Locations.AllLocations.Contains)
+            .ToArray();
+
+        if (ids.Length == 0) return;
+
+        try
+        {
+            Session.Locations.ScoutLocationsAsync(HintCreationPolicy.None, ids)
+                .ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                    {
+                        Plugin.Log.LogError($"[AP] Scout request failed: {t.Exception?.Flatten().Message}");
+                        return;
+                    }
+                    foreach (var kv in t.Result)
+                        _scoutedItems[kv.Key] = kv.Value;
+                    Plugin.Log.LogInfo($"[AP] Scouted {t.Result.Count} tracked location(s).");
+                });
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.LogError($"[AP] Failed to issue scout request: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -296,6 +405,7 @@ public static class APClient
             try
             {
                 GrantItem(pending.ItemId);
+                EnqueueReceiveNotification(pending);
             }
             catch (Exception ex)
             {
@@ -308,6 +418,30 @@ public static class APClient
                 RunState.Save(APSaveDirectoryName);
             }
         }
+    }
+
+    /// <summary>
+    /// Pushes the "you received X from Y" HUD. Skipped for self-source items
+    /// because <see cref="EnqueueSendNotification"/> already showed the
+    /// "you discovered your own item" HUD at send time.
+    /// </summary>
+    private static void EnqueueReceiveNotification(PendingItem pending)
+    {
+        if (Session != null && pending.SourceSlot == Session.ConnectionInfo.Slot)
+            return;
+
+        var itemName = !string.IsNullOrEmpty(pending.ItemDisplayName)
+            ? pending.ItemDisplayName
+            : (ItemRegistry.Names.TryGetValue(pending.ItemId, out var n) ? n : pending.ItemId.ToString());
+        var sender = !string.IsNullOrEmpty(pending.SourcePlayerName)
+            ? pending.SourcePlayerName
+            : $"Player {pending.SourceSlot}";
+
+        APNotifications.Enqueue(
+            title: "Item Received",
+            subtitle: itemName,
+            description: $"Sent by {sender}",
+            critical: ItemRegistry.ToHeirloomType(pending.ItemId).HasValue);
     }
 
     private static void GrantItem(long itemId)
@@ -346,7 +480,22 @@ public static class APClient
             var item = helper.DequeueItem();
             int itemIndex = _nextItemIndex++;
             Plugin.Log.LogDebug($"[AP] Item queued: {item.ItemName} (ID {item.ItemId}) at index {itemIndex}");
-            _pendingItems.Enqueue(new PendingItem { Index = itemIndex, ItemId = item.ItemId });
+
+            // Resolve display strings on the websocket thread (where the helpers
+            // live) so the main-thread tick has nothing left to look up.
+            var sourcePlayer = item.Player;
+            var sourceName = !string.IsNullOrEmpty(sourcePlayer?.Alias)
+                ? sourcePlayer.Alias
+                : sourcePlayer?.Name;
+
+            _pendingItems.Enqueue(new PendingItem
+            {
+                Index = itemIndex,
+                ItemId = item.ItemId,
+                ItemDisplayName = item.ItemDisplayName ?? item.ItemName,
+                SourceSlot = sourcePlayer?.Slot ?? -1,
+                SourcePlayerName = sourceName,
+            });
         }
     }
 

@@ -1,4 +1,5 @@
 using HarmonyLib;
+using RL2Archipelago.Items;
 using RL2Archipelago.Locations;
 using UnityEngine;
 
@@ -74,6 +75,38 @@ internal static class HeirloomInteractPatch
     }
 
     /// <summary>
+    /// Replaces the statue's icon sprite with a graphic representing the AP item
+    /// that will actually drop at this location (a native heirloom icon when the
+    /// item belongs to this slot, otherwise a generic Archipelago logo).
+    /// The base method sets <c>m_iconSprite.sprite</c> to the vanilla heirloom
+    /// icon, so this runs as a postfix to override that assignment.
+    /// Skipped when not connected, when the location has already been checked
+    /// (the statue gets hidden anyway), or when the scout reply hasn't arrived yet.
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(HeirloomStatuePropController), "InitializePooledPropOnEnter")]
+    private static void InitializePooledPropOnEnter_Postfix(HeirloomStatuePropController __instance)
+    {
+        if (!APClient.IsConnected) return;
+
+        var heirloomRoom = Traverse.Create(__instance).Field<HeirloomRoomController>("m_heirloomRoom").Value;
+        if (heirloomRoom == null) return;
+
+        var locationId = LocationRegistry.FromHeirloomType(heirloomRoom.HeirloomType);
+        if (locationId is null) return;
+
+        if (APClient.RunState != null && APClient.RunState.CheckedLocations.Contains(locationId.Value))
+            return;
+
+        var iconSprite = Traverse.Create(__instance).Field<SpriteRenderer>("m_iconSprite").Value;
+        if (iconSprite == null) return;
+
+        var replacement = APSprites.GetSpriteForLocation(locationId.Value);
+        if (replacement != null)
+            iconSprite.sprite = replacement;
+    }
+
+    /// <summary>
     /// Handles room-completion status for previously completed AP checks
     /// </summary>
     [HarmonyPostfix]
@@ -101,5 +134,30 @@ internal static class HeirloomInteractPatch
         t.Field<GameObject>("m_heirloomParticlesGO").Value?.SetActive(false);
         t.Field<SpriteRenderer>("m_iconSprite").Value?.gameObject.SetActive(false);
         t.Field<Interactable>("m_interactable").Value?.SetIsInteractableActive(false);
+    }
+
+    /// <summary>
+    /// Suppresses the vanilla "Insight Discovered" HUD on heirloom statues —
+    /// our APNotifications system reuses the same HUD to display the AP item
+    /// being sent, and double-firing would clobber that text.
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(HeirloomStatuePropController), "RunInsightDiscovered")]
+    private static bool RunInsightDiscovered_Prefix(ref bool __result)
+    {
+        if (!APClient.IsConnected) return true;
+        __result = false;
+        return false;
+    }
+
+    /// <summary>
+    /// Suppresses the vanilla "Insight Resolved" HUD that fires when entering a
+    /// heirloom room with the heirloom already owned. Same reason as above.
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(HeirloomRoomController), "RunInsightResolved")]
+    private static bool RunInsightResolved_Prefix()
+    {
+        return !APClient.IsConnected;
     }
 }
