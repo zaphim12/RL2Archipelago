@@ -19,6 +19,20 @@ from .items import BASE_ID
 BOSS_KILL_OFFSET     = 0x100
 MINIBOSS_KILL_OFFSET = 0x200
 HEIRLOOM_OFFSET      = 0x300
+BLUEPRINT_OFFSET     = 0x400
+
+# Blueprint IDs use a biome-stride layout so IDs are stable regardless of how
+# many slots are enabled:  id = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * 16 + slotIndex
+# This mirrors LocationRegistry._checksPerBiome in the C# mod.
+_BIOME_NAMES = [
+    "Citadel Agartha",
+    "Axis Mundi",
+    "Kerguelen Plateau",
+    "Stygian Study",
+    "Sun Tower",
+    "Pishon Dry Lake",
+]
+_MAX_BLUEPRINT_CHECKS_PER_BIOME = 16  # upper bound of the BlueprintChecksPerBiome option
 
 
 class RogueLegacy2Location(Location):
@@ -33,8 +47,9 @@ class RogueLegacy2LocationData(NamedTuple):
 # ---------------------------------------------------------------------------
 # Location table
 #
-# For now, the randomizer's only real checks are the 8 main boss defeats.
-# "Victory" is an event (no address) placed at the final boss defeat.
+# All *possible* blueprint locations (up to max per biome) are registered here
+# so that location_name_to_id is complete. create_regions() only instantiates
+# the subset selected by the blueprint_checks_per_biome option.
 # ---------------------------------------------------------------------------
 location_data_table: dict[str, RogueLegacy2LocationData] = {
     # ── Boss kills (Tier 1) ──────────────────────────────────────────────────
@@ -64,6 +79,15 @@ location_data_table: dict[str, RogueLegacy2LocationData] = {
     "Castle Hamson - The Traitor Defeated":         RogueLegacy2LocationData(region="Throne Room", address=None),
 }
 
+# Register all possible blueprint locations (max slots) so location_name_to_id
+# is stable across different blueprint_checks_per_biome settings.
+for _biome_idx, _biome_name in enumerate(_BIOME_NAMES):
+    for _slot in range(_MAX_BLUEPRINT_CHECKS_PER_BIOME):
+        location_data_table[f"{_biome_name} - Blueprint Chest {_slot + 1}"] = RogueLegacy2LocationData(
+            region="Overworld",
+            address=BASE_ID + BLUEPRINT_OFFSET + _biome_idx * 16 + _slot,
+        )
+
 # Convenience: name→ID dict used by World.location_name_to_id
 all_non_event_locations_table: dict[str, int] = {
     name: data.address
@@ -83,6 +107,14 @@ def create_regions(world: "RogueLegacy2World") -> None:
     """Create all regions, add their locations, and wire up connections."""
     multiworld = world.multiworld
     player = world.player
+    blueprint_n = world.options.blueprint_checks_per_biome.value
+
+    # The set of blueprint location names active for this world.
+    active_blueprint_names = {
+        f"{biome_name} - Blueprint Chest {slot + 1}"
+        for biome_name in _BIOME_NAMES
+        for slot in range(blueprint_n)
+    }
 
     # ── Build regions ────────────────────────────────────────────────────────
     region_names = {"Menu", "Overworld", "Throne Room"}
@@ -94,6 +126,9 @@ def create_regions(world: "RogueLegacy2World") -> None:
 
     # ── Assign locations to their regions ────────────────────────────────────
     for location_name, location_data in location_data_table.items():
+        # Blueprint locations: only instantiate those within the configured limit.
+        if "Blueprint Chest" in location_name and location_name not in active_blueprint_names:
+            continue
         region = regions[location_data.region]
         location = RogueLegacy2Location(
             player,
@@ -143,8 +178,6 @@ def create_regions(world: "RogueLegacy2World") -> None:
     )
     set_rule(
         multiworld.get_location("Stygian Study - Pallas' Void Bell", player),
-        # NOTE: "Pallas' Void Bell" as a self-referential option is valid in
-        # multiworld (another player can send it), but is unreachable in solo.
         lambda state: state.has("Aether's Wings", player) or state.has("Pallas' Void Bell", player),
     )
     set_rule(
@@ -217,8 +250,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
         lambda state: state.has("Pallas' Void Bell", player) and state.has("Theia's Sun Lantern", player),
     )
 
-    # Miniboss/boss Cleared events — same requirements as their Defeated checks so that
-    # locations gated on state.has("<X> Cleared") inherit the correct item constraints.
+    # Miniboss/boss Cleared events — same requirements as their Defeated checks.
     set_rule(
         multiworld.get_location("Stygian Study - Murmur Miniboss Cleared", player),
         lambda state: state.has("Echo's Boots", player) and state.has("Pallas' Void Bell", player),
@@ -276,6 +308,36 @@ def create_regions(world: "RogueLegacy2World") -> None:
         multiworld.get_location("Garden of Eden - Jonah Cleared", player),
         _all_six_bosses_cleared,
     )
+
+    # ── Blueprint chest access rules (biome access) ──────────────────────────
+    # Kerguelen teleporter is not yet implemented as an AP item;
+    # Echo's Boots is used as the access proxy in the meantime.
+    _blueprint_biome_rules = {
+        "Citadel Agartha":   None,  # always accessible
+        "Axis Mundi":        lambda state, p=player: (
+            state.has("Echo's Boots", p) or
+            (state.has("Ananke's Shawl", p) and state.has("Aether's Wings", p))
+        ),
+        "Kerguelen Plateau": lambda state, p=player: state.has("Echo's Boots", p),
+        "Stygian Study":     lambda state, p=player: (
+            state.has("Aether's Wings", p) and state.has("Pallas' Void Bell", p)
+        ),
+        "Sun Tower":         lambda state, p=player: (
+            state.has("Ananke's Shawl", p) and state.has("Echo's Boots", p) and
+            state.has("Aether's Wings", p) and state.has("Pallas' Void Bell", p)
+        ),
+        "Pishon Dry Lake":   lambda state, p=player: state.has("Theia's Sun Lantern", p),
+    }
+    if blueprint_n > 0:
+        for biome_name in _BIOME_NAMES:
+            rule = _blueprint_biome_rules[biome_name]
+            if rule is None:
+                continue
+            for slot in range(blueprint_n):
+                set_rule(
+                    multiworld.get_location(f"{biome_name} - Blueprint Chest {slot + 1}", player),
+                    rule,
+                )
 
     # ── Wire up region connections ───────────────────────────────────────────
     regions["Menu"].connect(regions["Overworld"])

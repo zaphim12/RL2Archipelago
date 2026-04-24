@@ -10,7 +10,8 @@ if typing.TYPE_CHECKING:
 # TODO: Register an official base ID with the Archipelago project before publishing.
 BASE_ID = 0xBEEF0000
 
-HEIRLOOM_OFFSET = 0x300
+HEIRLOOM_OFFSET  = 0x300
+BLUEPRINT_OFFSET = 0x400
 
 
 class RogueLegacy2Item(Item):
@@ -44,6 +45,28 @@ item_data_table: dict[str, RogueLegacy2ItemData] = {
     # ── Events (no ID; placed by create_items at the matching event location) ─
     "Victory":                      RogueLegacy2ItemData(code=None, classification=ItemClassification.progression),
 }
+
+# Blueprint items: one per (EquipmentCategoryType, EquipmentType) pair.
+# ID = BASE_ID + BLUEPRINT_OFFSET + categoryIndex * 16 + typeIndex
+#   categoryIndex: Weapon=0, Head=1, Chest=2, Cape=3, Trinket=4
+#   typeIndex:     Bonus Leather=0 .. Black Root=12
+_BLUEPRINT_CATEGORIES = ["Weapon", "Helm", "Chest", "Cape", "Trinket"]
+_BLUEPRINT_TYPES = [
+    "Leather",    "Scholar",   "Warden",  "Sanguine",
+    "Ammonite",   "Crescent",  "Drowned", "Gilded",
+    "Obsidian",   "Leviathan", "Kin",
+    "White Wood", "Black Root", 
+]
+
+BLUEPRINT_ITEM_NAMES: list[str] = []
+for _c, _cat in enumerate(_BLUEPRINT_CATEGORIES):
+    for _t, _type in enumerate(_BLUEPRINT_TYPES):
+        _item_name = f"{_type} {_cat} Blueprint"
+        item_data_table[_item_name] = RogueLegacy2ItemData(
+            code=BASE_ID + BLUEPRINT_OFFSET + _c * 16 + _t,
+            classification=ItemClassification.useful,
+        )
+        BLUEPRINT_ITEM_NAMES.append(_item_name)
 
 HEIRLOOM_ITEM_NAMES = [
     "Ananke's Shawl",
@@ -83,10 +106,12 @@ def create_items(world: "RogueLegacy2World") -> None:
         multiworld.get_location(location_name, player).place_locked_item(create_item(player, item_name))
 
     unfilled = len(multiworld.get_unfilled_locations(player))
+    blueprint_n = world.options.blueprint_checks_per_biome.value
     pool: list[RogueLegacy2Item] = []
     for name in HEIRLOOM_ITEM_NAMES:
         pool.append(create_item(player, name))
-    pool.append(create_item(player, "Useful Item Placeholder"))
+    for name in BLUEPRINT_ITEM_NAMES:
+        pool.append(create_item(player, name))
     while len(pool) < unfilled:
         pool.append(create_item(player, "Filler Placeholder"))
     multiworld.itempool += pool

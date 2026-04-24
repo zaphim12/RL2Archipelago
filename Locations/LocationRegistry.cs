@@ -21,6 +21,7 @@ public static class LocationRegistry
     private const long BOSS_KILL_OFFSET     = 0x100;
     private const long MINIBOSS_KILL_OFFSET = 0x200;
     private const long HEIRLOOM_OFFSET      = 0x300;
+    private const long BLUEPRINT_OFFSET     = 0x400;
 
     // ── Boss kill locations ──────────────────────────────────────────────────
 
@@ -49,36 +50,71 @@ public static class LocationRegistry
     public const long CaveMiniboss_White_Defeated        = BASE_ID + MINIBOSS_KILL_OFFSET + 2;
     public const long CaveMiniboss_Black_Defeated        = BASE_ID + MINIBOSS_KILL_OFFSET + 3;
 
-    /// <summary>Human-readable name for each location ID, used in logs and UI.</summary>
-    public static readonly IReadOnlyDictionary<long, string> Names = new Dictionary<long, string>
-    {
-        [CastleBossDefeated] = "Citadel Agartha - Estuary Lamech Defeated",
-        [BridgeBossDefeated] = "Axis Mundi - Void Beasts Defeated",
-        [ForestBossDefeated] = "Kerguelen Plateau - Estuary Naamah Defeated",
-        [StudyBossDefeated]  = "Stygian Study - Estuary Enoch Defeated",
-        [TowerBossDefeated]  = "Sun Tower - Estuary Irad Defeated",
-        [CaveBossDefeated]   = "Pishon Dry Lake - Estuary Tubal Defeated",
-        [GardenBossDefeated] = "Garden of Eden - Jonah Defeated",
-        [FinalBossDefeated]  = "Castle Hamson - The Traitor Defeated",
+    // ── Blueprint chest locations (biome-slot based) ─────────────────────────
+    //
+    // Checks are allocated from a per-biome pool rather than tied to specific
+    // equipment pieces, so room-level gating doesn't leave any locations
+    // permanently inaccessible. The number of slots per biome is configurable
+    // via the player's YAML (0–16, default 11).
+    //
+    // Location ID = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * 16 + slotIndex
+    //   biomeIndex: Castle=0, Lake=1, Forest=2, Study=3, Tower=4, Cave=5
+    //   slotIndex:  0 .. (_checksPerBiome - 1)
+    //
+    // The stride of 16 keeps IDs stable regardless of N so a seed generated
+    // with N=11 and one with N=5 share the same IDs for their active slots.
 
-        [StudyMiniboss_SwordKnight_Defeated] = "Stygian Study - Gongheads Miniboss Defeated",
-        [StudyMiniboss_SpearKnight_Defeated] = "Stygian Study - Murmur Miniboss Defeated",
-        [CaveMiniboss_White_Defeated]        = "Pishon Dry Lake - Briareus and Cottus Minibosses Defeated",
-        [CaveMiniboss_Black_Defeated]        = "Pishon Dry Lake - Gyges and Aegaeon Minibosses Defeated",
-
-        [HeirloomAirDash]             = "Citadel Agartha - Ananke's Shawl",
-        [HeirloomDoubleJump]          = "Kerguelen Plateau - Aether's Wings",
-        [HeirloomMemory]              = "Citadel Agartha - Aesop's Tome",
-        [HeirloomBouncableDownstrike] = "Axis Mundi - Echo's Boots",
-        [HeirloomVoidDash]            = "Stygian Study - Pallas' Void Bell",
-        [HeirloomCaveLantern]         = "Pishon Dry Lake - Theia's Sun Lantern",
-    };
+    private static int _checksPerBiome = 11;
 
     /// <summary>
-    /// Maps the <see cref="PlayerSaveFlag"/> the game sets on a boss kill (the
-    /// non-"FirstTime" flag — see <c>BossRoomController.SetBossFlagDefeated</c>)
-    /// to the corresponding Archipelago location ID.
-    /// Returns <c>null</c> if the flag isn't a tracked boss kill.
+    /// Sets the number of blueprint chest checks per biome. Called once after
+    /// a successful login with the value from slot data.
+    /// </summary>
+    public static void SetBlueprintChecksPerBiome(int n) =>
+        _checksPerBiome = n < 0 ? 0 : n > 16 ? 16 : n;
+
+    /// <summary>Human-readable name for each location ID, used in logs and UI.</summary>
+    public static readonly IReadOnlyDictionary<long, string> Names = BuildNames();
+
+    private static Dictionary<long, string> BuildNames()
+    {
+        Dictionary<long, string> d = new()
+        {
+            [CastleBossDefeated] = "Citadel Agartha - Estuary Lamech Defeated",
+            [BridgeBossDefeated] = "Axis Mundi - Void Beasts Defeated",
+            [ForestBossDefeated] = "Kerguelen Plateau - Estuary Naamah Defeated",
+            [StudyBossDefeated]  = "Stygian Study - Estuary Enoch Defeated",
+            [TowerBossDefeated]  = "Sun Tower - Estuary Irad Defeated",
+            [CaveBossDefeated]   = "Pishon Dry Lake - Estuary Tubal Defeated",
+            [GardenBossDefeated] = "Garden of Eden - Jonah Defeated",
+            [FinalBossDefeated]  = "Castle Hamson - The Traitor Defeated",
+
+            [StudyMiniboss_SwordKnight_Defeated] = "Stygian Study - Gongheads Miniboss Defeated",
+            [StudyMiniboss_SpearKnight_Defeated] = "Stygian Study - Murmur Miniboss Defeated",
+            [CaveMiniboss_White_Defeated]        = "Pishon Dry Lake - Briareus and Cottus Minibosses Defeated",
+            [CaveMiniboss_Black_Defeated]        = "Pishon Dry Lake - Gyges and Aegaeon Minibosses Defeated",
+
+            [HeirloomAirDash]             = "Citadel Agartha - Ananke's Shawl",
+            [HeirloomDoubleJump]          = "Kerguelen Plateau - Aether's Wings",
+            [HeirloomMemory]              = "Citadel Agartha - Aesop's Tome",
+            [HeirloomBouncableDownstrike] = "Axis Mundi - Echo's Boots",
+            [HeirloomVoidDash]            = "Stygian Study - Pallas' Void Bell",
+            [HeirloomCaveLantern]         = "Pishon Dry Lake - Theia's Sun Lantern",
+        };
+
+        string[] biomeNames = [ "Citadel Agartha", "Axis Mundi", "Kerguelen Plateau", "Stygian Study", "Sun Tower", "Pishon Dry Lake" ];
+        for (int biome = 0; biome < 6; biome++)
+            for (int slot = 0; slot < 16; slot++)
+                d[BASE_ID + BLUEPRINT_OFFSET + biome * 16 + slot] = $"{biomeNames[biome]} - Blueprint Chest {slot + 1}";
+
+        return d;
+    }
+
+    // ── Lookup methods ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Maps the <see cref="PlayerSaveFlag"/> the game sets on a boss kill to the
+    /// corresponding Archipelago location ID, or <c>null</c> if not tracked.
     /// </summary>
     public static long? FromBossSaveFlag(PlayerSaveFlag flag) => flag switch
     {
@@ -94,8 +130,7 @@ public static class LocationRegistry
     };
 
     /// <summary>
-    /// Maps a <see cref="HeirloomType"/> to its Archipelago location ID.
-    /// Returns <c>null</c> if the heirloom isn't tracked.
+    /// Maps a <see cref="HeirloomType"/> to its Archipelago location ID, or <c>null</c> if not tracked.
     /// </summary>
     public static long? FromHeirloomType(HeirloomType type) => type switch
     {
@@ -109,9 +144,8 @@ public static class LocationRegistry
     };
 
     /// <summary>
-    /// Maps the <see cref="PlayerSaveFlag"/> set when a miniboss is defeated
-    /// to the corresponding Archipelago location ID.
-    /// Returns <c>null</c> if the flag isn't a tracked miniboss kill.
+    /// Maps the <see cref="PlayerSaveFlag"/> set on a miniboss defeat to its
+    /// Archipelago location ID, or <c>null</c> if not tracked.
     /// </summary>
     public static long? FromMinibossSaveFlag(PlayerSaveFlag flag) => flag switch
     {
@@ -121,4 +155,35 @@ public static class LocationRegistry
         PlayerSaveFlag.CaveMiniboss_Black_Defeated        => CaveMiniboss_Black_Defeated,
         _ => null,
     };
+
+    /// <summary>
+    /// Maps a <see cref="BiomeType"/> to its biome-slot pool index (0–5),
+    /// or <c>null</c> for non-relevant areas (hub, town, etc.).
+    /// Sub-variants (CaveMiddle, ForestTop, etc.) resolve to their parent biome.
+    /// </summary>
+    public static int? GetBiomeIndex(BiomeType biome) => biome switch
+    {
+        BiomeType.Castle                                                    => 0, // Citadel Agartha
+        BiomeType.Stone                                                     => 1, // Axis Mundi
+        BiomeType.Forest or BiomeType.ForestTop or BiomeType.ForestBottom   => 2, // Kerguelen Plateau
+        BiomeType.Study                                                     => 3, // Stygian Study
+        BiomeType.Tower or BiomeType.TowerExterior                          => 4, // Sun Tower
+        BiomeType.Cave or BiomeType.CaveMiddle or BiomeType.CaveBottom      => 5, // Pishon Dry Lake
+        _                                                                   => null,
+    };
+
+    /// <summary>
+    /// Returns the location ID of the next unchecked blueprint slot for the given
+    /// biome index, or <c>null</c> if all slots in that biome have been used.
+    /// </summary>
+    public static long? NextBlueprintChestLocation(int biomeIndex, HashSet<long> checkedLocations)
+    {
+        for (int i = 0; i < _checksPerBiome; i++)
+        {
+            long id = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * 16 + i;
+            if (!checkedLocations.Contains(id))
+                return id;
+        }
+        return null;
+    }
 }

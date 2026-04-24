@@ -14,7 +14,8 @@ public static class ItemRegistry
 {
     public const long BASE_ID = 0xBEEF0000L;
 
-    private const long HEIRLOOM_OFFSET = 0x300;
+    private const long HEIRLOOM_OFFSET  = 0x300;
+    private const long BLUEPRINT_OFFSET = 0x400;
 
     // ── Heirloom items ───────────────────────────────────────────────────────
 
@@ -26,15 +27,37 @@ public static class ItemRegistry
     public const long HeirloomCaveLantern         = BASE_ID + HEIRLOOM_OFFSET + 5;
 
     /// <summary>Human-readable name for each item ID, used in logs and UI.</summary>
-    public static readonly IReadOnlyDictionary<long, string> Names = new Dictionary<long, string>
+    public static readonly IReadOnlyDictionary<long, string> Names = BuildNames();
+
+    private static Dictionary<long, string> BuildNames()
     {
-        [HeirloomAirDash]             = "Ananke's Shawl",
-        [HeirloomDoubleJump]          = "Aether's Wings",
-        [HeirloomMemory]              = "Aesop's Tome",
-        [HeirloomBouncableDownstrike] = "Echo's Boots",
-        [HeirloomVoidDash]            = "Pallas' Void Bell",
-        [HeirloomCaveLantern]         = "Theia's Sun Lantern",
-    };
+        Dictionary<long, string> d = new()
+        {
+            [HeirloomAirDash]             = "Ananke's Shawl",
+            [HeirloomDoubleJump]          = "Aether's Wings",
+            [HeirloomMemory]              = "Aesop's Tome",
+            [HeirloomBouncableDownstrike] = "Echo's Boots",
+            [HeirloomVoidDash]            = "Pallas' Void Bell",
+            [HeirloomCaveLantern]         = "Theia's Sun Lantern",
+        };
+
+        // Blueprint item names
+        string[] categoryNames = [ "Weapon", "Helm", "Chest", "Cape", "Trinket" ];
+        string[] typeNames =
+        [
+            "Leather",    "Scholar",   "Warden",  "Sanguine",
+            "Ammonite",   "Crescent",  "Drowned", "Gilded",
+            "Obsidian",   "Leviathan", "Kin",
+            "White Wood", "Black Root", 
+        ];
+        for (int c = 0; c < 5; c++)
+            for (int t = 0; t < 13; t++)
+                d[BASE_ID + BLUEPRINT_OFFSET + c * 16 + t] = $"{typeNames[t]} {categoryNames[c]} Blueprint";
+
+        return d;
+    }
+
+    // ── Lookup methods ───────────────────────────────────────────────────────
 
     /// <summary>
     /// Maps an Archipelago item ID to its <see cref="HeirloomType"/>.
@@ -50,4 +73,49 @@ public static class ItemRegistry
         HeirloomCaveLantern         => HeirloomType.CaveLantern,
         _ => null,
     };
+
+    /// <summary>
+    /// Maps an Archipelago item ID to its <see cref="EquipmentCategoryType"/> and
+    /// <see cref="EquipmentType"/> pair. Returns <c>null</c> if the item isn't a
+    /// tracked equipment blueprint.
+    /// </summary>
+    public static (EquipmentCategoryType Category, EquipmentType EquipType)? ToEquipmentBlueprint(long itemId)
+    {
+        long offset = itemId - BASE_ID - BLUEPRINT_OFFSET;
+        if (offset < 0) return null;
+
+        int categoryIndex = (int)(offset / 16);
+        int typeIndex     = (int)(offset % 16);
+        if (categoryIndex > 4 || typeIndex > 12) return null;
+
+        EquipmentCategoryType category = categoryIndex switch
+        {
+            0 => EquipmentCategoryType.Weapon,
+            1 => EquipmentCategoryType.Head,
+            2 => EquipmentCategoryType.Chest,
+            3 => EquipmentCategoryType.Cape,
+            4 => EquipmentCategoryType.Trinket,
+            _ => EquipmentCategoryType.None,
+        };
+        EquipmentType equipType = typeIndex switch
+        {
+            0  => EquipmentType.GEAR_BONUS_WEIGHT,
+            1  => EquipmentType.GEAR_MAGIC_CRIT,
+            2  => EquipmentType.GEAR_STRENGTH_CRIT,
+            3  => EquipmentType.GEAR_LIFE_STEAL,
+            4  => EquipmentType.GEAR_ARMOR,
+            5  => EquipmentType.GEAR_MAGIC_DMG,
+            6  => EquipmentType.GEAR_MOBILITY,
+            7  => EquipmentType.GEAR_GOLD,
+            8  => EquipmentType.GEAR_RETURN_DMG,
+            9  => EquipmentType.GEAR_MAG_ON_HIT,
+            10 => EquipmentType.GEAR_LIFE_STEAL_2,
+            11 => EquipmentType.GEAR_EMPTY_1,
+            12 => EquipmentType.GEAR_EMPTY_2,
+            _  => EquipmentType.None,
+        };
+        if (category == EquipmentCategoryType.None || equipType == EquipmentType.None) return null;
+
+        return (category, equipType);
+    }
 }

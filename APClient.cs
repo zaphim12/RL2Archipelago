@@ -125,6 +125,12 @@ public static class APClient
 
             var success = (LoginSuccessful)loginResult;
             SlotData = success.SlotData;
+
+            if (SlotData.TryGetValue("blueprint_checks_per_biome", out var bpCountObj))
+                LocationRegistry.SetBlueprintChecksPerBiome(Convert.ToInt32(bpCountObj));
+            else
+                LocationRegistry.SetBlueprintChecksPerBiome(11);
+
             Plugin.Log.LogInfo(
                 $"Connected! Room: {Session.RoomState.Seed}  " +
                 $"Slot data keys: {string.Join(", ", success.SlotData.Keys)}");
@@ -454,6 +460,18 @@ public static class APClient
             SaveManager.PlayerSaveData.SetHeirloomLevel(heirloomType.Value, 1, additive: false, broadcast: false);
             PlayerManager.GetPlayerController()?.InitializeAbilities();
             Plugin.Log.LogInfo($"[AP] Granted heirloom: {displayName}");
+            return;
+        }
+
+        var equipBlueprint = ItemRegistry.ToEquipmentBlueprint(itemId);
+        if (equipBlueprint.HasValue)
+        {
+            var (cat, equip) = equipBlueprint.Value;
+            if (EquipmentManager.GetFoundState(cat, equip) == FoundState.NotFound)
+                EquipmentManager.SetFoundState(cat, equip, FoundState.FoundButNotViewed, overrideValues: false);
+            else
+                EquipmentManager.SetUpgradeBlueprintsFound(cat, equip, 1, additive: true);
+            Plugin.Log.LogInfo($"[AP] Granted blueprint: {displayName}");
             return;
         }
 
