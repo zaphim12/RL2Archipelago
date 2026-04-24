@@ -12,6 +12,7 @@ BASE_ID = 0xBEEF0000
 
 HEIRLOOM_OFFSET  = 0x300
 BLUEPRINT_OFFSET = 0x400
+RUNE_OFFSET      = 0x500
 
 
 class RogueLegacy2Item(Item):
@@ -68,6 +69,26 @@ for _c, _cat in enumerate(_BLUEPRINT_CATEGORIES):
         )
         BLUEPRINT_ITEM_NAMES.append(_item_name)
 
+# Rune items: one per RuneType, ordered to match the C# ToRuneType() index mapping.
+# ID = BASE_ID + RUNE_OFFSET + runeIndex  (0–23)
+_RUNE_NAMES = [
+    "Reinforced",   "Dash",        "Vault",    "Bounty",
+    "Haste",        "Lifesteal",   "Magnesis", "Retaliation",
+    "Siphon",       "Capacity",    "Trick",    "Amplification",
+    "Soulsteal",    "Resolve",     "Stone",    "Red",
+    "Sharpened",    "Focal",       "Might",    "Eldar",
+    "Lucky Roller", "High Stakes", "Folded",   "Quenching",
+]
+
+RUNE_ITEM_NAMES: list[str] = []
+for _i, _rune in enumerate(_RUNE_NAMES):
+    _item_name = f"{_rune} Rune"
+    item_data_table[_item_name] = RogueLegacy2ItemData(
+        code=BASE_ID + RUNE_OFFSET + _i,
+        classification=ItemClassification.useful,
+    )
+    RUNE_ITEM_NAMES.append(_item_name)
+
 HEIRLOOM_ITEM_NAMES = [
     "Ananke's Shawl",
     "Aether's Wings",
@@ -106,11 +127,12 @@ def create_items(world: "RogueLegacy2World") -> None:
         multiworld.get_location(location_name, player).place_locked_item(create_item(player, item_name))
 
     unfilled = len(multiworld.get_unfilled_locations(player))
-    blueprint_n = world.options.blueprint_checks_per_biome.value
     pool: list[RogueLegacy2Item] = []
     for name in HEIRLOOM_ITEM_NAMES:
         pool.append(create_item(player, name))
     for name in BLUEPRINT_ITEM_NAMES:
+        pool.append(create_item(player, name))
+    for name in RUNE_ITEM_NAMES:
         pool.append(create_item(player, name))
     while len(pool) < unfilled:
         pool.append(create_item(player, "Filler Placeholder"))

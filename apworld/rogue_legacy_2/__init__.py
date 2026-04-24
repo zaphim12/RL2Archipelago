@@ -49,4 +49,4 @@ class RogueLegacy2World(World):
             lambda state: state.has("Victory", self.player)
 
     def fill_slot_data(self) -> dict:
-        return self.options.as_dict("death_link", "blueprint_checks_per_biome")
+        return self.options.as_dict("death_link", "blueprint_checks_per_biome", "rune_checks_per_biome")

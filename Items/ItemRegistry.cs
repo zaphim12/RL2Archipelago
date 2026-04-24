@@ -16,6 +16,7 @@ public static class ItemRegistry
 
     private const long HEIRLOOM_OFFSET  = 0x300;
     private const long BLUEPRINT_OFFSET = 0x400;
+    private const long RUNE_OFFSET      = 0x500;
 
     // ── Heirloom items ───────────────────────────────────────────────────────
 
@@ -41,6 +42,19 @@ public static class ItemRegistry
             [HeirloomCaveLantern]         = "Theia's Sun Lantern",
         };
 
+        // Rune item names
+        string[] runeNames =
+        [
+            "Reinforced",   "Dash",        "Vault",    "Bounty",
+            "Haste",        "Lifesteal",   "Magnesis", "Retaliation",
+            "Siphon",       "Capacity",    "Trick",    "Amplification",
+            "Soulsteal",    "Resolve",     "Stone",    "Red",
+            "Sharpened",    "Focal",       "Might",    "Eldar",
+            "Lucky Roller", "High Stakes", "Folded",   "Quenching",
+        ];
+        for (int i = 0; i < runeNames.Length; i++)
+            d[BASE_ID + RUNE_OFFSET + i] = $"{runeNames[i]} Rune";
+
         // Blueprint item names
         string[] categoryNames = [ "Weapon", "Helm", "Chest", "Cape", "Trinket" ];
         string[] typeNames =
@@ -58,6 +72,44 @@ public static class ItemRegistry
     }
 
     // ── Lookup methods ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Maps an Archipelago item ID to its <see cref="RuneType"/>.
+    /// Returns <c>null</c> if the item isn't a tracked rune.
+    /// </summary>
+    public static RuneType? ToRuneType(long itemId)
+    {
+        long offset = itemId - BASE_ID - RUNE_OFFSET;
+        if (offset < 0 || offset > 23) return null;
+        return (int)offset switch
+        {
+            0  => RuneType.ArmorRegen,
+            1  => RuneType.Dash,
+            2  => RuneType.DoubleJump,
+            3  => RuneType.GoldGain,
+            4  => RuneType.Haste,
+            5  => RuneType.Lifesteal,
+            6  => RuneType.Magnet,
+            7  => RuneType.ReturnDamage,
+            8  => RuneType.ManaRegen,
+            9  => RuneType.MaxMana,
+            10 => RuneType.ManaOnSpinKick,
+            11 => RuneType.StatusEffectDuration,
+            12 => RuneType.SoulSteal,
+            13 => RuneType.ResolveGain,
+            14 => RuneType.OreGain,
+            15 => RuneType.RuneOreGain,
+            16 => RuneType.WeaponCritChanceAdd,
+            17 => RuneType.MagicCritChanceAdd,
+            18 => RuneType.WeaponCritDamageAdd,
+            19 => RuneType.MagicCritDamageAdd,
+            20 => RuneType.SuperCritChanceAdd,
+            21 => RuneType.SuperCritDamageAdd,
+            22 => RuneType.ArmorMinBlock,
+            23 => RuneType.ArmorHealth,
+            _  => null,
+        };
+    }
 
     /// <summary>
     /// Maps an Archipelago item ID to its <see cref="HeirloomType"/>.

@@ -28,7 +28,24 @@ class BlueprintChecksPerBiome(Range):
     default = 11
 
 
+class RuneChecksPerBiome(Range):
+    """Number of fairy chest location checks available per biome.
+
+    Each biome's fairy chests can award this many Archipelago checks when they
+    would normally drop a rune. Once a biome's pool is exhausted, extra fairy
+    chest rolls drop red aether instead.
+
+    With 6 biomes and the default of 4, the total fairy chest check count is 24.
+    This mirrors the typical number of rune drops available in a standard run.
+    """
+    display_name = "Rune Checks Per Biome"
+    range_start = 0
+    range_end = 16
+    default = 4
+
+
 @dataclass
 class RogueLegacy2GameOptions(PerGameCommonOptions):
     death_link: RL2DeathLink
     blueprint_checks_per_biome: BlueprintChecksPerBiome
+    rune_checks_per_biome: RuneChecksPerBiome

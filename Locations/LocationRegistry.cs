@@ -22,6 +22,7 @@ public static class LocationRegistry
     private const long MINIBOSS_KILL_OFFSET = 0x200;
     private const long HEIRLOOM_OFFSET      = 0x300;
     private const long BLUEPRINT_OFFSET     = 0x400;
+    private const long RUNE_OFFSET          = 0x500;
 
     // ── Boss kill locations ──────────────────────────────────────────────────
 
@@ -73,6 +74,22 @@ public static class LocationRegistry
     public static void SetBlueprintChecksPerBiome(int n) =>
         _checksPerBiome = n < 0 ? 0 : n > 16 ? 16 : n;
 
+    // ── Fairy chest (rune) locations (biome-slot based) ──────────────────────
+    //
+    // Same stride-16 pooling strategy as blueprints. Default 4 slots per biome
+    // (24 total), configurable via "rune_checks_per_biome" in slot data.
+    //
+    // Location ID = BASE_ID + RUNE_OFFSET + biomeIndex * 16 + slotIndex
+
+    private static int _runeChecksPerBiome = 4;
+
+    /// <summary>
+    /// Sets the number of fairy chest checks per biome. Called once after
+    /// a successful login with the value from slot data.
+    /// </summary>
+    public static void SetRuneChecksPerBiome(int n) =>
+        _runeChecksPerBiome = n < 0 ? 0 : n > 16 ? 16 : n;
+
     /// <summary>Human-readable name for each location ID, used in logs and UI.</summary>
     public static readonly IReadOnlyDictionary<long, string> Names = BuildNames();
 
@@ -106,6 +123,10 @@ public static class LocationRegistry
         for (int biome = 0; biome < 6; biome++)
             for (int slot = 0; slot < 16; slot++)
                 d[BASE_ID + BLUEPRINT_OFFSET + biome * 16 + slot] = $"{biomeNames[biome]} - Blueprint Chest {slot + 1}";
+
+        for (int biome = 0; biome < 6; biome++)
+            for (int slot = 0; slot < 16; slot++)
+                d[BASE_ID + RUNE_OFFSET + biome * 16 + slot] = $"{biomeNames[biome]} - Fairy Chest {slot + 1}";
 
         return d;
     }
@@ -181,6 +202,21 @@ public static class LocationRegistry
         for (int i = 0; i < _checksPerBiome; i++)
         {
             long id = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * 16 + i;
+            if (!checkedLocations.Contains(id))
+                return id;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Returns the location ID of the next unchecked fairy chest slot for the given
+    /// biome index, or <c>null</c> if all slots in that biome have been used.
+    /// </summary>
+    public static long? NextRuneChestLocation(int biomeIndex, HashSet<long> checkedLocations)
+    {
+        for (int i = 0; i < _runeChecksPerBiome; i++)
+        {
+            long id = BASE_ID + RUNE_OFFSET + biomeIndex * 16 + i;
             if (!checkedLocations.Contains(id))
                 return id;
         }

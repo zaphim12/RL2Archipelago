@@ -20,6 +20,7 @@ BOSS_KILL_OFFSET     = 0x100
 MINIBOSS_KILL_OFFSET = 0x200
 HEIRLOOM_OFFSET      = 0x300
 BLUEPRINT_OFFSET     = 0x400
+RUNE_OFFSET          = 0x500
 
 # Blueprint IDs use a biome-stride layout so IDs are stable regardless of how
 # many slots are enabled:  id = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * 16 + slotIndex
@@ -33,6 +34,7 @@ _BIOME_NAMES = [
     "Pishon Dry Lake",
 ]
 _MAX_BLUEPRINT_CHECKS_PER_BIOME = 16  # upper bound of the BlueprintChecksPerBiome option
+_MAX_RUNE_CHECKS_PER_BIOME      = 16  # upper bound of the RuneChecksPerBiome option
 
 
 class RogueLegacy2Location(Location):
@@ -88,6 +90,15 @@ for _biome_idx, _biome_name in enumerate(_BIOME_NAMES):
             address=BASE_ID + BLUEPRINT_OFFSET + _biome_idx * 16 + _slot,
         )
 
+# Register all possible fairy chest (rune) locations so location_name_to_id
+# is stable across different rune_checks_per_biome settings.
+for _biome_idx, _biome_name in enumerate(_BIOME_NAMES):
+    for _slot in range(_MAX_RUNE_CHECKS_PER_BIOME):
+        location_data_table[f"{_biome_name} - Fairy Chest {_slot + 1}"] = RogueLegacy2LocationData(
+            region="Overworld",
+            address=BASE_ID + RUNE_OFFSET + _biome_idx * 16 + _slot,
+        )
+
 # Convenience: name→ID dict used by World.location_name_to_id
 all_non_event_locations_table: dict[str, int] = {
     name: data.address
@@ -108,12 +119,18 @@ def create_regions(world: "RogueLegacy2World") -> None:
     multiworld = world.multiworld
     player = world.player
     blueprint_n = world.options.blueprint_checks_per_biome.value
+    rune_n = world.options.rune_checks_per_biome.value
 
-    # The set of blueprint location names active for this world.
+    # The set of blueprint and rune location names active for this world.
     active_blueprint_names = {
         f"{biome_name} - Blueprint Chest {slot + 1}"
         for biome_name in _BIOME_NAMES
         for slot in range(blueprint_n)
+    }
+    active_rune_names = {
+        f"{biome_name} - Fairy Chest {slot + 1}"
+        for biome_name in _BIOME_NAMES
+        for slot in range(rune_n)
     }
 
     # ── Build regions ────────────────────────────────────────────────────────
@@ -126,8 +143,10 @@ def create_regions(world: "RogueLegacy2World") -> None:
 
     # ── Assign locations to their regions ────────────────────────────────────
     for location_name, location_data in location_data_table.items():
-        # Blueprint locations: only instantiate those within the configured limit.
+        # Blueprint/rune locations: only instantiate those within configured limits.
         if "Blueprint Chest" in location_name and location_name not in active_blueprint_names:
+            continue
+        if "Fairy Chest" in location_name and location_name not in active_rune_names:
             continue
         region = regions[location_data.region]
         location = RogueLegacy2Location(
@@ -336,6 +355,34 @@ def create_regions(world: "RogueLegacy2World") -> None:
             for slot in range(blueprint_n):
                 set_rule(
                     multiworld.get_location(f"{biome_name} - Blueprint Chest {slot + 1}", player),
+                    rule,
+                )
+
+    # ── Fairy chest (rune) access rules (same biome requirements as blueprints) ─
+    _rune_biome_rules = {
+        "Citadel Agartha":   None,  # always accessible
+        "Axis Mundi":        lambda state, p=player: (
+            state.has("Echo's Boots", p) or
+            (state.has("Ananke's Shawl", p) and state.has("Aether's Wings", p))
+        ),
+        "Kerguelen Plateau": lambda state, p=player: state.has("Echo's Boots", p),
+        "Stygian Study":     lambda state, p=player: (
+            state.has("Aether's Wings", p) and state.has("Pallas' Void Bell", p)
+        ),
+        "Sun Tower":         lambda state, p=player: (
+            state.has("Ananke's Shawl", p) and state.has("Echo's Boots", p) and
+            state.has("Aether's Wings", p) and state.has("Pallas' Void Bell", p)
+        ),
+        "Pishon Dry Lake":   lambda state, p=player: state.has("Theia's Sun Lantern", p),
+    }
+    if rune_n > 0:
+        for biome_name in _BIOME_NAMES:
+            rule = _rune_biome_rules[biome_name]
+            if rule is None:
+                continue
+            for slot in range(rune_n):
+                set_rule(
+                    multiworld.get_location(f"{biome_name} - Fairy Chest {slot + 1}", player),
                     rule,
                 )
 

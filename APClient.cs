@@ -131,6 +131,11 @@ public static class APClient
             else
                 LocationRegistry.SetBlueprintChecksPerBiome(11);
 
+            if (SlotData.TryGetValue("rune_checks_per_biome", out var runeCountObj))
+                LocationRegistry.SetRuneChecksPerBiome(Convert.ToInt32(runeCountObj));
+            else
+                LocationRegistry.SetRuneChecksPerBiome(4);
+
             Plugin.Log.LogInfo(
                 $"Connected! Room: {Session.RoomState.Seed}  " +
                 $"Slot data keys: {string.Join(", ", success.SlotData.Keys)}");
@@ -472,6 +477,14 @@ public static class APClient
             else
                 EquipmentManager.SetUpgradeBlueprintsFound(cat, equip, 1, additive: true);
             Plugin.Log.LogInfo($"[AP] Granted blueprint: {displayName}");
+            return;
+        }
+
+        var runeType = ItemRegistry.ToRuneType(itemId);
+        if (runeType.HasValue)
+        {
+            RuneManager.SetUpgradeBlueprintsFound(runeType.Value, 1, additive: true);
+            Plugin.Log.LogInfo($"[AP] Granted rune blueprint: {displayName}");
             return;
         }
 

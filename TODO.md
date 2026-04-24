@@ -12,14 +12,17 @@
 ## Receiving Items:
 [x] Heirlooms
   [x] Ensure that when an heirloom is collected, its corresponding non-randomizer location still lets you complete an AP check
-  [x] Ensure that statues display the respective item they're supposed to grant, not their original item
+  [ ] Ensure that statues display the respective item they're supposed to grant, not their original item
+    [x] Display correct randomized heirloom on the statue
+    [ ] Display correct randomized runes/blueprints on the statue
+    [ ] Display correct randomized manor upgrade on the statue
   [x] Ensure that the statue remains empty for this and future runs
   [x] Ensure Johan in Pishon Dry Lake only gives location check one time, after Irad is defeated
   [x] Ensure that for Citadel Agartha rooms, relics spawn on future runs
 [ ] Portal Unlocks
   [ ] Once implemented, make sure that biome access checks are opened by Kerguelen Plateau teleporter
 [x] Blueprints
-[ ] Runes
+[x] Runes
 [ ] Manor upgrades
 
 ## Locations:
@@ -29,7 +32,8 @@
   [x] Ensure that the post-heirloom-collection platforming challenge does not trigger, and location check counts regardless
   [x] Ensure that the heirloom pick-up rooms are replaced with relic choice rooms when appropriate if they've been picked up before
 [ ] Pizza girl teleporters fee paid
-[ ] Runes received (Open fairy chest)
+[x] Runes received (Open fairy chest)
+  [x] Have a configurable number of rune drop locations per biome (0-16 currently, 4 by default)
 [x] Blueprints received (Bronze/Silver chest rolls into blueprint)
   [x] Have a configurable number of blueprint drop locations per biome (0-16 currently, 11 by default)
 [ ] Journals and Memories
