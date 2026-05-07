@@ -36,6 +36,9 @@ public static class APClient
     /// <summary>Persistent state for the active run: checked locations, received items, etc.</summary>
     public static APRunState RunState { get; private set; }
 
+    /// <summary>Levels granted per manor upgrade item received. Read from slot data on connect.</summary>
+    public static int ManorUpgradeBundleSize { get; private set; } = 5;
+
     // Profile slot that was active before AP mode was entered; restored on disconnect.
     private static byte _previousProfile;
 
@@ -135,6 +138,9 @@ public static class APClient
                 LocationRegistry.SetRuneChecksPerBiome(Convert.ToInt32(runeCountObj));
             else
                 LocationRegistry.SetRuneChecksPerBiome(4);
+
+            ManorUpgradeBundleSize = SlotData.TryGetValue("manor_upgrade_bundle_size", out var bundleSizeObj)
+                ? Convert.ToInt32(bundleSizeObj) : 5;
 
             Plugin.Log.LogInfo(
                 $"Connected! Room: {Session.RoomState.Seed}  " +
@@ -485,6 +491,18 @@ public static class APClient
         {
             RuneManager.SetUpgradeBlueprintsFound(runeType.Value, 1, additive: true);
             Plugin.Log.LogInfo($"[AP] Granted rune blueprint: {displayName}");
+            return;
+        }
+
+        var skillTreeType = ItemRegistry.ToSkillTreeType(itemId);
+        if (skillTreeType.HasValue)
+        {
+            // runEvents: false — prevents UnlockConnectedSkillSlots from revealing adjacent
+            // manor slots prematurely. Adjacent slots should only become visible when the
+            // player physically purchases the prerequisite slot in the manor (location check),
+            // not when the corresponding AP item arrives from the multiworld.
+            SkillTreeManager.SetSkillObjLevel(skillTreeType.Value, ManorUpgradeBundleSize, additive: true, runEvents: false);
+            Plugin.Log.LogInfo($"[AP] Granted manor upgrade: {displayName} (+{ManorUpgradeBundleSize} levels)");
             return;
         }
 

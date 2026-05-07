@@ -40,5 +40,18 @@ internal static class DebugPatch
                 Plugin.Log.LogInfo("[Debug] Key 9 pressed but PlayerManager is not instantiated.");
             }
         }
+
+        if (keyboard.GetKeyDown(KeyCode.Alpha8))
+        {
+            if (SaveManager.PlayerSaveData != null)
+            {
+                SaveManager.PlayerSaveData.GoldCollected += 1000;
+                Plugin.Log.LogInfo("[Debug] Added 1000 gold to player.");
+            }
+            else
+            {
+                Plugin.Log.LogInfo("[Debug] Key 8 pressed but PlayerSaveData is not available.");
+            }
+        }
     }
 }

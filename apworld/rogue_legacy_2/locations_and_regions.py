@@ -7,7 +7,11 @@ from worlds.generic.Rules import set_rule
 if typing.TYPE_CHECKING:
     from . import RogueLegacy2World
 
-from .items import BASE_ID
+from .items import (
+    BASE_ID,
+    _CORE_MANOR_UPGRADES,
+    _NPC_MANOR_UPGRADES,
+)
 
 # ---------------------------------------------------------------------------
 # Location ID offsets
@@ -21,6 +25,7 @@ MINIBOSS_KILL_OFFSET = 0x200
 HEIRLOOM_OFFSET      = 0x300
 BLUEPRINT_OFFSET     = 0x400
 RUNE_OFFSET          = 0x500
+MANOR_OFFSET         = 0x600
 
 # Blueprint IDs use a biome-stride layout so IDs are stable regardless of how
 # many slots are enabled:  id = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * 16 + slotIndex
@@ -81,6 +86,16 @@ location_data_table: dict[str, RogueLegacy2LocationData] = {
     "Castle Hamson - The Traitor Defeated":         RogueLegacy2LocationData(region="Throne Room", address=None),
 }
 
+# Register all manor upgrade locations so location_name_to_id is complete.
+# Core (indices 0-68) are always registered; NPC unlocks (69-71) are registered
+# unconditionally here but only instantiated in create_regions when the option
+# is enabled — same pattern as blueprint/rune pool sizing.
+for _i, _name in enumerate(_CORE_MANOR_UPGRADES + _NPC_MANOR_UPGRADES):
+    location_data_table[f"Manor - {_name}"] = RogueLegacy2LocationData(
+        region="Manor",
+        address=BASE_ID + MANOR_OFFSET + _i,
+    )
+
 # Register all possible blueprint locations (max slots) so location_name_to_id
 # is stable across different blueprint_checks_per_biome settings.
 for _biome_idx, _biome_name in enumerate(_BIOME_NAMES):
@@ -134,7 +149,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
     }
 
     # ── Build regions ────────────────────────────────────────────────────────
-    region_names = {"Menu", "Overworld", "Throne Room"}
+    region_names = {"Menu", "Overworld", "Throne Room", "Manor"}
     regions: dict[str, Region] = {}
     for name in region_names:
         region = Region(name, player, multiworld)
@@ -388,4 +403,5 @@ def create_regions(world: "RogueLegacy2World") -> None:
 
     # ── Wire up region connections ───────────────────────────────────────────
     regions["Menu"].connect(regions["Overworld"])
+    regions["Menu"].connect(regions["Manor"])
     regions["Overworld"].connect(regions["Throne Room"])

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using RL2Archipelago.Items;
 
 namespace RL2Archipelago.Locations;
 
@@ -23,6 +24,7 @@ public static class LocationRegistry
     private const long HEIRLOOM_OFFSET      = 0x300;
     private const long BLUEPRINT_OFFSET     = 0x400;
     private const long RUNE_OFFSET          = 0x500;
+    private const long MANOR_OFFSET         = 0x600;
 
     // ── Boss kill locations ──────────────────────────────────────────────────
 
@@ -64,6 +66,35 @@ public static class LocationRegistry
     //
     // The stride of 16 keeps IDs stable regardless of N so a seed generated
     // with N=11 and one with N=5 share the same IDs for their active slots.
+
+    // ── Manor upgrade locations ──────────────────────────────────────────────
+    //
+    // One location per SkillTreeType slot, using the same canonical ordered list
+    // as ItemRegistry.s_skillTreeTypes. Index in that array = ID offset from MANOR_OFFSET.
+    // NPC unlock locations are always tracked; when randomize_npc_unlocks=false the
+    // Python apworld places their items locked in-place rather than randomizing them.
+
+    // Built once at startup: SkillTreeType → location ID.
+    private static readonly Dictionary<SkillTreeType, long> s_skillTreeToLocation
+        = BuildSkillTreeToLocation();
+
+    private static Dictionary<SkillTreeType, long> BuildSkillTreeToLocation()
+    {
+        var d = new Dictionary<SkillTreeType, long>(ItemRegistry.s_skillTreeTypes.Length);
+        for (int i = 0; i < ItemRegistry.s_skillTreeTypes.Length; i++)
+            d[ItemRegistry.s_skillTreeTypes[i]] = BASE_ID + MANOR_OFFSET + i;
+        return d;
+    }
+
+    /// <summary>
+    /// Maps a <see cref="SkillTreeType"/> to its Archipelago location ID, or
+    /// <c>null</c> if the type isn't a tracked manor upgrade slot.
+    /// </summary>
+    public static long? FromSkillTreeType(SkillTreeType type)
+    {
+        if (!s_skillTreeToLocation.TryGetValue(type, out var id)) return null;
+        return id;
+    }
 
     private static int _checksPerBiome = 11;
 
@@ -127,6 +158,10 @@ public static class LocationRegistry
         for (int biome = 0; biome < 6; biome++)
             for (int slot = 0; slot < 16; slot++)
                 d[BASE_ID + RUNE_OFFSET + biome * 16 + slot] = $"{biomeNames[biome]} - Fairy Chest {slot + 1}";
+
+        // Manor upgrade location names (parallel to ItemRegistry.s_manorDisplayNames)
+        for (int i = 0; i < ItemRegistry.s_skillTreeTypes.Length; i++)
+            d[BASE_ID + MANOR_OFFSET + i] = $"Manor - {ItemRegistry.s_manorDisplayNames[i]}";
 
         return d;
     }

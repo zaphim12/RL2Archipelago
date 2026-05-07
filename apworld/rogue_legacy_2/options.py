@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from Options import DeathLink, PerGameCommonOptions, Range
+from Options import DeathLink, PerGameCommonOptions, Range, Toggle
 
 
 class RL2DeathLink(DeathLink):
@@ -44,8 +44,62 @@ class RuneChecksPerBiome(Range):
     default = 4
 
 
+class ManorUpgradeBundleSize(Range):
+    """Number of skill tree levels granted when receiving a manor upgrade item.
+
+    This option controls how many levels are granted for multi-level skills
+    when an AP item corresponding for that manor slot is received from the server.
+
+    For example, with the default of 5, receiving "Manor: Strength Up I" grants
+    5 strength levels (instead of the 1 level like the base-game purchase gives)
+
+    Note: This does not allow exceeding the maximum level for a particular skill
+    that the base game imposes. So the final granted bundle may provide less levels
+    if the player is too close to the given skill's cap.
+    """
+    display_name = "Manor Upgrade Bundle Size"
+    range_start = 0
+    range_end = 35
+    default = 5
+
+
+class ManorUsefulCount(Range):
+    """How many copies of each multi-level manor upgrade are classified as 'useful'.
+
+    When a manor upgrade has more than one AP item copy (because its max level exceeds
+    the bundle size), the first N copies are marked 'useful' and the remainder are
+    'filler'. 'Useful' and 'Filler' are Archipelago terms which determine how items 
+    are randomized in the world.
+
+    The first bundle (the only bundle for single-level upgrades like class unlocks, NPC unlocks, 
+    etc.) are always 'useful' regardless of this setting.
+
+    Set to 0 to make all extra copies filler. Set to a large number (e.g. 99) to
+    keep every copy useful.
+    """
+    display_name = "Manor Useful Upgrade Count"
+    range_start = 0
+    range_end = 35
+    default = 1
+
+
+class RandomizeNpcUnlocks(Toggle):
+    """Whether to randomize NPC unlock slots.
+
+    When enabled (default), the three NPC upgrade slots (Living Safe, Smithy, Enchantress)
+    are added as randomized Archipelago locations whose unlocks can be placed anywhere.
+    When disabled, these unlock slots will always be placed in their original location. 
+    This allows them to be unlocked early instead of potentially gated far into a run.
+    """
+    display_name = "Randomize NPC Unlock Locations"
+    default = 1
+
+
 @dataclass
 class RogueLegacy2GameOptions(PerGameCommonOptions):
     death_link: RL2DeathLink
     blueprint_checks_per_biome: BlueprintChecksPerBiome
     rune_checks_per_biome: RuneChecksPerBiome
+    manor_upgrade_bundle_size: ManorUpgradeBundleSize
+    manor_useful_count: ManorUsefulCount
+    randomize_npc_unlocks: RandomizeNpcUnlocks

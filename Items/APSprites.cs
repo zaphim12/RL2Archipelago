@@ -34,13 +34,18 @@ internal static class APSprites
         var scouted = APClient.GetScoutedItem(locationId);
         if (scouted == null) return GetAPLogoSprite();
 
-        // Items belonging to this slot ("Rogue Legacy 2") may have a native sprite
-        // we can reuse. Only heirlooms are mapped for now; extend as more item
-        // categories with visible props are added.
+        // Items belonging to this slot ("Rogue Legacy 2") may have a native sprite.
         var heirloomType = ItemRegistry.ToHeirloomType(scouted.ItemId);
         if (heirloomType.HasValue)
         {
             var sprite = IconLibrary.GetHeirloomSprite(heirloomType.Value);
+            if (sprite != null) return sprite;
+        }
+
+        var skillTreeType = ItemRegistry.ToSkillTreeType(scouted.ItemId);
+        if (skillTreeType.HasValue)
+        {
+            var sprite = IconLibrary.GetSkillTreeIcon(skillTreeType.Value);
             if (sprite != null) return sprite;
         }
 

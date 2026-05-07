@@ -1,3 +1,4 @@
+import math
 import typing
 from typing import NamedTuple
 
@@ -13,6 +14,7 @@ BASE_ID = 0xBEEF0000
 HEIRLOOM_OFFSET  = 0x300
 BLUEPRINT_OFFSET = 0x400
 RUNE_OFFSET      = 0x500
+MANOR_OFFSET     = 0x600
 
 
 class RogueLegacy2Item(Item):
@@ -89,6 +91,216 @@ for _i, _rune in enumerate(_RUNE_NAMES):
     )
     RUNE_ITEM_NAMES.append(_item_name)
 
+# Manor upgrade items: one per SkillTreeType slot.
+# ID = BASE_ID + MANOR_OFFSET + listIndex
+# Indices 0-68 are core upgrades; indices 69-71 are NPC unlock slots
+# (active only when randomize_npc_unlocks=true).
+# IMPORTANT: order here must stay in lockstep with ItemRegistry.s_skillTreeTypes in C#.
+_CORE_MANOR_UPGRADES: list[str] = [
+    "Mess Hall (Vitality Up I)",                                # 0 SkillTreeType.Health_Up
+    "Fruit Juice Bar (Vitality Up II)",                         # 1 SkillTreeType.Health_Up2
+    "Meteora Gym (Vitality Up III)",                            # 2 SkillTreeType.Health_Up3
+    # "Veterinarian Clinic (Revive Chance Up)",                 
+    "Institute of Gastronomy (Health Drop Scaling)",            # 3 SkillTreeType.Potion_Up
+    # "Stadium (Invulnerability Up)",                           
+    "Arsenal (Strength Up I)",                                  # 4 SkillTreeType.Attack_Up
+    "Sauna (Strength Up II)",                                   # 5 SkillTreeType.Attack_Up2
+    "Rock Climbing Wall (Strength Up III)",                     # 6 SkillTreeType.Attack_Up3
+    "Bamboo Garden (Spin Kick scales with INT)",                # 7 SkillTreeType.Down_Strike_Up
+    "Gym (Dexterity Up I)",                                     # 8 SkillTreeType.Dexterity_Add1
+    "Yoga Class (Dexterity Up II)",                             # 9 SkillTreeType.Dexterity_Add2
+    "Flower Shop (Dexterity Up III)",                           # 10 SkillTreeType.Dexterity_Add3
+    "The Laundromat (Weapon Crit Damage Up)",                   # 11 SkillTreeType.Crit_Damage_Up
+    "Study Hall (Intelligence Up I)",                           # 12 SkillTreeType.Magic_Attack_Up
+    "Math Club (Intelligence Up II)",                           # 13 SkillTreeType.Magic_Attack_Up2
+    "University (Intelligence Up III)",                         # 14 SkillTreeType.Magic_Attack_Up3
+    "Library (Focus Up I)",                                     # 15 SkillTreeType.Focus_Up1
+    "Hall of Wisdom (Focus Up II)",                             # 16 SkillTreeType.Focus_Up2
+    "Court of the Wise (Focus Up III)",                         # 17 SkillTreeType.Focus_Up3
+    "The Lodge (Magic Crit Damage Up)",                         # 18 SkillTreeType.Magic_Crit_Damage_Up
+    # "The Thaumaturgy (Cooldown Reduction)",                   
+    "Fashion Chambers (Max Weight Up I)",                       # 19 SkillTreeType.Equip_Up
+    "Tailors (Max Weight Up II)",                               # 20 SkillTreeType.Equip_Up2
+    "Artisan (Max Weight Up III)",                              # 21 SkillTreeType.Equip_Up3
+    "Etching Chambers (Max Rune Weight Up I)",                  # 22 SkillTreeType.Rune_Equip_Up
+    "Pillow Mill (Max Rune Weight Up II)",                      # 23 SkillTreeType.Rune_Equip_Up2
+    "Bed Mill (Max Rune Weight Up III)",                        # 24 SkillTreeType.Rune_Equip_Up3
+    "Foundry (Armor Up I)",                                     # 25 SkillTreeType.Armor_Up
+    "Blast Furnace (Armor Up II)",                              # 26 SkillTreeType.Armor_Up2
+    "Some Kind of Kiln (Armor Up III)",                         # 27 SkillTreeType.Armor_Up3
+    "Universal Health Stair (Traits Give Gold)",                # 28 SkillTreeType.Traits_Give_Gold
+    "Repurposed Mining Shaft (Traits Gold Gain Up)",            # 39 SkillTreeType.Traits_Give_Gold_Gain_Mod
+    "Geologist's Camp (Ore Drop Chance Up)",                    # 30 SkillTreeType.Equipment_Ore_Find_Up
+    "Dowsing Center (Red Aether Drop Chance Up)",               # 31 SkillTreeType.Rune_Ore_Find_Up
+    "Massive Vault (Gold Gain Up I)",                           # 32 SkillTreeType.Gold_Gain_Up
+    # "Gold Gain Up II",                                        
+    # "Gold Gain Up III",                                       
+    # "Sky Bridge (Gold Gain Up IV)",                           
+    # "Tree Bridge (Gold Gain Up V)",                           
+    "Career Center (Re-Roll Children)",                         # 33 SkillTreeType.Randomize_Children
+    "Aerobics Classroom (Encumbrance Limit Up)",                # 34 SkillTreeType.Weight_CD_Reduce
+    # "The Fissary (Mana Cost Down)",                           
+    "Courthouse (Living Safe Max Gold Up)",                     # 35 SkillTreeType.Gold_Saved_Cap_Up
+    "Scribe's Office (Living Safe Conversion Up)",              # 36 SkillTreeType.Gold_Saved_Amount_Saved
+    "Fighting Ring (Boxer Class)",                              # 37 SkillTreeType.BoxingGlove_Class_Unlock
+    "Dance Hall (Duelist Class)",                               # 38 SkillTreeType.Saber_Class_Unlock
+    "Guild of Dark Arts (Assassin Class)",                      # 39 SkillTreeType.DualBlades_Class_Unlock
+    "Drill Store (Architect Cost Reduction)",                   # 40 SkillTreeType.Architect_Cost_Down
+    # "Genesis Pool (Polymorph Class)",                         
+    "Adoption Center (More Heirs)",                             # 41 SkillTreeType.More_Children
+    "The Kitchen (Chef Class)",                                 # 42 SkillTreeType.Ladle_Class_Unlock
+    # "Forest Village (Chakram Class)",                         
+    # "Martial Arts School (Tonfa Class)",                      
+    # "The Pilgrim's Steps (Knight Class)",                     
+    "Butcher's Shoppe (Barbarian Class)",                       # 43 SkillTreeType.Axe_Class_Unlock
+    "Academy (Mage Class)",                                     # 44 SkillTreeType.Wand_Class_Unlock
+    "Archery Range (Ranger Class)",                             # 45 SkillTreeType.Bow_Class_Unlock
+    "Sand Pits (Valkyrie Class)",                               # 46 SkillTreeType.Spear_Class_Unlock
+    # "Hidden Dojo (Ninja Class)",                              
+    # "Ancestral Plot (Lich Class)",                            
+    # "Miner's Camp (Spelunker Class)",                         
+    "Saltpeter Mines (Gunslinger Class)",                       # 47 SkillTreeType.Gun_Class_Unlock
+    "Ryokan (Ronin Class)",                                     # 48 SkillTreeType.Samurai_Class_Unlock
+    "The Tavern (Bard Class)",                                  # 49 SkillTreeType.Music_Class_Unlock
+    "The Flying Docks (Pirate Class)",                          # 50 SkillTreeType.Pirate_Class_Unlock
+    "The Astral Gardens (Astromancer Class)",                   # 51 SkillTreeType.Astro_Class_Unlock
+    # "Weapon Master Upgrade",                                  
+    # "Knight Upgrade",                                         
+    "The Aviary (Dragon Lancer Class)",                         # 52 SkillTreeType.Lancer_Class_Unlock
+    "Trophy Room (XP Up)",                                      # 53 SkillTreeType.XP_Up
+    "Jeweler (Ore Gain Up)",                                    # 54 SkillTreeType.Equipment_Ore_Gain_Up
+    "Buried Tomb (Red Aether Gain Up)",                         # 55 SkillTreeType.Rune_Ore_Gain_Up
+    # "Herb Garden (Free Cast Up)",                             
+    "Dummy (Training Dummy Unlock)",                            # 56 SkillTreeType.Unlock_Dummy
+    "Meditation Studies (Boss Health/Mana Restore)",            # 57 SkillTreeType.Boss_Health_Restore
+    "Sage Totem (Mastery Rank Unlock)",                         # 58 SkillTreeType.Unlock_Totem
+    "Archaeology Camp (Relic Resolve Cost Down)",               # 59 SkillTreeType.Relic_Cost_Down
+    "Medieval Forgery (Relic Reroll Up)",                       # 60 SkillTreeType.Reroll_Relic
+    "Alchemy Lab (Potion Recharge Talent)",                     # 61 SkillTreeType.Potion_Recharge_Talent
+    "Psychiatrist (Resolve Up)",                                # 62 SkillTreeType.Resolve_Up
+    "Jousting Studies (Dash Damage Reduction)",                 # 63 SkillTreeType.Dash_Strike_Up
+    "Charity Dungeon (Charon Donation Bonus Unlock)",           # 64 SkillTreeType.Charon_Gold_Stat_Bonus
+    "The Dicer's Den (Weapon Crit Chance Up)",                  # 65 SkillTreeType.Crit_Chance_Flat_Up
+    "The Quantum Observatory (Magic Crit Chance Up)",           # 66 SkillTreeType.Magic_Crit_Chance_Flat_Up
+    "The Bizarre Bazaar (Reroll Relic Room Cap Up)",            # 67 SkillTreeType.Reroll_Relic_Room_Cap
+    "Screw Distillery (Architect Unlock)",                      # 68 SkillTreeType.Architect
+]
+
+_NPC_MANOR_UPGRADES: list[str] = [
+    "Offshore Bank Account (Living Safe)",          # 69 SkillTreeType.Gold_Saved_Unlock
+    "Foundation (Smithy Unlock)",                   # 70 SkillTreeType.Smithy
+    "Enchantress' Quarters (Enchantress Unlock)",   # 71 SkillTreeType.Enchantress
+    # "Banker Unlock",                              
+]
+
+# Max level for each manor upgrade slot.
+# Used by create_items() to determine how many AP items to generate per slot:
+#   copies = ceil(max_level / bundle_size)
+# Single-level slots (class/NPC unlocks, binary toggles) are set to 1.
+MANOR_MAX_LEVELS: dict[str, int] = {
+    # ── Vitality ─────────────────────────────────────────────────────────────
+    "Manor: Mess Hall (Vitality Up I)":                         10,
+    "Manor: Fruit Juice Bar (Vitality Up II)":                  20,
+    "Manor: Meteora Gym (Vitality Up III)":                     30,
+    # ── Misc survival ────────────────────────────────────────────────────────
+    "Manor: Institute of Gastronomy (Health Drop Scaling)":     10, # TODO technically max is 0 without Unbreakable Will, should this be handled differently?
+    # ── Strength ─────────────────────────────────────────────────────────────
+    "Manor: Arsenal (Strength Up I)":                           10,
+    "Manor: Sauna (Strength Up II)":                            20,
+    "Manor: Rock Climbing Wall (Strength Up III)":              30,
+    # ── Spin Kicks ───────────────────────────────────────────────────────────
+    "Manor: Bamboo Garden (Spin Kick scales with INT)":         5,
+    # ── Dexterity ────────────────────────────────────────────────────────────
+    "Manor: Gym (Dexterity Up I)":                              10,
+    "Manor: Yoga Class (Dexterity Up II)":                      25,
+    "Manor: Flower Shop (Dexterity Up III)":                    35,
+    # ── Weapon Crit Damage ───────────────────────────────────────────────────
+    "Manor: The Laundromat (Weapon Crit Damage Up)":            10,
+    # ── Intelligence ─────────────────────────────────────────────────────────
+    "Manor: Study Hall (Intelligence Up I)":                    10,
+    "Manor: Math Club (Intelligence Up II)":                    20,
+    "Manor: University (Intelligence Up III)":                  30,
+    # ── Focus ────────────────────────────────────────────────────────────────
+    "Manor: Library (Focus Up I)":                              10,
+    "Manor: Hall of Wisdom (Focus Up II)":                      25,
+    "Manor: Court of the Wise (Focus Up III)":                  25,
+    # ── Spell Crit Damage ────────────────────────────────────────────────────
+    "Manor: The Lodge (Magic Crit Damage Up)":                  10,
+    # ── Equipment weight ─────────────────────────────────────────────────────
+    "Manor: Fashion Chambers (Max Weight Up I)":                5,
+    "Manor: Tailors (Max Weight Up II)":                        15,
+    "Manor: Artisan (Max Weight Up III)":                       25,
+    # ── Rune weight ──────────────────────────────────────────────────────────
+    "Manor: Etching Chambers (Max Rune Weight Up I)":           5,
+    "Manor: Pillow Mill (Max Rune Weight Up II)":               15,
+    "Manor: Bed Mill (Max Rune Weight Up III)":                 15,
+    # ── Armor ────────────────────────────────────────────────────────────────
+    "Manor: Foundry (Armor Up I)":                              15,
+    "Manor: Blast Furnace (Armor Up II)":                       25,
+    "Manor: Some Kind of Kiln (Armor Up III)":                  35,
+    # ── Gold & economy ───────────────────────────────────────────────────────
+    "Manor: Universal Health Stair (Traits Give Gold)":         1,
+    "Manor: Repurposed Mining Shaft (Traits Gold Gain Up)":     10,
+    "Manor: Geologist's Camp (Ore Drop Chance Up)":             5,
+    "Manor: Dowsing Center (Red Aether Drop Chance Up)":        5,
+    "Manor: Massive Vault (Gold Gain Up I)":                    20, # TODO technically max is 0 without Unbreakable Will, should this be handled differently?
+    # ── Rerolls ──────────────────────────────────────────────────────────────
+    "Manor: Career Center (Re-Roll Children)":                  5,
+    "Manor: Adoption Center (More Heirs)":                      1,  # TODO technically max is 0 without Infinite Knowledge, should this be handled differently?
+    # ── Encumbrance ──────────────────────────────────────────────────────────
+    "Manor: Aerobics Classroom (Encumbrance Limit Up)":         10,
+    # ── Living safe ──────────────────────────────────────────────────────────
+    "Manor: Courthouse (Living Safe Max Gold Up)":              20,
+    "Manor: Scribe's Office (Living Safe Conversion Up)":       10,
+    # ── Architect ────────────────────────────────────────────────────────────
+    "Manor: Drill Store (Architect Cost Reduction)":            5,
+    # ── Class unlocks ────────────────────────────────────────────────────────
+    "Manor: Fighting Ring (Boxer Class)":                       1,
+    "Manor: Dance Hall (Duelist Class)":                        1,
+    "Manor: Guild of Dark Arts (Assassin Class)":               1,
+    "Manor: The Kitchen (Chef Class)":                          1,
+    "Manor: Butcher's Shoppe (Barbarian Class)":                1,
+    "Manor: Academy (Mage Class)":                              1,
+    "Manor: Archery Range (Ranger Class)":                      1,
+    "Manor: Sand Pits (Valkyrie Class)":                        1,
+    "Manor: Saltpeter Mines (Gunslinger Class)":                1,
+    "Manor: Ryokan (Ronin Class)":                              1,
+    "Manor: The Tavern (Bard Class)":                           1,
+    "Manor: The Flying Docks (Pirate Class)":                   1,
+    "Manor: The Astral Gardens (Astromancer Class)":            1,
+    "Manor: The Aviary (Dragon Lancer Class)":                  1,
+    # ── Progression & utility ────────────────────────────────────────────────
+    "Manor: Trophy Room (XP Up)":                               10,
+    "Manor: Jeweler (Ore Gain Up)":                             20, # TODO technically max is 0 without Absolute Strength, should this be handled differently?
+    "Manor: Buried Tomb (Red Aether Gain Up)":                  20, # TODO technically max is 0 without Infinite Knowledge, should this be handled differently?
+    "Manor: Dummy (Training Dummy Unlock)":                     1,
+    "Manor: Meditation Studies (Boss Health/Mana Restore)":     5,
+    "Manor: Sage Totem (Mastery Rank Unlock)":                  1,
+    "Manor: Archaeology Camp (Relic Resolve Cost Down)":        5,
+    "Manor: Medieval Forgery (Relic Reroll Up)":                10,
+    "Manor: Alchemy Lab (Potion Recharge Talent)":              1,
+    "Manor: Psychiatrist (Resolve Up)":                         20,
+    "Manor: Jousting Studies (Dash Damage Reduction)":          5,
+    "Manor: Charity Dungeon (Charon Donation Bonus Unlock)":    1,
+    "Manor: The Dicer's Den (Weapon Crit Chance Up)":           20, # TODO technically max is 0 without Absolute Strength, should this be handled differently?
+    "Manor: The Quantum Observatory (Magic Crit Chance Up)":    20, # TODO technically max is 0 without Infinite Knowledge, should this be handled differently?
+    "Manor: The Bizarre Bazaar (Reroll Relic Room Cap Up)":     2,  # TODO technically max is 0 without Master Smith, should this be handled differently?
+    "Manor: Screw Distillery (Architect Unlock)":               1,
+    # ── NPC unlocks ──────────────────────────────────────────────────────────
+    "Manor: Offshore Bank Account (Living Safe)":               1,
+    "Manor: Foundation (Smithy Unlock)":                        1,
+    "Manor: Enchantress' Quarters (Enchantress Unlock)":        1,
+}
+
+MANOR_ITEM_NAMES: list[str] = []
+for _i, _name in enumerate(_CORE_MANOR_UPGRADES + _NPC_MANOR_UPGRADES):
+    _item_name = f"Manor: {_name}"
+    item_data_table[_item_name] = RogueLegacy2ItemData(
+        code=BASE_ID + MANOR_OFFSET + _i,
+        classification=ItemClassification.useful,
+    )
+    MANOR_ITEM_NAMES.append(_item_name)
+
 HEIRLOOM_ITEM_NAMES = [
     "Ananke's Shawl",
     "Aether's Wings",
@@ -126,6 +338,15 @@ def create_items(world: "RogueLegacy2World") -> None:
     for item_name, location_name in event_item_to_location.items():
         multiworld.get_location(location_name, player).place_locked_item(create_item(player, item_name))
 
+    randomize_npc = bool(world.options.randomize_npc_unlocks.value)
+
+    # When NPC unlocks are not randomized, lock each NPC item to its home
+    # location so the server always returns it there on check.
+    if not randomize_npc:
+        for npc_name in _NPC_MANOR_UPGRADES:
+            loc = multiworld.get_location(f"Manor - {npc_name}", player)
+            loc.place_locked_item(create_item(player, f"Manor: {npc_name}"))
+
     unfilled = len(multiworld.get_unfilled_locations(player))
     pool: list[RogueLegacy2Item] = []
     for name in HEIRLOOM_ITEM_NAMES:
@@ -134,6 +355,30 @@ def create_items(world: "RogueLegacy2World") -> None:
         pool.append(create_item(player, name))
     for name in RUNE_ITEM_NAMES:
         pool.append(create_item(player, name))
+    bundle_size = max(1, world.options.manor_upgrade_bundle_size.value)
+    useful_count = world.options.manor_useful_count.value
+    # NPC items come first so they are not dropped by the truncation below.
+    # Core manor items generate many copies and frequently overflow the pool;
+    # items at the tail end are silently cut, so high-priority singles go first.
+    npc_items = MANOR_ITEM_NAMES[len(_CORE_MANOR_UPGRADES):] if randomize_npc else []
+    core_items = MANOR_ITEM_NAMES[:len(_CORE_MANOR_UPGRADES)]
+    for name in npc_items + core_items:
+        max_level = MANOR_MAX_LEVELS.get(name, 1)
+        copies = max(1, math.ceil(max_level / bundle_size))
+        data = item_data_table[name]
+        for copy_idx in range(copies):
+            if max_level <= 1 or copy_idx < useful_count:
+                classification = ItemClassification.useful
+            else:
+                classification = ItemClassification.filler
+            pool.append(RogueLegacy2Item(name, classification, data.code, player))
+
+    # If small bundle sizes cause manor items alone to exceed total location count,
+    # truncate from the end rather than letting generation fail.
+    # TODO find a more elegant way to handle when itemCount exceeds locationCount
+    if len(pool) > unfilled:
+        pool = pool[:unfilled]
+
     while len(pool) < unfilled:
         pool.append(create_item(player, "Filler Placeholder"))
     multiworld.itempool += pool
