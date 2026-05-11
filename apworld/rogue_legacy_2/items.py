@@ -11,10 +11,11 @@ if typing.TYPE_CHECKING:
 # TODO: Register an official base ID with the Archipelago project before publishing.
 BASE_ID = 0xBEEF0000
 
-HEIRLOOM_OFFSET  = 0x300
-BLUEPRINT_OFFSET = 0x400
-RUNE_OFFSET      = 0x500
-MANOR_OFFSET     = 0x600
+HEIRLOOM_OFFSET   = 0x300
+BLUEPRINT_OFFSET  = 0x400
+RUNE_OFFSET       = 0x500
+MANOR_OFFSET      = 0x600
+TELEPORTER_OFFSET = 0x700
 
 
 class RogueLegacy2Item(Item):
@@ -39,8 +40,16 @@ item_data_table: dict[str, RogueLegacy2ItemData] = {
     "Pallas' Void Bell":  RogueLegacy2ItemData(code=BASE_ID + HEIRLOOM_OFFSET + 4, classification=ItemClassification.progression),
     "Theia's Sun Lantern":RogueLegacy2ItemData(code=BASE_ID + HEIRLOOM_OFFSET + 5, classification=ItemClassification.progression),
 
+    # ── Teleporter unlocks (useful) ──────────────────────────────────────────
+    # Ordered to match ItemRegistry.TELEPORTER_OFFSET indices in C#.
+    "Axis Mundi Teleporter":        RogueLegacy2ItemData(code=BASE_ID + TELEPORTER_OFFSET + 0, classification=ItemClassification.useful),
+    "Kerguelen Plateau Teleporter": RogueLegacy2ItemData(code=BASE_ID + TELEPORTER_OFFSET + 1, classification=ItemClassification.useful),
+    "Stygian Study Teleporter":     RogueLegacy2ItemData(code=BASE_ID + TELEPORTER_OFFSET + 2, classification=ItemClassification.useful),
+    "Sun Tower Teleporter":         RogueLegacy2ItemData(code=BASE_ID + TELEPORTER_OFFSET + 3, classification=ItemClassification.useful),
+    "Pishon Dry Lake Teleporter":   RogueLegacy2ItemData(code=BASE_ID + TELEPORTER_OFFSET + 4, classification=ItemClassification.useful),
+
     # ── Useful ──────────────────────────────────────────────────────────────
-    "Useful Item Placeholder":      RogueLegacy2ItemData(code=BASE_ID + 2, classification=ItemClassification.useful),
+    # "Useful Item Placeholder":      RogueLegacy2ItemData(code=BASE_ID + 2, classification=ItemClassification.useful),
 
     # ── Filler ──────────────────────────────────────────────────────────────
     "Filler Placeholder":           RogueLegacy2ItemData(code=BASE_ID + 3, classification=ItemClassification.filler),
@@ -310,10 +319,18 @@ HEIRLOOM_ITEM_NAMES = [
     "Theia's Sun Lantern",
 ]
 
+TELEPORTER_ITEM_NAMES = [
+    "Axis Mundi Teleporter",
+    "Kerguelen Plateau Teleporter",
+    "Stygian Study Teleporter",
+    "Sun Tower Teleporter",
+    "Pishon Dry Lake Teleporter",
+]
+
 # Event items are placed at locations whose names differ from the item name.
 # Matches must be kept in sync with the "address=None" entries in locations_and_regions.py.
 event_item_to_location: dict[str, str] = {
-    "Victory": "Castle Hamson - The Traitor Defeated",
+    "Victory": "The Traitor Defeated",
 }
 
 # Convenience: name→ID dict used by World.item_name_to_id
@@ -350,6 +367,8 @@ def create_items(world: "RogueLegacy2World") -> None:
     unfilled = len(multiworld.get_unfilled_locations(player))
     pool: list[RogueLegacy2Item] = []
     for name in HEIRLOOM_ITEM_NAMES:
+        pool.append(create_item(player, name))
+    for name in TELEPORTER_ITEM_NAMES:
         pool.append(create_item(player, name))
     for name in BLUEPRINT_ITEM_NAMES:
         pool.append(create_item(player, name))

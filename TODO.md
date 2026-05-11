@@ -25,8 +25,8 @@
   [x] Ensure that the statue remains empty for this and future runs
   [x] Ensure Johan in Pishon Dry Lake only gives location check one time, after Irad is defeated
   [x] Ensure that for Citadel Agartha rooms, relics spawn on future runs
-[ ] Portal Unlocks
-  [ ] Once implemented, make sure that biome access checks are opened by Kerguelen Plateau teleporter
+[x] Portal Unlocks
+  [x] Once implemented, make sure that biome access checks are opened by Kerguelen Plateau teleporter
 [x] Blueprints
 [x] Runes
 [ ] Manor upgrades
@@ -41,7 +41,7 @@
 [x] Heirloom pick-ups
   [x] Ensure that the post-heirloom-collection platforming challenge does not trigger, and location check counts regardless
   [x] Ensure that the heirloom pick-up rooms are replaced with relic choice rooms when appropriate if they've been picked up before
-[ ] Pizza girl teleporters fee paid
+[x] Pizza girl teleporters fee paid
 [x] Runes received (Open fairy chest)
   [x] Have a configurable number of rune drop locations per biome (0-16 currently, 4 by default)
 [x] Blueprints received (Bronze/Silver chest rolls into blueprint)

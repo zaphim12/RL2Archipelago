@@ -506,6 +506,14 @@ public static class APClient
             return;
         }
 
+        var teleporterBiome = ItemRegistry.ToTeleporterBiomeType(itemId);
+        if (teleporterBiome.HasValue)
+        {
+            SaveManager.PlayerSaveData.SetTeleporterIsUnlocked(teleporterBiome.Value, state: true);
+            Plugin.Log.LogInfo($"[AP] Granted teleporter unlock: {displayName}");
+            return;
+        }
+
         Plugin.Log.LogWarning($"[AP] No handler for item '{displayName}' (ID {itemId}) — ignoring.");
     }
 

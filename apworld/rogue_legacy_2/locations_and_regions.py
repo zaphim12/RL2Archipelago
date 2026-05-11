@@ -26,6 +26,7 @@ HEIRLOOM_OFFSET      = 0x300
 BLUEPRINT_OFFSET     = 0x400
 RUNE_OFFSET          = 0x500
 MANOR_OFFSET         = 0x600
+TELEPORTER_OFFSET    = 0x700
 
 # Blueprint IDs use a biome-stride layout so IDs are stable regardless of how
 # many slots are enabled:  id = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * 16 + slotIndex
@@ -60,30 +61,37 @@ class RogueLegacy2LocationData(NamedTuple):
 # ---------------------------------------------------------------------------
 location_data_table: dict[str, RogueLegacy2LocationData] = {
     # ── Boss kills (Tier 1) ──────────────────────────────────────────────────
-    "Citadel Agartha - Estuary Lamech Defeated":    RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 0),
-    "Axis Mundi - Void Beasts Defeated":            RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 1),
-    "Kerguelen Plateau - Estuary Naamah Defeated":  RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 2),
-    "Stygian Study - Estuary Enoch Defeated":       RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 3),
-    "Sun Tower - Estuary Irad Defeated":            RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 4),
-    "Pishon Dry Lake - Estuary Tubal Defeated":     RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 5),
-    "Garden of Eden - Jonah Defeated":              RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 6),
+    "Estuary Lamech Defeated":              RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 0),
+    "Byarrrith and Halpharr Defeated":      RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 1),
+    "Estuary Naamah Defeated":              RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 2),
+    "Estuary Enoch Defeated":               RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 3),
+    "Estuary Irad Defeated":                RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 4),
+    "Estuary Tubal Defeated":               RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 5),
+    "Jonah Defeated":                       RogueLegacy2LocationData(region="Overworld", address=BASE_ID + BOSS_KILL_OFFSET + 6),
 
     # ── Heirloom interactions ────────────────────────────────────────────────
-    "Citadel Agartha - Ananke's Shawl":       RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 0),
-    "Kerguelen Plateau - Aether's Wings":     RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 1),
-    "Citadel Agartha - Aesop's Tome":         RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 2),
-    "Axis Mundi - Echo's Boots":              RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 3),
-    "Stygian Study - Pallas' Void Bell":      RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 4),
-    "Pishon Dry Lake - Theia's Sun Lantern":  RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 5),
+    "Ananke's Shawl Statue":            RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 0),
+    "Aether's Wings Statue":            RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 1),
+    "Aesop's Tome Statue":              RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 2),
+    "Echo's Boots Statue":              RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 3),
+    "Pallas' Void Bell Statue":         RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 4),
+    "Theia's Sun Lantern Conversation": RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 5),
 
     # ── Miniboss kills ───────────────────────────────────────────────────────
-    "Stygian Study - Gongheads Miniboss Defeated":  RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 0),
-    "Stygian Study - Murmur Miniboss Defeated":     RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 1),
-    "Pishon Dry Lake - Briareus and Cottus Minibosses Defeated":      RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 2),
-    "Pishon Dry Lake - Gyges and Aegaeon Minibosses Defeated":        RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 3),
+    "Gongheads Miniboss Defeated":                  RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 0),
+    "Murmur Miniboss Defeated":                     RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 1),
+    "Briareus and Cottus Minibosses Defeated":      RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 2),
+    "Gyges and Aegaeon Minibosses Defeated":        RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 3),
+
+    # ── Pizza girl teleporter purchases ─────────────────────────────────────
+    "Axis Mundi Teleporter Purchase":        RogueLegacy2LocationData(region="Overworld", address=BASE_ID + TELEPORTER_OFFSET + 0),
+    "Kerguelen Plateau Teleporter Purchase": RogueLegacy2LocationData(region="Overworld", address=BASE_ID + TELEPORTER_OFFSET + 1),
+    "Stygian Study Teleporter Purchase":     RogueLegacy2LocationData(region="Overworld", address=BASE_ID + TELEPORTER_OFFSET + 2),
+    "Sun Tower Teleporter Purchase":         RogueLegacy2LocationData(region="Overworld", address=BASE_ID + TELEPORTER_OFFSET + 3),
+    "Pishon Dry Lake Teleporter Purchase":   RogueLegacy2LocationData(region="Overworld", address=BASE_ID + TELEPORTER_OFFSET + 4),
 
     # ── Victory event (placed by __init__.py at the Traitor fight) ───────────
-    "Castle Hamson - The Traitor Defeated":         RogueLegacy2LocationData(region="Throne Room", address=None),
+    "The Traitor Defeated":         RogueLegacy2LocationData(region="Throne Room", address=None),
 }
 
 # Register all manor upgrade locations so location_name_to_id is complete.
@@ -221,19 +229,19 @@ def create_regions(world: "RogueLegacy2World") -> None:
 
     # Boss kills
     set_rule(
-        multiworld.get_location("Citadel Agartha - Estuary Lamech Defeated", player),
+        multiworld.get_location("Estuary Lamech Defeated", player),
         lambda state: state.has("Ananke's Shawl", player) or state.has("Aether's Wings", player),
     )
     set_rule(
-        multiworld.get_location("Axis Mundi - Void Beasts Defeated", player),
+        multiworld.get_location("Byarrrith and Halpharr Defeated", player),
         lambda state: state.has("Echo's Boots", player),
     )
     set_rule(
-        multiworld.get_location("Kerguelen Plateau - Estuary Naamah Defeated", player),
+        multiworld.get_location("Estuary Naamah Defeated", player),
         lambda state: state.has("Echo's Boots", player) and state.has("Aether's Wings", player),
     )
     set_rule(
-        multiworld.get_location("Stygian Study - Estuary Enoch Defeated", player),
+        multiworld.get_location("Estuary Enoch Defeated", player),
         lambda state: (
             state.has("Pallas' Void Bell", player) and
             state.has("Stygian Study - Murmur Miniboss Cleared", player) and
@@ -241,7 +249,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
         ),
     )
     set_rule(
-        multiworld.get_location("Sun Tower - Estuary Irad Defeated", player),
+        multiworld.get_location("Estuary Irad Defeated", player),
         lambda state: (
             state.has("Ananke's Shawl", player) and
             state.has("Echo's Boots", player) and
@@ -250,7 +258,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
         ),
     )
     set_rule(
-        multiworld.get_location("Pishon Dry Lake - Estuary Tubal Defeated", player),
+        multiworld.get_location("Estuary Tubal Defeated", player),
         lambda state: (
             state.has("Theia's Sun Lantern", player) and
             state.has("Pishon Dry Lake - Briareus and Cottus Minibosses Cleared", player) and
@@ -258,29 +266,29 @@ def create_regions(world: "RogueLegacy2World") -> None:
         ),
     )
     set_rule(
-        multiworld.get_location("Garden of Eden - Jonah Defeated", player),
+        multiworld.get_location("Jonah Defeated", player),
         _all_six_bosses_cleared,
     )
     set_rule(
-        multiworld.get_location("Castle Hamson - The Traitor Defeated", player),
+        multiworld.get_location("The Traitor Defeated", player),
         lambda state: state.has("Garden of Eden - Jonah Cleared", player),
     )
 
     # Miniboss Defeated checks
     set_rule(
-        multiworld.get_location("Stygian Study - Murmur Miniboss Defeated", player),
+        multiworld.get_location("Murmur Miniboss Defeated", player),
         lambda state: state.has("Echo's Boots", player) and state.has("Pallas' Void Bell", player),
     )
     set_rule(
-        multiworld.get_location("Stygian Study - Gongheads Miniboss Defeated", player),
+        multiworld.get_location("Gongheads Miniboss Defeated", player),
         lambda state: state.has("Aether's Wings", player) or state.has("Pallas' Void Bell", player),
     )
     set_rule(
-        multiworld.get_location("Pishon Dry Lake - Briareus and Cottus Minibosses Defeated", player),
+        multiworld.get_location("Briareus and Cottus Minibosses Defeated", player),
         lambda state: state.has("Theia's Sun Lantern", player) and state.has("Echo's Boots", player),
     )
     set_rule(
-        multiworld.get_location("Pishon Dry Lake - Gyges and Aegaeon Minibosses Defeated", player),
+        multiworld.get_location("Gyges and Aegaeon Minibosses Defeated", player),
         lambda state: state.has("Pallas' Void Bell", player) and state.has("Theia's Sun Lantern", player),
     )
 
@@ -343,16 +351,34 @@ def create_regions(world: "RogueLegacy2World") -> None:
         _all_six_bosses_cleared,
     )
 
+    # ── Pizza girl teleporter purchase access rules ──────────────────────────
+    set_rule(
+        multiworld.get_location("Kerguelen Plateau Teleporter Purchase", player),
+        lambda state, p=player: (
+            state.has("Echo's Boots", p) or 
+            state.has("Kerguelen Plateau Teleporter", p)
+        )
+    )
+    set_rule(
+        multiworld.get_location("Sun Tower Teleporter Purchase", player),
+        lambda state, p=player: (
+            state.has("Echo's Boots", p) or
+            (state.has("Ananke's Shawl", p) and state.has("Aether's Wings", p)) or
+            state.has("Sun Tower Teleporter", p)
+        ),
+    )
+
     # ── Blueprint chest access rules (biome access) ──────────────────────────
-    # Kerguelen teleporter is not yet implemented as an AP item;
-    # Echo's Boots is used as the access proxy in the meantime.
     _blueprint_biome_rules = {
         "Citadel Agartha":   None,  # always accessible
         "Axis Mundi":        lambda state, p=player: (
             state.has("Echo's Boots", p) or
             (state.has("Ananke's Shawl", p) and state.has("Aether's Wings", p))
         ),
-        "Kerguelen Plateau": lambda state, p=player: state.has("Echo's Boots", p),
+        "Kerguelen Plateau": lambda state, p=player: (
+            state.has("Echo's Boots", p) or 
+            state.has("Kerguelen Plateau Teleporter", p)
+        ),
         "Stygian Study":     lambda state, p=player: (
             state.has("Aether's Wings", p) and state.has("Pallas' Void Bell", p)
         ),
@@ -380,7 +406,10 @@ def create_regions(world: "RogueLegacy2World") -> None:
             state.has("Echo's Boots", p) or
             (state.has("Ananke's Shawl", p) and state.has("Aether's Wings", p))
         ),
-        "Kerguelen Plateau": lambda state, p=player: state.has("Echo's Boots", p),
+        "Kerguelen Plateau": lambda state, p=player: (
+            state.has("Echo's Boots", p) or 
+            state.has("Kerguelen Plateau Teleporter", p)
+        ),
         "Stygian Study":     lambda state, p=player: (
             state.has("Aether's Wings", p) and state.has("Pallas' Void Bell", p)
         ),

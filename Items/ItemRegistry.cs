@@ -14,10 +14,11 @@ public static class ItemRegistry
 {
     public const long BASE_ID = 0xBEEF0000L;
 
-    private const long HEIRLOOM_OFFSET  = 0x300;
-    private const long BLUEPRINT_OFFSET = 0x400;
-    private const long RUNE_OFFSET      = 0x500;
-    private const long MANOR_OFFSET     = 0x600;
+    private const long HEIRLOOM_OFFSET   = 0x300;
+    private const long BLUEPRINT_OFFSET  = 0x400;
+    private const long RUNE_OFFSET       = 0x500;
+    private const long MANOR_OFFSET      = 0x600;
+    private const long TELEPORTER_OFFSET = 0x700;
 
     // ── Manor upgrade items ──────────────────────────────────────────────────
     //
@@ -218,6 +219,14 @@ public static class ItemRegistry
         // "Banker Unlock",
     ];
 
+    // ── Teleporter unlock items ──────────────────────────────────────────────
+
+    public const long TeleporterAxisMundi        = BASE_ID + TELEPORTER_OFFSET + 0;
+    public const long TeleporterKerguelenPlateau = BASE_ID + TELEPORTER_OFFSET + 1;
+    public const long TeleporterStygianStudy     = BASE_ID + TELEPORTER_OFFSET + 2;
+    public const long TeleporterSunTower         = BASE_ID + TELEPORTER_OFFSET + 3;
+    public const long TeleporterPishonDryLake    = BASE_ID + TELEPORTER_OFFSET + 4;
+
     // ── Heirloom items ───────────────────────────────────────────────────────
 
     public const long HeirloomAirDash             = BASE_ID + HEIRLOOM_OFFSET + 0;
@@ -234,6 +243,12 @@ public static class ItemRegistry
     {
         Dictionary<long, string> d = new()
         {
+            [TeleporterAxisMundi]        = "Axis Mundi Teleporter",
+            [TeleporterKerguelenPlateau] = "Kerguelen Plateau Teleporter",
+            [TeleporterStygianStudy]     = "Stygian Study Teleporter",
+            [TeleporterSunTower]         = "Sun Tower Teleporter",
+            [TeleporterPishonDryLake]    = "Pishon Dry Lake Teleporter",
+
             [HeirloomAirDash]             = "Ananke's Shawl",
             [HeirloomDoubleJump]          = "Aether's Wings",
             [HeirloomMemory]              = "Aesop's Tome",
@@ -385,4 +400,18 @@ public static class ItemRegistry
         if (offset < 0 || offset >= s_skillTreeTypes.Length) return null;
         return s_skillTreeTypes[(int)offset];
     }
+
+    /// <summary>
+    /// Maps an Archipelago item ID to the <see cref="BiomeType"/> whose teleporter
+    /// it unlocks. Returns <c>null</c> if the item isn't a tracked teleporter unlock.
+    /// </summary>
+    public static BiomeType? ToTeleporterBiomeType(long itemId) => itemId switch
+    {
+        TeleporterAxisMundi        => BiomeType.Stone,
+        TeleporterKerguelenPlateau => BiomeType.Forest,
+        TeleporterStygianStudy     => BiomeType.Study,
+        TeleporterSunTower         => BiomeType.Tower,
+        TeleporterPishonDryLake    => BiomeType.Cave,
+        _                          => null,
+    };
 }

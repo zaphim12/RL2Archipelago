@@ -25,6 +25,7 @@ public static class LocationRegistry
     private const long BLUEPRINT_OFFSET     = 0x400;
     private const long RUNE_OFFSET          = 0x500;
     private const long MANOR_OFFSET         = 0x600;
+    private const long TELEPORTER_OFFSET    = 0x700;
 
     // ── Boss kill locations ──────────────────────────────────────────────────
 
@@ -66,6 +67,21 @@ public static class LocationRegistry
     //
     // The stride of 16 keeps IDs stable regardless of N so a seed generated
     // with N=11 and one with N=5 share the same IDs for their active slots.
+
+    // ── Teleporter unlock locations ──────────────────────────────────────────
+    //
+    // One location per biome where the pizza girl sells a teleporter unlock.
+    // The starting biome (Castle/Citadel Agartha) has no pizza girl, so only
+    // the 5 non-starting biomes are tracked.
+    // Location ID = BASE_ID + TELEPORTER_OFFSET + biomeIndex
+    //   0 = Axis Mundi (Stone), 1 = Kerguelen Plateau (Forest),
+    //   2 = Stygian Study (Study), 3 = Sun Tower (Tower), 4 = Pishon Dry Lake (Cave)
+
+    public const long TeleporterAxisMundi        = BASE_ID + TELEPORTER_OFFSET + 0;
+    public const long TeleporterKerguelenPlateau = BASE_ID + TELEPORTER_OFFSET + 1;
+    public const long TeleporterStygianStudy     = BASE_ID + TELEPORTER_OFFSET + 2;
+    public const long TeleporterSunTower         = BASE_ID + TELEPORTER_OFFSET + 3;
+    public const long TeleporterPishonDryLake    = BASE_ID + TELEPORTER_OFFSET + 4;
 
     // ── Manor upgrade locations ──────────────────────────────────────────────
     //
@@ -128,27 +144,33 @@ public static class LocationRegistry
     {
         Dictionary<long, string> d = new()
         {
-            [CastleBossDefeated] = "Citadel Agartha - Estuary Lamech Defeated",
-            [BridgeBossDefeated] = "Axis Mundi - Void Beasts Defeated",
-            [ForestBossDefeated] = "Kerguelen Plateau - Estuary Naamah Defeated",
-            [StudyBossDefeated]  = "Stygian Study - Estuary Enoch Defeated",
-            [TowerBossDefeated]  = "Sun Tower - Estuary Irad Defeated",
-            [CaveBossDefeated]   = "Pishon Dry Lake - Estuary Tubal Defeated",
-            [GardenBossDefeated] = "Garden of Eden - Jonah Defeated",
-            [FinalBossDefeated]  = "Castle Hamson - The Traitor Defeated",
+            [CastleBossDefeated] = "Estuary Lamech Defeated",
+            [BridgeBossDefeated] = "Byarrrith and Halpharr Defeated",
+            [ForestBossDefeated] = "Estuary Naamah Defeated",
+            [StudyBossDefeated]  = "Estuary Enoch Defeated",
+            [TowerBossDefeated]  = "Estuary Irad Defeated",
+            [CaveBossDefeated]   = "Estuary Tubal Defeated",
+            [GardenBossDefeated] = "Jonah Defeated",
+            [FinalBossDefeated]  = "The Traitor Defeated",
 
-            [StudyMiniboss_SwordKnight_Defeated] = "Stygian Study - Gongheads Miniboss Defeated",
-            [StudyMiniboss_SpearKnight_Defeated] = "Stygian Study - Murmur Miniboss Defeated",
-            [CaveMiniboss_White_Defeated]        = "Pishon Dry Lake - Briareus and Cottus Minibosses Defeated",
-            [CaveMiniboss_Black_Defeated]        = "Pishon Dry Lake - Gyges and Aegaeon Minibosses Defeated",
+            [StudyMiniboss_SwordKnight_Defeated] = "Gongheads Miniboss Defeated",
+            [StudyMiniboss_SpearKnight_Defeated] = "Murmur Miniboss Defeated",
+            [CaveMiniboss_White_Defeated]        = "Briareus and Cottus Minibosses Defeated",
+            [CaveMiniboss_Black_Defeated]        = "Gyges and Aegaeon Minibosses Defeated",
 
-            [HeirloomAirDash]             = "Citadel Agartha - Ananke's Shawl",
-            [HeirloomDoubleJump]          = "Kerguelen Plateau - Aether's Wings",
-            [HeirloomMemory]              = "Citadel Agartha - Aesop's Tome",
-            [HeirloomBouncableDownstrike] = "Axis Mundi - Echo's Boots",
-            [HeirloomVoidDash]            = "Stygian Study - Pallas' Void Bell",
-            [HeirloomCaveLantern]         = "Pishon Dry Lake - Theia's Sun Lantern",
+            [HeirloomAirDash]             = "Ananke's Shawl Statue",
+            [HeirloomDoubleJump]          = "Aether's Wings Statue",
+            [HeirloomMemory]              = "Aesop's Tome Statue",
+            [HeirloomBouncableDownstrike] = "Echo's Boots Statue",
+            [HeirloomVoidDash]            = "Pallas' Void Bell Statue",
+            [HeirloomCaveLantern]         = "Theia's Sun Lantern Conversation",
         };
+
+        d[TeleporterAxisMundi]        = "Axis Mundi Teleporter Purchase";
+        d[TeleporterKerguelenPlateau] = "Kerguelen Plateau Teleporter Purchase";
+        d[TeleporterStygianStudy]     = "Stygian Study Teleporter Purchase";
+        d[TeleporterSunTower]         = "Sun Tower Teleporter Purchase";
+        d[TeleporterPishonDryLake]    = "Pishon Dry Lake Teleporter Purchase";
 
         string[] biomeNames = [ "Citadel Agartha", "Axis Mundi", "Kerguelen Plateau", "Stygian Study", "Sun Tower", "Pishon Dry Lake" ];
         for (int biome = 0; biome < 6; biome++)
@@ -257,4 +279,18 @@ public static class LocationRegistry
         }
         return null;
     }
+
+    /// <summary>
+    /// Maps a <see cref="BiomeType"/> to its pizza girl teleporter Archipelago location ID,
+    /// or <c>null</c> if the biome has no tracked teleporter (e.g. Castle/starting biome).
+    /// </summary>
+    public static long? FromBiomeTypeTeleporter(BiomeType biome) => biome switch
+    {
+        BiomeType.Stone                                                   => TeleporterAxisMundi,
+        BiomeType.Forest or BiomeType.ForestTop or BiomeType.ForestBottom => TeleporterKerguelenPlateau,
+        BiomeType.Study                                                   => TeleporterStygianStudy,
+        BiomeType.Tower or BiomeType.TowerExterior                        => TeleporterSunTower,
+        BiomeType.Cave or BiomeType.CaveMiddle or BiomeType.CaveBottom    => TeleporterPishonDryLake,
+        _                                                                 => null,
+    };
 }

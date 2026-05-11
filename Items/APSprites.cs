@@ -49,6 +49,20 @@ internal static class APSprites
             if (sprite != null) return sprite;
         }
 
+        var runeType = ItemRegistry.ToRuneType(scouted.ItemId);
+        if (runeType.HasValue)
+        {
+            var sprite = IconLibrary.GetRuneIcon(runeType.Value);
+            if (sprite != null) return sprite;
+        }
+
+        var blueprint = ItemRegistry.ToEquipmentBlueprint(scouted.ItemId);
+        if (blueprint.HasValue)
+        {
+            var sprite = IconLibrary.GetEquipmentIcon(blueprint.Value.Category, blueprint.Value.EquipType);
+            if (sprite != null) return sprite;
+        }
+
         return GetAPLogoSprite();
     }
 
