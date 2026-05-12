@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from Options import DeathLink, PerGameCommonOptions, Range, Toggle
+from Options import Choice, DeathLink, PerGameCommonOptions, Range, Toggle
 
 
 class RL2DeathLink(DeathLink):
@@ -83,6 +83,21 @@ class ManorUsefulCount(Range):
     default = 1
 
 
+class JournalChecks(Choice):
+    """Controls how journals and memories give out location checks.
+
+    disabled (0): No journal or memory checks.
+    individual (1): Each journal entry and each memory fragment is its own check. 41 total.
+    grouped (2): One check when all journals in a biome are read; one check when all
+                 memories in a biome are read. 8 total checks.
+    """
+    display_name = "Journal Checks"
+    option_disabled   = 0
+    option_individual = 1
+    option_grouped    = 2
+    default = 2
+
+
 class RandomizeNpcUnlocks(Toggle):
     """Whether to randomize NPC unlock slots.
 
@@ -103,3 +118,4 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     manor_upgrade_bundle_size: ManorUpgradeBundleSize
     manor_useful_count: ManorUsefulCount
     randomize_npc_unlocks: RandomizeNpcUnlocks
+    journal_checks: JournalChecks

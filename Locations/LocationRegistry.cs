@@ -27,6 +27,16 @@ public static class LocationRegistry
     private const long MANOR_OFFSET         = 0x600;
     private const long TELEPORTER_OFFSET    = 0x700;
 
+    private const long JOURNAL_GROUPED_OFFSET    = 0x800;  // BASE_ID + offset + biomeIndex (0-5)
+    private const long MEMORY_GROUPED_OFFSET     = 0x808;  // BASE_ID + offset + biomeIndex (only 0, 2 active)
+    private const long JOURNAL_INDIVIDUAL_OFFSET = 0x810;  // BASE_ID + offset + biomeIndex * 16 + journalIndex
+    private const long MEMORY_INDIVIDUAL_OFFSET  = 0x870;  // BASE_ID + offset + biomeIndex * 16 + memoryIndex
+
+    // Journals and memories per biome, indexed Castle=0, Bridge=1, Forest=2, Study=3, Tower=4, Cave=5.
+    // Verified from Journal_EV.GetNumJournals() via Assembly-CSharp decompile.
+    private static readonly int[] s_journalCounts = { 4, 4, 4, 6, 7, 7 };
+    private static readonly int[] s_memoryCounts  = { 4, 0, 5, 0, 0, 0 };
+
     // ── Boss kill locations ──────────────────────────────────────────────────
 
     public const long CastleBossDefeated = BASE_ID + BOSS_KILL_OFFSET + 0;
@@ -174,6 +184,18 @@ public static class LocationRegistry
 
         string[] biomeNames = [ "Citadel Agartha", "Axis Mundi", "Kerguelen Plateau", "Stygian Study", "Sun Tower", "Pishon Dry Lake" ];
         for (int biome = 0; biome < 6; biome++)
+        {
+            if (s_journalCounts[biome] > 0)
+                d[BASE_ID + JOURNAL_GROUPED_OFFSET + biome] = $"{biomeNames[biome]} - All Journals Read";
+            if (s_memoryCounts[biome] > 0)
+                d[BASE_ID + MEMORY_GROUPED_OFFSET + biome] = $"{biomeNames[biome]} - All Memories Read";
+            for (int j = 0; j < s_journalCounts[biome]; j++)
+                d[BASE_ID + JOURNAL_INDIVIDUAL_OFFSET + biome * 16 + j] = $"{biomeNames[biome]} - Journal Entry {j + 1}";
+            for (int m = 0; m < s_memoryCounts[biome]; m++)
+                d[BASE_ID + MEMORY_INDIVIDUAL_OFFSET + biome * 16 + m] = $"{biomeNames[biome]} - Memory Fragment {m + 1}";
+        }
+
+        for (int biome = 0; biome < 6; biome++)
             for (int slot = 0; slot < 16; slot++)
                 d[BASE_ID + BLUEPRINT_OFFSET + biome * 16 + slot] = $"{biomeNames[biome]} - Blueprint Chest {slot + 1}";
 
@@ -278,6 +300,65 @@ public static class LocationRegistry
                 return id;
         }
         return null;
+    }
+
+    /// <summary>
+    /// Maps a <see cref="JournalCategoryType"/> to the biome pool index (0–5) used for
+    /// journal/memory location IDs, or <c>null</c> for untracked categories.
+    /// </summary>
+    private static int? GetJournalBiomeIndex(JournalCategoryType cat) => cat switch
+    {
+        JournalCategoryType.Castle => 0,
+        JournalCategoryType.Bridge => 1,
+        JournalCategoryType.Forest => 2,
+        JournalCategoryType.Study  => 3,
+        JournalCategoryType.Tower  => 4,
+        JournalCategoryType.Cave   => 5,
+        _                          => null,
+    };
+
+    /// <summary>
+    /// In Grouped mode, returns the location ID for completing all journals in the given
+    /// biome, or <c>null</c> for an untracked category or a biome with no journals.
+    /// </summary>
+    public static long? GetGroupedJournalLocation(JournalCategoryType cat)
+    {
+        var bi = GetJournalBiomeIndex(cat);
+        if (bi is null || s_journalCounts[bi.Value] == 0) return null;
+        return BASE_ID + JOURNAL_GROUPED_OFFSET + bi.Value;
+    }
+
+    /// <summary>
+    /// In Grouped mode, returns the location ID for completing all memories in the given
+    /// biome, or <c>null</c> for an untracked category or a biome with no memories.
+    /// </summary>
+    public static long? GetGroupedMemoryLocation(JournalCategoryType cat)
+    {
+        var bi = GetJournalBiomeIndex(cat);
+        if (bi is null || s_memoryCounts[bi.Value] == 0) return null;
+        return BASE_ID + MEMORY_GROUPED_OFFSET + bi.Value;
+    }
+
+    /// <summary>
+    /// In Individual mode, returns the location ID for a specific journal entry (zero-based
+    /// <paramref name="index"/>), or <c>null</c> for an untracked category or out-of-range index.
+    /// </summary>
+    public static long? GetIndividualJournalLocation(JournalCategoryType cat, int index)
+    {
+        var bi = GetJournalBiomeIndex(cat);
+        if (bi is null || index < 0 || index >= s_journalCounts[bi.Value]) return null;
+        return BASE_ID + JOURNAL_INDIVIDUAL_OFFSET + bi.Value * 16 + index;
+    }
+
+    /// <summary>
+    /// In Individual mode, returns the location ID for a specific memory fragment (zero-based
+    /// <paramref name="index"/>), or <c>null</c> for an untracked category or out-of-range index.
+    /// </summary>
+    public static long? GetIndividualMemoryLocation(JournalCategoryType cat, int index)
+    {
+        var bi = GetJournalBiomeIndex(cat);
+        if (bi is null || index < 0 || index >= s_memoryCounts[bi.Value]) return null;
+        return BASE_ID + MEMORY_INDIVIDUAL_OFFSET + bi.Value * 16 + index;
     }
 
     /// <summary>

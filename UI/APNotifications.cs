@@ -33,6 +33,13 @@ internal static class APNotifications
     /// </summary>
     public static bool PlaySfx { get; set; } = true;
 
+    /// <summary>
+    /// Set to true while a journal or memory text window is open so that notifications
+    /// are held in the queue until the player finishes reading and dismisses the window.
+    /// Managed by <see cref="Patches.JournalWindowSuppressPatch"/>.
+    /// </summary>
+    public static bool IsJournalWindowOpen { get; set; } = false;
+
     private struct Notification
     {
         public string Title;
@@ -79,6 +86,7 @@ internal static class APNotifications
         _queue.Clear();
         _nextDisplayTime = 0f;
         _cachedHud = null;
+        IsJournalWindowOpen = false;
     }
 
     /// <summary>Drains the queue at one HUD per <see cref="DisplayDurationSec"/>.
@@ -86,6 +94,7 @@ internal static class APNotifications
     public static void Tick()
     {
         if (_queue.Count == 0) return;
+        if (IsJournalWindowOpen) return;
         if (Time.unscaledTime < _nextDisplayTime) return;
 
         var hud = GetHudController();

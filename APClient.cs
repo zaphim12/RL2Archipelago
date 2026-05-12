@@ -14,6 +14,8 @@ using System.Linq;
 
 namespace RL2Archipelago;
 
+public enum JournalChecksMode { Disabled = 0, Individual = 1, Grouped = 2 }
+
 /// <summary>
 /// Manages the Archipelago session lifecycle: connect, disconnect, item/message
 /// event handling, and thread-safe main-thread dispatch.
@@ -38,6 +40,9 @@ public static class APClient
 
     /// <summary>Levels granted per manor upgrade item received. Read from slot data on connect.</summary>
     public static int ManorUpgradeBundleSize { get; private set; } = 5;
+
+    /// <summary>Controls whether journal/memory reads generate location checks. Read from slot data on connect.</summary>
+    public static JournalChecksMode JournalChecksMode { get; private set; } = JournalChecksMode.Grouped;
 
     // Profile slot that was active before AP mode was entered; restored on disconnect.
     private static byte _previousProfile;
@@ -141,6 +146,9 @@ public static class APClient
 
             ManorUpgradeBundleSize = SlotData.TryGetValue("manor_upgrade_bundle_size", out var bundleSizeObj)
                 ? Convert.ToInt32(bundleSizeObj) : 5;
+
+            JournalChecksMode = SlotData.TryGetValue("journal_checks", out var jObj)
+                ? (JournalChecksMode)Convert.ToInt32(jObj) : JournalChecksMode.Grouped;
 
             Plugin.Log.LogInfo(
                 $"Connected! Room: {Session.RoomState.Seed}  " +

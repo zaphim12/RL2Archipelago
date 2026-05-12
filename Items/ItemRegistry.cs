@@ -381,8 +381,8 @@ public static class ItemRegistry
             8  => EquipmentType.GEAR_RETURN_DMG,
             9  => EquipmentType.GEAR_MAG_ON_HIT,
             10 => EquipmentType.GEAR_LIFE_STEAL_2,
-            11 => EquipmentType.GEAR_EMPTY_1,
-            12 => EquipmentType.GEAR_EMPTY_2,
+            11 => EquipmentType.GEAR_REVIVE,
+            12 => EquipmentType.GEAR_FINAL_BOSS,
             _  => EquipmentType.None,
         };
         if (category == EquipmentCategoryType.None || equipType == EquipmentType.None) return null;

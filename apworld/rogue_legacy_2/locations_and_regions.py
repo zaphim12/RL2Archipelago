@@ -28,6 +28,14 @@ RUNE_OFFSET          = 0x500
 MANOR_OFFSET         = 0x600
 TELEPORTER_OFFSET    = 0x700
 
+JOURNAL_GROUPED_OFFSET    = 0x800  # BASE_ID + offset + biomeIndex (0-5)
+MEMORY_GROUPED_OFFSET     = 0x808  # BASE_ID + offset + biomeIndex (only 0, 2 active)
+JOURNAL_INDIVIDUAL_OFFSET = 0x810  # BASE_ID + offset + biomeIndex * 16 + journalIndex
+MEMORY_INDIVIDUAL_OFFSET  = 0x870  # BASE_ID + offset + biomeIndex * 16 + memoryIndex
+
+_JOURNAL_COUNTS = [4, 4, 4, 6, 7, 7]  # Citadel Agartha, Axis Mundi, Kerguelen Plateau, Stygian Study, Sun Tower, Pishon Dry Lake
+_MEMORY_COUNTS  = [4, 0, 5, 0, 0, 0]
+
 # Blueprint IDs use a biome-stride layout so IDs are stable regardless of how
 # many slots are enabled:  id = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * 16 + slotIndex
 # This mirrors LocationRegistry._checksPerBiome in the C# mod.
@@ -122,6 +130,30 @@ for _biome_idx, _biome_name in enumerate(_BIOME_NAMES):
             address=BASE_ID + RUNE_OFFSET + _biome_idx * 16 + _slot,
         )
 
+# Register all journal/memory locations so location_name_to_id is complete.
+# create_regions() instantiates only the subset matching the journal_checks option.
+for _bi, _biome_name in enumerate(_BIOME_NAMES):
+    if _JOURNAL_COUNTS[_bi] > 0:
+        location_data_table[f"{_biome_name} - All Journals Read"] = RogueLegacy2LocationData(
+            region="Overworld",
+            address=BASE_ID + JOURNAL_GROUPED_OFFSET + _bi,
+        )
+    if _MEMORY_COUNTS[_bi] > 0:
+        location_data_table[f"{_biome_name} - All Memories Read"] = RogueLegacy2LocationData(
+            region="Overworld",
+            address=BASE_ID + MEMORY_GROUPED_OFFSET + _bi,
+        )
+    for _j in range(_JOURNAL_COUNTS[_bi]):
+        location_data_table[f"{_biome_name} - Journal Entry {_j + 1}"] = RogueLegacy2LocationData(
+            region="Overworld",
+            address=BASE_ID + JOURNAL_INDIVIDUAL_OFFSET + _bi * 16 + _j,
+        )
+    for _m in range(_MEMORY_COUNTS[_bi]):
+        location_data_table[f"{_biome_name} - Memory Fragment {_m + 1}"] = RogueLegacy2LocationData(
+            region="Overworld",
+            address=BASE_ID + MEMORY_INDIVIDUAL_OFFSET + _bi * 16 + _m,
+        )
+
 # Convenience: name→ID dict used by World.location_name_to_id
 all_non_event_locations_table: dict[str, int] = {
     name: data.address
@@ -143,6 +175,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
     player = world.player
     blueprint_n = world.options.blueprint_checks_per_biome.value
     rune_n = world.options.rune_checks_per_biome.value
+    journal_mode = world.options.journal_checks.value
 
     # The set of blueprint and rune location names active for this world.
     active_blueprint_names = {
@@ -171,6 +204,11 @@ def create_regions(world: "RogueLegacy2World") -> None:
             continue
         if "Fairy Chest" in location_name and location_name not in active_rune_names:
             continue
+        # Journal/memory locations: only instantiate those matching the chosen mode.
+        if "All Journals Read"  in location_name and journal_mode != 2: continue
+        if "All Memories Read"  in location_name and journal_mode != 2: continue
+        if "Journal Entry"      in location_name and journal_mode != 1: continue
+        if "Memory Fragment"    in location_name and journal_mode != 1: continue
         region = regions[location_data.region]
         location = RogueLegacy2Location(
             player,
@@ -215,15 +253,15 @@ def create_regions(world: "RogueLegacy2World") -> None:
 
     # Heirloom locations
     set_rule(
-        multiworld.get_location("Kerguelen Plateau - Aether's Wings", player),
+        multiworld.get_location("Aether's Wings Statue", player),
         lambda state: state.has("Echo's Boots", player),
     )
     set_rule(
-        multiworld.get_location("Stygian Study - Pallas' Void Bell", player),
+        multiworld.get_location("Pallas' Void Bell Statue", player),
         lambda state: state.has("Aether's Wings", player) or state.has("Pallas' Void Bell", player),
     )
     set_rule(
-        multiworld.get_location("Pishon Dry Lake - Theia's Sun Lantern", player),
+        multiworld.get_location("Theia's Sun Lantern Conversation", player),
         lambda state: state.has("Sun Tower - Estuary Irad Cleared", player),
     )
 
@@ -368,15 +406,15 @@ def create_regions(world: "RogueLegacy2World") -> None:
         ),
     )
 
-    # ── Blueprint chest access rules (biome access) ──────────────────────────
-    _blueprint_biome_rules = {
+    # ── Biome access rules (shared by blueprints, runes, journals, memories) ───
+    _biome_access_rules = {
         "Citadel Agartha":   None,  # always accessible
         "Axis Mundi":        lambda state, p=player: (
             state.has("Echo's Boots", p) or
             (state.has("Ananke's Shawl", p) and state.has("Aether's Wings", p))
         ),
         "Kerguelen Plateau": lambda state, p=player: (
-            state.has("Echo's Boots", p) or 
+            state.has("Echo's Boots", p) or
             state.has("Kerguelen Plateau Teleporter", p)
         ),
         "Stygian Study":     lambda state, p=player: (
@@ -388,9 +426,11 @@ def create_regions(world: "RogueLegacy2World") -> None:
         ),
         "Pishon Dry Lake":   lambda state, p=player: state.has("Theia's Sun Lantern", p),
     }
+
+    # ── Blueprint chest access rules ─────────────────────────────────────────
     if blueprint_n > 0:
         for biome_name in _BIOME_NAMES:
-            rule = _blueprint_biome_rules[biome_name]
+            rule = _biome_access_rules[biome_name]
             if rule is None:
                 continue
             for slot in range(blueprint_n):
@@ -399,29 +439,10 @@ def create_regions(world: "RogueLegacy2World") -> None:
                     rule,
                 )
 
-    # ── Fairy chest (rune) access rules (same biome requirements as blueprints) ─
-    _rune_biome_rules = {
-        "Citadel Agartha":   None,  # always accessible
-        "Axis Mundi":        lambda state, p=player: (
-            state.has("Echo's Boots", p) or
-            (state.has("Ananke's Shawl", p) and state.has("Aether's Wings", p))
-        ),
-        "Kerguelen Plateau": lambda state, p=player: (
-            state.has("Echo's Boots", p) or 
-            state.has("Kerguelen Plateau Teleporter", p)
-        ),
-        "Stygian Study":     lambda state, p=player: (
-            state.has("Aether's Wings", p) and state.has("Pallas' Void Bell", p)
-        ),
-        "Sun Tower":         lambda state, p=player: (
-            state.has("Ananke's Shawl", p) and state.has("Echo's Boots", p) and
-            state.has("Aether's Wings", p) and state.has("Pallas' Void Bell", p)
-        ),
-        "Pishon Dry Lake":   lambda state, p=player: state.has("Theia's Sun Lantern", p),
-    }
+    # ── Fairy chest (rune) access rules ──────────────────────────────────────
     if rune_n > 0:
         for biome_name in _BIOME_NAMES:
-            rule = _rune_biome_rules[biome_name]
+            rule = _biome_access_rules[biome_name]
             if rule is None:
                 continue
             for slot in range(rune_n):
@@ -429,6 +450,35 @@ def create_regions(world: "RogueLegacy2World") -> None:
                     multiworld.get_location(f"{biome_name} - Fairy Chest {slot + 1}", player),
                     rule,
                 )
+
+    # ── Journal/memory access rules ───────────────────────────────────────────
+    if journal_mode != 0:
+        for bi, biome_name in enumerate(_BIOME_NAMES):
+            rule = _biome_access_rules[biome_name]
+            if rule is None:
+                continue
+            if journal_mode == 1:  # individual entries
+                for j in range(_JOURNAL_COUNTS[bi]):
+                    set_rule(
+                        multiworld.get_location(f"{biome_name} - Journal Entry {j + 1}", player),
+                        rule,
+                    )
+                for m in range(_MEMORY_COUNTS[bi]):
+                    set_rule(
+                        multiworld.get_location(f"{biome_name} - Memory Fragment {m + 1}", player),
+                        rule,
+                    )
+            else:  # journal_mode == 2, grouped
+                if _JOURNAL_COUNTS[bi] > 0:
+                    set_rule(
+                        multiworld.get_location(f"{biome_name} - All Journals Read", player),
+                        rule,
+                    )
+                if _MEMORY_COUNTS[bi] > 0:
+                    set_rule(
+                        multiworld.get_location(f"{biome_name} - All Memories Read", player),
+                        rule,
+                    )
 
     # ── Wire up region connections ───────────────────────────────────────────
     regions["Menu"].connect(regions["Overworld"])

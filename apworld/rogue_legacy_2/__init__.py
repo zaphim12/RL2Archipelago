@@ -56,4 +56,5 @@ class RogueLegacy2World(World):
             "manor_upgrade_bundle_size",
             "manor_useful_count",
             "randomize_npc_unlocks",
+            "journal_checks",
         )
