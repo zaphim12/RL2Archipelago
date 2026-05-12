@@ -5,6 +5,7 @@ using Archipelago.MultiClient.Net.MessageLog.Messages;
 using Archipelago.MultiClient.Net.Models;
 using RL2Archipelago.Items;
 using RL2Archipelago.Locations;
+using RL2Archipelago.Patches;
 using RL2Archipelago.UI;
 using System;
 using System.Collections.Concurrent;
@@ -43,6 +44,9 @@ public static class APClient
 
     /// <summary>Controls whether journal/memory reads generate location checks. Read from slot data on connect.</summary>
     public static JournalChecksMode JournalChecksMode { get; private set; } = JournalChecksMode.Grouped;
+
+    /// <summary>True once the player has left the main menu and entered an active run. Item processing is gated on this flag.</summary>
+    public static bool IsInGame { get; internal set; } = false;
 
     // Profile slot that was active before AP mode was entered; restored on disconnect.
     private static byte _previousProfile;
@@ -157,10 +161,6 @@ public static class APClient
             // Persist the room ID so we can warn on multiworld mismatch later.
             connData.RoomId = Session.RoomState.Seed;
 
-            // Register websocket-thread event handlers.
-            Session.Items.ItemReceived += APSession_ItemReceived;
-            Session.MessageLog.OnMessageReceived += APSession_OnMessageReceived;
-
             // Redirect all save I/O to a directory scoped to this room + slot.
             _previousProfile = SaveManager.ConfigData.CurrentProfile;
             APSaveDirectoryName = SanitizeDirectoryName($"{connData.RoomId}_{connData.SlotName}");
@@ -173,12 +173,17 @@ public static class APClient
             RunState = APRunState.Load(APSaveDirectoryName);
             _nextItemIndex = 0;
 
+            // Register websocket-thread event handlers AFTER resetting _nextItemIndex so
+            // any items that arrive concurrently get correct indices. Then manually drain
+            // the helper to pick up items the server sent during TryConnectAndLogin before
+            // the handler was wired — those sit in the library's buffer unfired.
+            Session.Items.ItemReceived += APSession_ItemReceived;
+            Session.MessageLog.OnMessageReceived += APSession_OnMessageReceived;
+            APSession_ItemReceived(Session.Items);
+
             // Reconcile local and server state. If the client recorded a check
             // that never made it to the server (e.g. network drop mid-send),
             // resend it now so the multiworld stays consistent.
-            // Item resync is handled automatically: AllItems causes the server to
-            // replay every received item from index 0 on each connect, and
-            // ProcessPendingItems skips anything below GrantedItemCount.
             ResyncCheckedLocations();
 
             // Scout every unchecked tracked location so in-world graphics
@@ -221,6 +226,7 @@ public static class APClient
         APNotifications.Reset();
         _scoutedItems.Clear();
         RunState = null;
+        IsInGame = false;
         Session = null;
 
         if (manual)
@@ -418,6 +424,8 @@ public static class APClient
     /// </summary>
     public static void ProcessPendingItems()
     {
+        if (!IsInGame) return;
+
         while (_pendingItems.TryDequeue(out var pending))
         {
             if (RunState != null && pending.Index < RunState.GrantedItemCount)
@@ -519,6 +527,12 @@ public static class APClient
         {
             SaveManager.PlayerSaveData.SetTeleporterIsUnlocked(teleporterBiome.Value, state: true);
             Plugin.Log.LogInfo($"[AP] Granted teleporter unlock: {displayName}");
+            return;
+        }
+
+        if (itemId == ItemRegistry.GoldCoins)
+        {
+            GoldCoinsPatch.Grant();
             return;
         }
 

@@ -19,6 +19,7 @@ public static class ItemRegistry
     private const long RUNE_OFFSET       = 0x500;
     private const long MANOR_OFFSET      = 0x600;
     private const long TELEPORTER_OFFSET = 0x700;
+    private const long FILLER_OFFSET     = 0x800;
 
     // ── Manor upgrade items ──────────────────────────────────────────────────
     //
@@ -219,6 +220,10 @@ public static class ItemRegistry
         // "Banker Unlock",
     ];
 
+    // ── Filler items ─────────────────────────────────────────────────────────
+
+    public const long GoldCoins = BASE_ID + FILLER_OFFSET + 0;
+
     // ── Teleporter unlock items ──────────────────────────────────────────────
 
     public const long TeleporterAxisMundi        = BASE_ID + TELEPORTER_OFFSET + 0;
@@ -243,6 +248,8 @@ public static class ItemRegistry
     {
         Dictionary<long, string> d = new()
         {
+            [GoldCoins] = "Gold Coins",
+
             [TeleporterAxisMundi]        = "Axis Mundi Teleporter",
             [TeleporterKerguelenPlateau] = "Kerguelen Plateau Teleporter",
             [TeleporterStygianStudy]     = "Stygian Study Teleporter",

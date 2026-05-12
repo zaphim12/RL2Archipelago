@@ -58,7 +58,7 @@ class ManorUpgradeBundleSize(Range):
     if the player is too close to the given skill's cap.
     """
     display_name = "Manor Upgrade Bundle Size"
-    range_start = 0
+    range_start = 1
     range_end = 35
     default = 5
 

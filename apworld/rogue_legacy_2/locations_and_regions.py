@@ -454,30 +454,34 @@ def create_regions(world: "RogueLegacy2World") -> None:
     # ── Journal/memory access rules ───────────────────────────────────────────
     if journal_mode != 0:
         for bi, biome_name in enumerate(_BIOME_NAMES):
-            rule = _biome_access_rules[biome_name]
-            if rule is None:
-                continue
+            biome_rule = _biome_access_rules[biome_name]
+            # Memories additionally require Aesop's Tome regardless of biome.
+            if biome_rule is None:
+                mem_rule = lambda state, p=player: state.has("Aesop's Tome", p)
+            else:
+                mem_rule = lambda state, p=player, r=biome_rule: r(state, p) and state.has("Aesop's Tome", p)
             if journal_mode == 1:  # individual entries
-                for j in range(_JOURNAL_COUNTS[bi]):
-                    set_rule(
-                        multiworld.get_location(f"{biome_name} - Journal Entry {j + 1}", player),
-                        rule,
-                    )
+                if biome_rule is not None:
+                    for j in range(_JOURNAL_COUNTS[bi]):
+                        set_rule(
+                            multiworld.get_location(f"{biome_name} - Journal Entry {j + 1}", player),
+                            biome_rule,
+                        )
                 for m in range(_MEMORY_COUNTS[bi]):
                     set_rule(
                         multiworld.get_location(f"{biome_name} - Memory Fragment {m + 1}", player),
-                        rule,
+                        mem_rule,
                     )
             else:  # journal_mode == 2, grouped
-                if _JOURNAL_COUNTS[bi] > 0:
+                if biome_rule is not None and _JOURNAL_COUNTS[bi] > 0:
                     set_rule(
                         multiworld.get_location(f"{biome_name} - All Journals Read", player),
-                        rule,
+                        biome_rule,
                     )
                 if _MEMORY_COUNTS[bi] > 0:
                     set_rule(
                         multiworld.get_location(f"{biome_name} - All Memories Read", player),
-                        rule,
+                        mem_rule,
                     )
 
     # ── Wire up region connections ───────────────────────────────────────────

@@ -40,6 +40,7 @@ internal static class MenuPatch
     [HarmonyPatch(typeof(MainMenuWindowController), nameof(MainMenuWindowController.Initialize))]
     private static void Initialize_Postfix(MainMenuWindowController __instance)
     {
+        APClient.IsInGame = false;
         try
         {
             InjectArchipelagoButton(__instance);
@@ -57,6 +58,7 @@ internal static class MenuPatch
     [HarmonyPatch(typeof(MainMenuWindowController), "OnFocus")]
     private static void OnFocus_Postfix()
     {
+        APClient.IsInGame = false;
         if (APClient.IsConnected)
             ApplyConnectedMenuState();
     }
@@ -147,6 +149,11 @@ internal static class MenuPatch
         // update them without having to re-traverse the controller.
         _startLegacyButton   = buttonList.Find(b => b.SelectorType == MainMenuButton.MainMenuSelectionType.Start);
         _saveSlotButton = buttonList.Find(b => b.SelectorType == MainMenuButton.MainMenuSelectionType.SelectProfile);
+
+        // When the player clicks the start button, they are committing to entering a run.
+        // Flip IsInGame so ProcessPendingItems begins draining the item queue.
+        if (_startLegacyButton != null)
+            _startLegacyButton.MenuButtonActivated += _ => APClient.IsInGame = true;
 
         // If already connected (e.g. menu was closed and reopened), apply visuals now.
         if (APClient.IsConnected)

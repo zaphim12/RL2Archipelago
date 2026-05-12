@@ -45,7 +45,9 @@ internal static class DebugPatch
         {
             if (SaveManager.PlayerSaveData != null)
             {
+                int prevGold = SaveManager.PlayerSaveData.GoldCollected;
                 SaveManager.PlayerSaveData.GoldCollected += 1000;
+                Messenger<GameMessenger, GameEvent>.Broadcast(GameEvent.GoldChanged, null, new GoldChangedEventArgs(prevGold, SaveManager.PlayerSaveData.GoldCollected));
                 Plugin.Log.LogInfo("[Debug] Added 1000 gold to player.");
             }
             else

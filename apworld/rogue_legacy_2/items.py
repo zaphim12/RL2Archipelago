@@ -16,6 +16,7 @@ BLUEPRINT_OFFSET  = 0x400
 RUNE_OFFSET       = 0x500
 MANOR_OFFSET      = 0x600
 TELEPORTER_OFFSET = 0x700
+FILLER_OFFSET     = 0x800
 
 
 class RogueLegacy2Item(Item):
@@ -48,11 +49,8 @@ item_data_table: dict[str, RogueLegacy2ItemData] = {
     "Sun Tower Teleporter":         RogueLegacy2ItemData(code=BASE_ID + TELEPORTER_OFFSET + 3, classification=ItemClassification.useful),
     "Pishon Dry Lake Teleporter":   RogueLegacy2ItemData(code=BASE_ID + TELEPORTER_OFFSET + 4, classification=ItemClassification.useful),
 
-    # ── Useful ──────────────────────────────────────────────────────────────
-    # "Useful Item Placeholder":      RogueLegacy2ItemData(code=BASE_ID + 2, classification=ItemClassification.useful),
-
-    # ── Filler ──────────────────────────────────────────────────────────────
-    "Filler Placeholder":           RogueLegacy2ItemData(code=BASE_ID + 3, classification=ItemClassification.filler),
+    # ── Filler ───────────────────────────────────────────────────────────────
+    "Gold Coins":                   RogueLegacy2ItemData(code=BASE_ID + FILLER_OFFSET + 0,     classification=ItemClassification.filler),
 
     # ── Events (no ID; placed by create_items at the matching event location) ─
     "Victory":                      RogueLegacy2ItemData(code=None, classification=ItemClassification.progression),
@@ -365,39 +363,89 @@ def create_items(world: "RogueLegacy2World") -> None:
             loc.place_locked_item(create_item(player, f"Manor: {npc_name}"))
 
     unfilled = len(multiworld.get_unfilled_locations(player))
-    pool: list[RogueLegacy2Item] = []
-    for name in HEIRLOOM_ITEM_NAMES:
-        pool.append(create_item(player, name))
-    for name in TELEPORTER_ITEM_NAMES:
-        pool.append(create_item(player, name))
-    for name in BLUEPRINT_ITEM_NAMES:
-        pool.append(create_item(player, name))
-    for name in RUNE_ITEM_NAMES:
-        pool.append(create_item(player, name))
+
     bundle_size = max(1, world.options.manor_upgrade_bundle_size.value)
     useful_count = world.options.manor_useful_count.value
-    # NPC items come first so they are not dropped by the truncation below.
-    # Core manor items generate many copies and frequently overflow the pool;
-    # items at the tail end are silently cut, so high-priority singles go first.
-    npc_items = MANOR_ITEM_NAMES[len(_CORE_MANOR_UPGRADES):] if randomize_npc else []
-    core_items = MANOR_ITEM_NAMES[:len(_CORE_MANOR_UPGRADES)]
-    for name in npc_items + core_items:
+    core_names = MANOR_ITEM_NAMES[:len(_CORE_MANOR_UPGRADES)]
+    npc_names  = MANOR_ITEM_NAMES[len(_CORE_MANOR_UPGRADES):]
+
+    # Priority: always included regardless of location count.
+    # NPC items are in the free pool only when randomize_npc=True; when False they
+    # were already locked to their home locations above.
+    # Heirlooms, Teleporters, and single-level manor upgrades are always priority items
+    priority_items: list[RogueLegacy2Item] = []
+    priority_items += [create_item(player, n) for n in HEIRLOOM_ITEM_NAMES]
+    priority_items += [create_item(player, n) for n in TELEPORTER_ITEM_NAMES]
+    if randomize_npc:
+        priority_items += [create_item(player, n) for n in npc_names]
+    for name in core_names:
+        if MANOR_MAX_LEVELS.get(name, 1) <= 1:
+            priority_items.append(create_item(player, name))
+
+    # Optional pools, in preference order. These fill up remaining slots after the priority pool.
+    # If there aren't enough slots remaining for all useful items, they are allocated from each item
+    #  type be percentages (currently 25% blueprints, 25% runes, 50% manor) 
+    # useful_manor_pool: first useful_count copies of multi-level upgrades.
+    # filler_manor_pool: remaining copies; used only after all useful items are placed.
+    blueprint_pool: list[RogueLegacy2Item] = [create_item(player, n) for n in BLUEPRINT_ITEM_NAMES]
+    rune_pool:      list[RogueLegacy2Item] = [create_item(player, n) for n in RUNE_ITEM_NAMES]
+    useful_manor_pool: list[RogueLegacy2Item] = []
+    filler_manor_pool: list[RogueLegacy2Item] = []
+    for name in core_names:
         max_level = MANOR_MAX_LEVELS.get(name, 1)
+        if max_level <= 1:
+            continue
         copies = max(1, math.ceil(max_level / bundle_size))
         data = item_data_table[name]
         for copy_idx in range(copies):
-            if max_level <= 1 or copy_idx < useful_count:
-                classification = ItemClassification.useful
+            if copy_idx < useful_count:
+                useful_manor_pool.append(RogueLegacy2Item(name, ItemClassification.useful, data.code, player))
             else:
-                classification = ItemClassification.filler
-            pool.append(RogueLegacy2Item(name, classification, data.code, player))
+                filler_manor_pool.append(RogueLegacy2Item(name, ItemClassification.filler, data.code, player))
 
-    # If small bundle sizes cause manor items alone to exceed total location count,
-    # truncate from the end rather than letting generation fail.
-    # TODO find a more elegant way to handle when itemCount exceeds locationCount
-    if len(pool) > unfilled:
-        pool = pool[:unfilled]
+    remaining   = unfilled - len(priority_items)
+    total_useful = len(blueprint_pool) + len(rune_pool) + len(useful_manor_pool)
 
+    world.random.shuffle(filler_manor_pool)
+
+    if total_useful <= remaining:
+        # All useful items fit; fill leftover slots with filler manor items.
+        pool = priority_items + blueprint_pool + rune_pool + useful_manor_pool
+        leftover = remaining - total_useful
+        pool += filler_manor_pool[:leftover]
+        padding_candidates = []
+    else:
+        # Truncation: distribute remaining slots 25% blueprints / 25% runes / 50% useful manor.
+        blueprint_slots = remaining // 4
+        rune_slots      = remaining // 4
+        manor_slots     = remaining - blueprint_slots - rune_slots
+
+        world.random.shuffle(blueprint_pool)
+        world.random.shuffle(rune_pool)
+        world.random.shuffle(useful_manor_pool)
+
+        pool = (
+            priority_items
+            + blueprint_pool[:blueprint_slots]
+            + rune_pool[:rune_slots]
+            + useful_manor_pool[:manor_slots]
+        )
+        # padding_candidates: leftover useful items (not yet in pool) before filler
+        padding_candidates = (
+            blueprint_pool[blueprint_slots:]
+            + rune_pool[rune_slots:]
+            + useful_manor_pool[manor_slots:]
+            + filler_manor_pool
+        )
+
+    # Fill any remaining slots using candidates that are not already in the pool.
+    for item in padding_candidates:
+        if len(pool) >= unfilled:
+            break
+        pool.append(RogueLegacy2Item(item.name, item.classification, item.code, player))
+
+    # If we have used all actual item candidates, and still have open slots, fill the rest with "Gold Coins" grants
     while len(pool) < unfilled:
-        pool.append(create_item(player, "Filler Placeholder"))
+        pool.append(create_item(player, "Gold Coins"))
+
     multiworld.itempool += pool

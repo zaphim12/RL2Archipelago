@@ -8,12 +8,14 @@
   [x] I think we can have the save-data for each archipelago run be tied to that archipelago's seed. 
 [x] See if it's possible to display any received items using existing text overlays in the game (for example, some text is shown when doors are unsealed or things like that)
   - Worst case scenario, this can just be some manual text overlay that appears in a corner of the screen
-[ ] Figure out what to do as filler items if we run out of slots
-  - Currently extra manor upgrades count for this
-  - Could just add 1000 coin drops if these aren't enough
-[ ] Decide how to truncate when there are too many items and not enough locations
-  - Perhaps first fill in all items that aren't manor upgrades, blueprints, or runes. Then do some math to allocate items based on giving for example 25% of remaining to blueprints, 25% to runes, and 50% to manor upgrades. Which items are allocated should be random
-  - When filling in manor upgrades, we should only allocate 'x' number of bundles per upgrade, but randomize among remaining slots. So for example, if 'x' is 2 then you may end up with 2 strength, 1 focus, and 0 dexterity depending on how it is randomized
+[x] Figure out what to do as filler items if we run out of slots
+  [x] Firstly do extra manor upgrades
+  [x] Fallback on coin drops if these aren't enough
+[x] Decide how to truncate when there are too many items and not enough locations
+  [x] First fill in all items that aren't manor upgrades, blueprints, or runes. Then fill in all single-level manor upgrades.
+  [x] If there aren't enough slots remaining to fill all useful items, then do some math to allocate items. 25% of remaining slots to blueprints, 25% to runes, and 50% to manor upgrades. Which items are allocated should be random
+  [x] When filling in manor upgrades, we should only allocate 'x' number of bundles per upgrade, but randomize among remaining slots. So for example, if 'x' is 2 then you may end up with 2 strength, 1 focus, and 0 dexterity depending on how it is randomized
+[ ] Deathlink
 
 ## Receiving Items:
 [x] Heirlooms
