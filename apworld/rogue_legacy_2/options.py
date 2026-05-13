@@ -110,6 +110,27 @@ class RandomizeNpcUnlocks(Toggle):
     default = 1
 
 
+class TrapCount(Range):
+    """Total number of NG+ burden trap items placed in the item pool.
+
+    Traps are harmful items that, when received from the multiworld, activate an
+    NG+ biome hazard for the rest of the current heir's life. The five available
+    traps are:
+      - Cannonball Rain    (Burden of Mundi's Flagship)
+      - Dragon Lancers     (Burden of Irad's Torment)
+      - Automaton Swarm    (Burden of Pishon's Uprising)
+      - Giant Snowflakes   (Burden of Kerguelen's Frost)
+      - Void Waves         (Burden of the High Scholar's Metamorphosis)
+
+    Items are distributed as evenly as possible across the five trap types.
+    Set to 0 to disable traps entirely.
+    """
+    display_name = "Trap Count"
+    range_start = 0
+    range_end = 25
+    default = 3
+
+
 class ManorCostBase(Range):
     """Base gold multiplier for manor upgrade costs.
 
@@ -160,6 +181,7 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     manor_useful_count: ManorUsefulCount
     randomize_npc_unlocks: RandomizeNpcUnlocks
     journal_checks: JournalChecks
+    trap_count: TrapCount
     manor_cost_base: ManorCostBase
     manor_cost_min_subtractive_factor: ManorCostMinSubtractiveFactor
     manor_cost_max_additive_factor: ManorCostMaxAdditiveFactor

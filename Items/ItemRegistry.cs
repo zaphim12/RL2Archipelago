@@ -20,6 +20,7 @@ public static class ItemRegistry
     private const long MANOR_OFFSET      = 0x600;
     private const long TELEPORTER_OFFSET = 0x700;
     private const long FILLER_OFFSET     = 0x800;
+    private const long TRAP_OFFSET       = 0x900;
 
     // ── Manor upgrade items ──────────────────────────────────────────────────
     //
@@ -129,6 +130,14 @@ public static class ItemRegistry
     // string literals live in exactly one place.
     internal static readonly string[] s_manorDisplayNames = GameConstants.ManorUpgradeNames;
 
+    // ── Trap items ───────────────────────────────────────────────────────────
+
+    public const long TrapCannonballRain  = BASE_ID + TRAP_OFFSET + 0;
+    public const long TrapDragonLancers   = BASE_ID + TRAP_OFFSET + 1;
+    public const long TrapAutomatonSwarm  = BASE_ID + TRAP_OFFSET + 2;
+    public const long TrapGiantSnowflakes = BASE_ID + TRAP_OFFSET + 3;
+    public const long TrapVoidWaves       = BASE_ID + TRAP_OFFSET + 4;
+
     // ── Filler items ─────────────────────────────────────────────────────────
 
     public const long GoldCoins = BASE_ID + FILLER_OFFSET + 0;
@@ -158,6 +167,12 @@ public static class ItemRegistry
         Dictionary<long, string> d = new()
         {
             [GoldCoins] = "Gold Coins",
+
+            [TrapCannonballRain]  = "Trap: Cannonball Rain",
+            [TrapDragonLancers]   = "Trap: Dragon Lancers",
+            [TrapAutomatonSwarm]  = "Trap: Automaton Swarm",
+            [TrapGiantSnowflakes] = "Trap: Giant Snowflakes",
+            [TrapVoidWaves]       = "Trap: Void Waves",
 
             [TeleporterAxisMundi]        = "Axis Mundi Teleporter",
             [TeleporterKerguelenPlateau] = "Kerguelen Plateau Teleporter",
@@ -312,5 +327,19 @@ public static class ItemRegistry
         TeleporterSunTower         => BiomeType.Tower,
         TeleporterPishonDryLake    => BiomeType.Cave,
         _                          => null,
+    };
+
+    /// <summary>
+    /// Maps an Archipelago trap item ID to the <see cref="BurdenType"/> it activates.
+    /// Returns <c>null</c> if the item isn't a trap.
+    /// </summary>
+    public static BurdenType? ToTrapBurdenType(long itemId) => itemId switch
+    {
+        TrapCannonballRain  => BurdenType.BridgeBiomeUp,
+        TrapDragonLancers   => BurdenType.TowerBiomeUp,
+        TrapAutomatonSwarm  => BurdenType.ForestBiomeUp,
+        TrapGiantSnowflakes => BurdenType.CaveBiomeUp,
+        TrapVoidWaves       => BurdenType.StudyBiomeUp,
+        _                   => null,
     };
 }

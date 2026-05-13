@@ -8,6 +8,7 @@ using Newtonsoft.Json.Linq;
 using RL2Archipelago.Items;
 using RL2Archipelago.Locations;
 using RL2Archipelago.Patches;
+using RL2Archipelago.Traps;
 using RL2Archipelago.UI;
 using System;
 using System.Collections.Concurrent;
@@ -579,11 +580,12 @@ public static class APClient
             ? pending.SourcePlayerName
             : $"Player {pending.SourceSlot}";
 
+        bool isTrap = ItemRegistry.ToTrapBurdenType(pending.ItemId).HasValue;
         APNotifications.Enqueue(
-            title: "Item Received",
+            title: isTrap ? "Trap!" : "Item Received",
             subtitle: itemName,
             description: $"Sent by {sender}",
-            critical: ItemRegistry.ToHeirloomType(pending.ItemId).HasValue);
+            critical: isTrap || ItemRegistry.ToHeirloomType(pending.ItemId).HasValue);
     }
 
     private static void GrantItem(long itemId)
@@ -642,6 +644,14 @@ public static class APClient
         if (itemId == ItemRegistry.GoldCoins)
         {
             GoldCoinsPatch.Grant();
+            return;
+        }
+
+        var trapBurden = ItemRegistry.ToTrapBurdenType(itemId);
+        if (trapBurden.HasValue)
+        {
+            TrapManager.ActivateTrap(trapBurden.Value);
+            Plugin.Log.LogInfo($"[AP] Activated trap: {displayName}");
             return;
         }
 

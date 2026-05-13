@@ -28,6 +28,7 @@ RUNE_OFFSET       = 0x500
 MANOR_OFFSET      = 0x600
 TELEPORTER_OFFSET = 0x700
 FILLER_OFFSET     = 0x800
+TRAP_OFFSET       = 0x900
 
 
 class RogueLegacy2Item(Item):
@@ -50,6 +51,24 @@ item_data_table: dict[str, RogueLegacy2ItemData] = {
     # ── Events (no ID; placed by create_items at the matching event location) ─
     "Victory":    RogueLegacy2ItemData(code=None, classification=ItemClassification.progression),
 }
+
+# Trap items: NG+ burden hazards activated as Archipelago traps.
+# IDs MUST stay in lockstep with ItemRegistry.TRAP_OFFSET indices in C#.
+_TRAP_NAMES = [
+    "Trap: Cannonball Rain",   # 0 — BridgeBiomeUp (Burden of Mundi's Flagship)
+    "Trap: Dragon Lancers",    # 1 — TowerBiomeUp  (Burden of Irad's Torment)
+    "Trap: Automaton Swarm",   # 2 — ForestBiomeUp (Burden of Pishon's Uprising)
+    "Trap: Giant Snowflakes",  # 3 — CaveBiomeUp   (Burden of Kerguelen's Frost)
+    "Trap: Void Waves",        # 4 — StudyBiomeUp  (Burden of the High Scholar's Metamorphosis)
+]
+
+TRAP_ITEM_NAMES: list[str] = []
+for _i, _name in enumerate(_TRAP_NAMES):
+    item_data_table[_name] = RogueLegacy2ItemData(
+        code=BASE_ID + TRAP_OFFSET + _i,
+        classification=ItemClassification.trap,
+    )
+    TRAP_ITEM_NAMES.append(_name)
 
 # Heirloom items (progression)
 HEIRLOOM_ITEM_NAMES: list[str] = []
@@ -165,6 +184,15 @@ def create_items(world: "RogueLegacy2World") -> None:
         if MANOR_MAX_LEVELS.get(name, 1) <= 1:
             priority_items.append(create_item(player, name))
 
+    # Traps: placed immediately after priority items, before useful items.
+    # Distribute evenly across the 5 trap types by cycling through the list.
+    raw_trap_count = world.options.trap_count.value
+    trap_items: list[RogueLegacy2Item] = []
+    if raw_trap_count > 0:
+        shuffled_traps = world.random.sample(TRAP_ITEM_NAMES, len(TRAP_ITEM_NAMES))
+        trap_cycle = (shuffled_traps * math.ceil(raw_trap_count / len(TRAP_ITEM_NAMES)))[:raw_trap_count]
+        trap_items = [create_item(player, n) for n in trap_cycle]
+
     # Optional pools, in preference order. These fill up remaining slots after the priority pool.
     # If there aren't enough slots remaining for all useful items, they are allocated from each item
     #  type be percentages (currently 25% blueprints, 25% runes, 50% manor)
@@ -186,14 +214,15 @@ def create_items(world: "RogueLegacy2World") -> None:
             else:
                 filler_manor_pool.append(RogueLegacy2Item(name, ItemClassification.filler, data.code, player))
 
-    remaining   = unfilled - len(priority_items)
+    # Traps are guaranteed slots; subtract them from remaining before the useful/filler split.
+    remaining    = unfilled - len(priority_items) - len(trap_items)
     total_useful = len(blueprint_pool) + len(rune_pool) + len(useful_manor_pool)
 
     world.random.shuffle(filler_manor_pool)
 
     if total_useful <= remaining:
         # All useful items fit; fill leftover slots with filler manor items.
-        pool = priority_items + blueprint_pool + rune_pool + useful_manor_pool
+        pool = priority_items + trap_items + blueprint_pool + rune_pool + useful_manor_pool
         leftover = remaining - total_useful
         pool += filler_manor_pool[:leftover]
         padding_candidates = []
@@ -209,6 +238,7 @@ def create_items(world: "RogueLegacy2World") -> None:
 
         pool = (
             priority_items
+            + trap_items
             + blueprint_pool[:blueprint_slots]
             + rune_pool[:rune_slots]
             + useful_manor_pool[:manor_slots]

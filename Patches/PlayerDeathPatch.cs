@@ -1,4 +1,5 @@
 using HarmonyLib;
+using RL2Archipelago.Traps;
 using UnityEngine;
 
 namespace RL2Archipelago.Patches;
@@ -20,6 +21,9 @@ internal static class PlayerDeathPatch
     private static void KillCharacter_Postfix()
     {
         if (_wasAlreadyDead) return;
+
+        TrapManager.ClearAllTraps();
+
         if (!APClient.IsConnected || !APClient.DeathLinkEnabled || !APClient.IsInGame) return;
         if (APClient.IsReceivingDeathLink) return;
 

@@ -18,11 +18,13 @@
 [x] Deathlink
 [ ] Traps
   [ ] Spawn spike balls around the player
-  [ ] NG+ burdens can activate for the remainder of the run or maybe just a certain duration
-    [ ] Spectral Dragon Lancers
-    [ ] Automaton Swarm
-    [ ] Giant Snowflakes
-    [ ] Cannonball rain
+  [x] NG+ burdens can activate for the remainder of the run or maybe just a certain duration
+    [x] Spectral Dragon Lancers
+    [x] Automaton Swarm
+    [x] Giant Snowflakes
+    [x] Cannonball rain
+    [x] Void waves
+      [ ] These should only spawn after Pallas' Void Bell is found, if possible
 
 ## Receiving Items:
 [x] Heirlooms
