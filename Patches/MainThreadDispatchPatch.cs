@@ -15,6 +15,7 @@ internal static class MainThreadDispatchPatch
     private static void WindowManager_Update_Postfix()
     {
         APClient.ProcessPendingItems();
+        APClient.ProcessPendingDeaths();
         APNotifications.Tick();
     }
 }

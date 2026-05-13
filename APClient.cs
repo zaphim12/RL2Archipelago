@@ -1,4 +1,5 @@
 using Archipelago.MultiClient.Net;
+using Archipelago.MultiClient.Net.BounceFeatures.DeathLink;
 using Archipelago.MultiClient.Net.Enums;
 using Archipelago.MultiClient.Net.Helpers;
 using Archipelago.MultiClient.Net.MessageLog.Messages;
@@ -47,6 +48,21 @@ public static class APClient
 
     /// <summary>True once the player has left the main menu and entered an active run. Item processing is gated on this flag.</summary>
     public static bool IsInGame { get; internal set; } = false;
+
+    /// <summary>True when death_link is enabled for this slot.</summary>
+    public static bool DeathLinkEnabled { get; private set; }
+
+    /// <summary>True while we are applying an incoming death beacon, so the death patch skips sending an echo.</summary>
+    internal static bool IsReceivingDeathLink { get; private set; }
+
+    private static DeathLinkService _deathLinkService;
+    private static string _slotName;
+
+    // Incoming death beacon queued for main-thread application. Written by the websocket thread,
+    // read by the main thread; volatile ensures the flag write is visible after the string fields.
+    private static volatile bool _pendingDeathLink;
+    private static string _pendingDeathSource;
+    private static string _pendingDeathCause;
 
     // Profile slot that was active before AP mode was entered; restored on disconnect.
     private static byte _previousProfile;
@@ -154,6 +170,16 @@ public static class APClient
             JournalChecksMode = SlotData.TryGetValue("journal_checks", out var jObj)
                 ? (JournalChecksMode)Convert.ToInt32(jObj) : JournalChecksMode.Grouped;
 
+            _slotName = connData.SlotName;
+            DeathLinkEnabled = SlotData.TryGetValue("death_link", out var dlObj) && Convert.ToInt32(dlObj) != 0;
+            _deathLinkService = Session.CreateDeathLinkService();
+            if (DeathLinkEnabled)
+            {
+                _deathLinkService.OnDeathLinkReceived += APSession_DeathLinkReceived;
+                _deathLinkService.EnableDeathLink();
+                Plugin.Log.LogInfo("[AP] DeathLink enabled.");
+            }
+
             Plugin.Log.LogInfo(
                 $"Connected! Room: {Session.RoomState.Seed}  " +
                 $"Slot data keys: {string.Join(", ", success.SlotData.Keys)}");
@@ -215,6 +241,14 @@ public static class APClient
 
         if (Session.Socket.Connected)
             Session.Socket.DisconnectAsync().Wait(2000);
+
+        if (_deathLinkService is not null)
+        {
+            _deathLinkService.OnDeathLinkReceived -= APSession_DeathLinkReceived;
+            _deathLinkService = null;
+        }
+        DeathLinkEnabled = false;
+        _pendingDeathLink = false;
 
         // Deactivate the save redirect before restoring the vanilla profile so
         // LoadCurrentProfileData reads from the original paths.
@@ -418,6 +452,59 @@ public static class APClient
         }
     }
 
+    /// <summary>Sends a death beacon to all other DeathLink-enabled players in the multiworld.</summary>
+    public static void SendDeathLink()
+    {
+        if (_deathLinkService is null) return;
+        try
+        {
+            _deathLinkService.SendDeathLink(new DeathLink(_slotName));
+            Plugin.Log.LogInfo("[AP] DeathLink sent.");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.LogError($"[AP] Failed to send DeathLink: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Called each frame from the main thread to apply any incoming death beacon.
+    /// Drops the beacon silently if the player is already dead or not yet in-game.
+    /// </summary>
+    public static void ProcessPendingDeaths()
+    {
+        if (!_pendingDeathLink || !IsInGame) return;
+        if (!PlayerManager.IsInstantiated) return;
+
+        var player = PlayerManager.GetPlayerController();
+        if (player == null || player.IsDead)
+        {
+            _pendingDeathLink = false;
+            return;
+        }
+
+        _pendingDeathLink = false;
+
+        var source = _pendingDeathSource ?? "Another player";
+        var cause = !string.IsNullOrEmpty(_pendingDeathCause) ? _pendingDeathCause : $"{source} has died";
+
+        IsReceivingDeathLink = true;
+        try
+        {
+            player.KillCharacter(null, broadcastEvent: true);
+        }
+        finally
+        {
+            IsReceivingDeathLink = false;
+        }
+
+        APNotifications.Enqueue(
+            title: "Death Link!",
+            subtitle: source,
+            description: cause,
+            critical: true);
+    }
+
     /// <summary>
     /// Called from <see cref="Plugin.Update"/> each frame to drain any item IDs
     /// received on the AP websocket thread and apply them to game state.
@@ -582,6 +669,15 @@ public static class APClient
     {
         Plugin.Log.LogInfo($"[AP] {message}");
         // TODO: Surface this in an in-game console / chat overlay.
+    }
+
+    // Called on the AP websocket thread — only set flags; no game-state access.
+    private static void APSession_DeathLinkReceived(DeathLink deathLink)
+    {
+        Plugin.Log.LogInfo($"[AP] DeathLink received from '{deathLink.Source}': {deathLink.Cause}");
+        _pendingDeathSource = deathLink.Source ?? "Another player";
+        _pendingDeathCause = deathLink.Cause;
+        _pendingDeathLink = true;
     }
 
     private static void APSession_ErrorReceived(Exception ex, string message)

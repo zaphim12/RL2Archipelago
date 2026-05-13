@@ -2,8 +2,6 @@
 
 ---
 
-TODO: Figure out if Pallas' Void Bell allows air dashes without Ananke's Shawl (if so, it can replace Ananke's Shawl anywhere else)
-
 ## Tier 1 — Key Items
 
 These are items which can unlock new areas/spheres

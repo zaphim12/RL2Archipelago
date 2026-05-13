@@ -15,7 +15,14 @@
   [x] First fill in all items that aren't manor upgrades, blueprints, or runes. Then fill in all single-level manor upgrades.
   [x] If there aren't enough slots remaining to fill all useful items, then do some math to allocate items. 25% of remaining slots to blueprints, 25% to runes, and 50% to manor upgrades. Which items are allocated should be random
   [x] When filling in manor upgrades, we should only allocate 'x' number of bundles per upgrade, but randomize among remaining slots. So for example, if 'x' is 2 then you may end up with 2 strength, 1 focus, and 0 dexterity depending on how it is randomized
-[ ] Deathlink
+[x] Deathlink
+[ ] Traps
+  [ ] Spawn spike balls around the player
+  [ ] NG+ burdens can activate for the remainder of the run or maybe just a certain duration
+    [ ] Spectral Dragon Lancers
+    [ ] Automaton Swarm
+    [ ] Giant Snowflakes
+    [ ] Cannonball rain
 
 ## Receiving Items:
 [x] Heirlooms
@@ -54,6 +61,10 @@
   [x] Configurable to be off, individual, or sets of memories/journals
 [x] Skill tree node purchases
   [x] Config for blacksmith, enchantress, and living safe to be non-randomized
-[ ] Charon tribute rewards maybe
+
+## Maybe eventually:
+[ ] Figure out some visually appealing way to display the current stat bonuses the player has received
+  - The stats screen does already essentially show your current stats so maybe this is unnecessary
+[ ] Charon tribute rewards as locations
   - Maybe charity donation should be in effect by default?
   - This should probably be configurable, off by default
