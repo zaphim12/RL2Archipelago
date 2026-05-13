@@ -125,103 +125,9 @@ public static class ItemRegistry
         // SkillTreeType.Banker,                  
     ];
 
-    // Display names parallel to s_skillTreeTypes — indices must match exactly.
-    // Declared before Names so it is initialized before BuildNames() runs.
-    internal static readonly string[] s_manorDisplayNames =
-    [
-        "Mess Hall (Vitality Up I)",
-        "Fruit Juice Bar (Vitality Up II)",
-        "Meteora Gym (Vitality Up III)",
-        // "Veterinarian Clinic (Revive Chance Up)",
-        "Institute of Gastronomy (Health Drop Scaling)",
-        // "Stadium (Invulnerability Up)",
-        "Arsenal (Strength Up I)",
-        "Sauna (Strength Up II)",
-        "Rock Climbing Wall (Strength Up III)",
-        "Bamboo Garden (Spin Kick scales with INT)",
-        "Gym (Dexterity Up I)",
-        "Yoga Class (Dexterity Up II)",
-        "Flower Shop (Dexterity Up III)",
-        "The Laundromat (Weapon Crit Damage Up)",
-        "Study Hall (Intelligence Up I)",
-        "Math Club (Intelligence Up II)",
-        "University (Intelligence Up III)",
-        "Library (Focus Up I)",
-        "Hall of Wisdom (Focus Up II)",
-        "Court of the Wise (Focus Up III)",
-        "The Lodge (Magic Crit Damage Up)",
-        // "The Thaumaturgy (Cooldown Reduction)",
-        "Fashion Chambers (Max Weight Up I)",
-        "Tailors (Max Weight Up II)",
-        "Artisan (Max Weight Up III)",
-        "Etching Chambers (Max Rune Weight Up I)",
-        "Pillow Mill (Max Rune Weight Up II)",
-        "Bed Mill (Max Rune Weight Up III)",
-        "Foundry (Armor Up I)",
-        "Blast Furnace (Armor Up II)",
-        "Some Kind of Kiln (Armor Up III)",
-        "Universal Health Stair (Traits Give Gold)",
-        "Repurposed Mining Shaft (Traits Gold Gain Up)",
-        "Geologist's Camp (Ore Drop Chance Up)", 
-        "Dowsing Center (Red Aether Drop Chance Up)",
-        "Massive Vault (Gold Gain Up I)",       
-        // "Gold Gain Up II",
-        // "Gold Gain Up III",
-        // "Sky Bridge (Gold Gain Up IV)",
-        // "Tree Bridge (Gold Gain Up V)",
-        "Career Center (Re-Roll Children)",
-        "Aerobics Classroom (Encumbrance Limit Up)",
-        // "The Fissary (Mana Cost Down)",
-        "Courthouse (Living Safe Max Gold Up)",
-        "Scribe's Office (Living Safe Conversion Up)",
-        "Fighting Ring (Boxer Class)",
-        "Dance Hall (Duelist Class)",
-        "Guild of Dark Arts (Assassin Class)",
-        "Drill Store (Architect Cost Reduction)",
-        // "Genesis Pool (Polymorph Class)",
-        "Adoption Center (More Heirs)",
-        "The Kitchen (Chef Class)",
-        // "Forest Village (Chakram Class)",
-        // "Martial Arts School (Tonfa Class)",
-        // "The Pilgrim's Steps (Knight Class)",
-        "Butcher's Shoppe (Barbarian Class)",
-        "Academy (Mage Class)",
-        "Archery Range (Ranger Class)",
-        "Sand Pits (Valkyrie Class)",
-        // "Hidden Dojo (Ninja Class)",
-        // "Ancestral Plot (Lich Class)",
-        // "Miner's Camp (Spelunker Class)",
-        "Saltpeter Mines (Gunslinger Class)",
-        "Ryokan (Ronin Class)",
-        "The Tavern (Bard Class)",
-        "The Flying Docks (Pirate Class)",
-        "The Astral Gardens (Astromancer Class)",
-        // "Weapon Master Upgrade",
-        // "Knight Upgrade",
-        "The Aviary (Dragon Lancer Class)",
-        "Trophy Room (XP Up)",
-        "Jeweler (Ore Gain Up)",
-        "Buried Tomb (Red Aether Gain Up)",
-        // "Herb Garden (Free Cast Up)",
-        "Dummy (Training Dummy Unlock)",
-        "Meditation Studies (Boss Health/Mana Restore)",
-        "Sage Totem (Mastery Rank Unlock)",
-        "Archaeology Camp (Relic Resolve Cost Down)",
-        "Medieval Forgery (Relic Reroll Up)",
-        "Alchemy Lab (Potion Recharge Talent)",
-        "Psychiatrist (Resolve Up)",
-        "Jousting Studies (Dash Damage Reduction)",
-        "Charity Dungeon (Charon Donation Bonus Unlock)",
-        "The Dicer's Den (Weapon Crit Chance Up)",
-        "The Quantum Observatory (Magic Crit Chance Up)",
-        "The Bizarre Bazaar (Reroll Relic Room Cap Up)",
-        "Screw Distillery (Architect Unlock)",
-        // NPC unlock slots (indices 68-71)
-        "Offshore Bank Account (Living Safe)",
-        "Foundation (Smithy Unlock)",
-        "Enchantress' Quarters (Enchantress Unlock)",
-        // "Banker Unlock",
-    ];
+    // Display names parallel to s_skillTreeTypes — sourced from GameConstants so the
+    // string literals live in exactly one place.
+    internal static readonly string[] s_manorDisplayNames = GameConstants.ManorUpgradeNames;
 
     // ── Filler items ─────────────────────────────────────────────────────────
 
@@ -268,30 +174,13 @@ public static class ItemRegistry
         };
 
         // Rune item names
-        string[] runeNames =
-        [
-            "Reinforced",   "Dash",        "Vault",    "Bounty",
-            "Haste",        "Lifesteal",   "Magnesis", "Retaliation",
-            "Siphon",       "Capacity",    "Trick",    "Amplification",
-            "Soulsteal",    "Resolve",     "Stone",    "Red",
-            "Sharpened",    "Focal",       "Might",    "Eldar",
-            "Lucky Roller", "High Stakes", "Folded",   "Quenching",
-        ];
-        for (int i = 0; i < runeNames.Length; i++)
-            d[BASE_ID + RUNE_OFFSET + i] = $"{runeNames[i]} Rune";
+        for (int i = 0; i < GameConstants.RuneNames.Length; i++)
+            d[BASE_ID + RUNE_OFFSET + i] = $"{GameConstants.RuneNames[i]} Rune";
 
         // Blueprint item names
-        string[] categoryNames = [ "Weapon", "Helm", "Chest", "Cape", "Trinket" ];
-        string[] typeNames =
-        [
-            "Leather",    "Scholar",   "Warden",  "Sanguine",
-            "Ammonite",   "Crescent",  "Drowned", "Gilded",
-            "Obsidian",   "Leviathan", "Kin",
-            "White Wood", "Black Root", 
-        ];
-        for (int c = 0; c < 5; c++)
-            for (int t = 0; t < 13; t++)
-                d[BASE_ID + BLUEPRINT_OFFSET + c * 16 + t] = $"{typeNames[t]} {categoryNames[c]} Blueprint";
+        for (int c = 0; c < GameConstants.BlueprintCategories.Length; c++)
+            for (int t = 0; t < GameConstants.BlueprintTypes.Length; t++)
+                d[BASE_ID + BLUEPRINT_OFFSET + c * 16 + t] = $"{GameConstants.BlueprintTypes[t]} {GameConstants.BlueprintCategories[c]} Blueprint";
 
         // Manor upgrade item names
         for (int i = 0; i < s_manorDisplayNames.Length; i++)

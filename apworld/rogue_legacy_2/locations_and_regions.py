@@ -7,11 +7,8 @@ from worlds.generic.Rules import set_rule
 if typing.TYPE_CHECKING:
     from . import RogueLegacy2World
 
-from .items import (
-    BASE_ID,
-    _CORE_MANOR_UPGRADES,
-    _NPC_MANOR_UPGRADES,
-)
+from .constants import BIOME_NAMES, CORE_MANOR_UPGRADES, NPC_MANOR_UPGRADES
+from .items import BASE_ID
 
 # ---------------------------------------------------------------------------
 # Location ID offsets
@@ -39,14 +36,6 @@ _MEMORY_COUNTS  = [4, 0, 5, 0, 0, 0]
 # Blueprint IDs use a biome-stride layout so IDs are stable regardless of how
 # many slots are enabled:  id = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * 16 + slotIndex
 # This mirrors LocationRegistry._checksPerBiome in the C# mod.
-_BIOME_NAMES = [
-    "Citadel Agartha",
-    "Axis Mundi",
-    "Kerguelen Plateau",
-    "Stygian Study",
-    "Sun Tower",
-    "Pishon Dry Lake",
-]
 _MAX_BLUEPRINT_CHECKS_PER_BIOME = 16  # upper bound of the BlueprintChecksPerBiome option
 _MAX_RUNE_CHECKS_PER_BIOME      = 16  # upper bound of the RuneChecksPerBiome option
 
@@ -106,7 +95,7 @@ location_data_table: dict[str, RogueLegacy2LocationData] = {
 # Core (indices 0-68) are always registered; NPC unlocks (69-71) are registered
 # unconditionally here but only instantiated in create_regions when the option
 # is enabled — same pattern as blueprint/rune pool sizing.
-for _i, _name in enumerate(_CORE_MANOR_UPGRADES + _NPC_MANOR_UPGRADES):
+for _i, _name in enumerate(CORE_MANOR_UPGRADES + NPC_MANOR_UPGRADES):
     location_data_table[f"Manor - {_name}"] = RogueLegacy2LocationData(
         region="Manor",
         address=BASE_ID + MANOR_OFFSET + _i,
@@ -114,7 +103,7 @@ for _i, _name in enumerate(_CORE_MANOR_UPGRADES + _NPC_MANOR_UPGRADES):
 
 # Register all possible blueprint locations (max slots) so location_name_to_id
 # is stable across different blueprint_checks_per_biome settings.
-for _biome_idx, _biome_name in enumerate(_BIOME_NAMES):
+for _biome_idx, _biome_name in enumerate(BIOME_NAMES):
     for _slot in range(_MAX_BLUEPRINT_CHECKS_PER_BIOME):
         location_data_table[f"{_biome_name} - Blueprint Chest {_slot + 1}"] = RogueLegacy2LocationData(
             region="Overworld",
@@ -123,7 +112,7 @@ for _biome_idx, _biome_name in enumerate(_BIOME_NAMES):
 
 # Register all possible fairy chest (rune) locations so location_name_to_id
 # is stable across different rune_checks_per_biome settings.
-for _biome_idx, _biome_name in enumerate(_BIOME_NAMES):
+for _biome_idx, _biome_name in enumerate(BIOME_NAMES):
     for _slot in range(_MAX_RUNE_CHECKS_PER_BIOME):
         location_data_table[f"{_biome_name} - Fairy Chest {_slot + 1}"] = RogueLegacy2LocationData(
             region="Overworld",
@@ -132,7 +121,7 @@ for _biome_idx, _biome_name in enumerate(_BIOME_NAMES):
 
 # Register all journal/memory locations so location_name_to_id is complete.
 # create_regions() instantiates only the subset matching the journal_checks option.
-for _bi, _biome_name in enumerate(_BIOME_NAMES):
+for _bi, _biome_name in enumerate(BIOME_NAMES):
     if _JOURNAL_COUNTS[_bi] > 0:
         location_data_table[f"{_biome_name} - All Journals Read"] = RogueLegacy2LocationData(
             region="Overworld",
@@ -180,12 +169,12 @@ def create_regions(world: "RogueLegacy2World") -> None:
     # The set of blueprint and rune location names active for this world.
     active_blueprint_names = {
         f"{biome_name} - Blueprint Chest {slot + 1}"
-        for biome_name in _BIOME_NAMES
+        for biome_name in BIOME_NAMES
         for slot in range(blueprint_n)
     }
     active_rune_names = {
         f"{biome_name} - Fairy Chest {slot + 1}"
-        for biome_name in _BIOME_NAMES
+        for biome_name in BIOME_NAMES
         for slot in range(rune_n)
     }
 
@@ -429,7 +418,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
 
     # ── Blueprint chest access rules ─────────────────────────────────────────
     if blueprint_n > 0:
-        for biome_name in _BIOME_NAMES:
+        for biome_name in BIOME_NAMES:
             rule = _biome_access_rules[biome_name]
             if rule is None:
                 continue
@@ -441,7 +430,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
 
     # ── Fairy chest (rune) access rules ──────────────────────────────────────
     if rune_n > 0:
-        for biome_name in _BIOME_NAMES:
+        for biome_name in BIOME_NAMES:
             rule = _biome_access_rules[biome_name]
             if rule is None:
                 continue
@@ -453,7 +442,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
 
     # ── Journal/memory access rules ───────────────────────────────────────────
     if journal_mode != 0:
-        for bi, biome_name in enumerate(_BIOME_NAMES):
+        for bi, biome_name in enumerate(BIOME_NAMES):
             biome_rule = _biome_access_rules[biome_name]
             # Memories additionally require Aesop's Tome regardless of biome.
             if biome_rule is None:

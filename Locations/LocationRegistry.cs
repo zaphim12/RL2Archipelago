@@ -182,26 +182,25 @@ public static class LocationRegistry
         d[TeleporterSunTower]         = "Sun Tower Teleporter Purchase";
         d[TeleporterPishonDryLake]    = "Pishon Dry Lake Teleporter Purchase";
 
-        string[] biomeNames = [ "Citadel Agartha", "Axis Mundi", "Kerguelen Plateau", "Stygian Study", "Sun Tower", "Pishon Dry Lake" ];
-        for (int biome = 0; biome < 6; biome++)
+        for (int biome = 0; biome < GameConstants.BiomeNames.Length; biome++)
         {
             if (s_journalCounts[biome] > 0)
-                d[BASE_ID + JOURNAL_GROUPED_OFFSET + biome] = $"{biomeNames[biome]} - All Journals Read";
+                d[BASE_ID + JOURNAL_GROUPED_OFFSET + biome] = $"{GameConstants.BiomeNames[biome]} - All Journals Read";
             if (s_memoryCounts[biome] > 0)
-                d[BASE_ID + MEMORY_GROUPED_OFFSET + biome] = $"{biomeNames[biome]} - All Memories Read";
+                d[BASE_ID + MEMORY_GROUPED_OFFSET + biome] = $"{GameConstants.BiomeNames[biome]} - All Memories Read";
             for (int j = 0; j < s_journalCounts[biome]; j++)
-                d[BASE_ID + JOURNAL_INDIVIDUAL_OFFSET + biome * 16 + j] = $"{biomeNames[biome]} - Journal Entry {j + 1}";
+                d[BASE_ID + JOURNAL_INDIVIDUAL_OFFSET + biome * 16 + j] = $"{GameConstants.BiomeNames[biome]} - Journal Entry {j + 1}";
             for (int m = 0; m < s_memoryCounts[biome]; m++)
-                d[BASE_ID + MEMORY_INDIVIDUAL_OFFSET + biome * 16 + m] = $"{biomeNames[biome]} - Memory Fragment {m + 1}";
+                d[BASE_ID + MEMORY_INDIVIDUAL_OFFSET + biome * 16 + m] = $"{GameConstants.BiomeNames[biome]} - Memory Fragment {m + 1}";
         }
 
         for (int biome = 0; biome < 6; biome++)
             for (int slot = 0; slot < 16; slot++)
-                d[BASE_ID + BLUEPRINT_OFFSET + biome * 16 + slot] = $"{biomeNames[biome]} - Blueprint Chest {slot + 1}";
+                d[BASE_ID + BLUEPRINT_OFFSET + biome * 16 + slot] = $"{GameConstants.BiomeNames[biome]} - Blueprint Chest {slot + 1}";
 
         for (int biome = 0; biome < 6; biome++)
             for (int slot = 0; slot < 16; slot++)
-                d[BASE_ID + RUNE_OFFSET + biome * 16 + slot] = $"{biomeNames[biome]} - Fairy Chest {slot + 1}";
+                d[BASE_ID + RUNE_OFFSET + biome * 16 + slot] = $"{GameConstants.BiomeNames[biome]} - Fairy Chest {slot + 1}";
 
         // Manor upgrade location names (parallel to ItemRegistry.s_manorDisplayNames)
         for (int i = 0; i < ItemRegistry.s_skillTreeTypes.Length; i++)

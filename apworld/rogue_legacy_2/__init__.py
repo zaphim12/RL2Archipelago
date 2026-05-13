@@ -1,7 +1,26 @@
 from BaseClasses import Tutorial
 from worlds.AutoWorld import WebWorld, World
 
-from .items import RogueLegacy2Item, _CORE_MANOR_UPGRADES, _NPC_MANOR_UPGRADES, all_non_event_items_table, create_item, create_items
+from .constants import (
+    ACADEMY, ADOPTION_CENTER, AEROBICS_CLASSROOM, ALCHEMY_LAB, ARCHAEOLOGY_CAMP,
+    ARCHERY_RANGE, ARSENAL, ARTISAN, ASTRAL_GARDENS, AVIARY,
+    BAMBOO_GARDEN, BED_MILL, BIZARRE_BAZAAR, BLAST_FURNACE, BURIED_TOMB,
+    BUTCHERS_SHOPPE, CAREER_CENTER, CHARITY_DUNGEON, CORE_MANOR_UPGRADES,
+    COURT_OF_THE_WISE, COURTHOUSE, DANCE_HALL, DICERS_DEN, DOWSING_CENTER,
+    DRILL_STORE, DUMMY, ENCHANTRESS_QUARTERS, ETCHING_CHAMBERS, FASHION_CHAMBERS,
+    FIGHTING_RING, FLOWER_SHOP, FLYING_DOCKS, FOUNDATION, FOUNDRY,
+    FRUIT_JUICE_BAR, GEOLOGISTS_CAMP, GUILD_OF_DARK_ARTS, GYM,
+    HALL_OF_WISDOM, INSTITUTE_OF_GASTRONOMY, JEWELER, JOUSTING_STUDIES,
+    KITCHEN, LAUNDROMAT, LIBRARY, LODGE, MASSIVE_VAULT,
+    MATH_CLUB, MEDITATION_STUDIES, MEDIEVAL_FORGERY, MESS_HALL,
+    METEORA_GYM, NPC_MANOR_UPGRADES, OFFSHORE_BANK_ACCOUNT, PILLOW_MILL,
+    PSYCHIATRIST, QUANTUM_OBSERVATORY, REPURPOSED_MINING_SHAFT, ROCK_CLIMBING_WALL,
+    RYOKAN, SAGE_TOTEM, SALTPETER_MINES, SAND_PITS, SAUNA,
+    SCRIBES_OFFICE, SCREW_DISTILLERY, SOME_KIND_OF_KILN, STUDY_HALL,
+    TAILORS, TAVERN, TROPHY_ROOM, UNIVERSAL_HEALTH_STAIR, UNIVERSITY,
+    YOGA_CLASS,
+)
+from .items import RogueLegacy2Item, all_non_event_items_table, create_item, create_items
 from .locations_and_regions import all_non_event_locations_table, create_regions
 from .options import RogueLegacy2GameOptions
 
@@ -10,95 +29,95 @@ from .options import RogueLegacy2GameOptions
 # Any upgrade missing from this dict defaults to depth 1.
 MANOR_UPGRADE_DEPTHS: dict[str, int] = {
     # ── Vitality ─────────────────────────────────────────────────────────────
-    "Mess Hall (Vitality Up I)":                        3,
-    "Fruit Juice Bar (Vitality Up II)":                 5,
-    "Meteora Gym (Vitality Up III)":                    7,
+    MESS_HALL:               3,
+    FRUIT_JUICE_BAR:         5,
+    METEORA_GYM:             7,
     # ── Misc survival ────────────────────────────────────────────────────────
-    "Institute of Gastronomy (Health Drop Scaling)":    8,
+    INSTITUTE_OF_GASTRONOMY: 8,
     # ── Strength ─────────────────────────────────────────────────────────────
-    "Arsenal (Strength Up I)":                          5,
-    "Sauna (Strength Up II)":                           6,
-    "Rock Climbing Wall (Strength Up III)":             9,
+    ARSENAL:                 5,
+    SAUNA:                   6,
+    ROCK_CLIMBING_WALL:      9,
     # ── Spin kicks ───────────────────────────────────────────────────────────
-    "Bamboo Garden (Spin Kick scales with INT)":        8,
+    BAMBOO_GARDEN:           8,
     # ── Dexterity ────────────────────────────────────────────────────────────
-    "Gym (Dexterity Up I)":                             7,
-    "Yoga Class (Dexterity Up II)":                     9,
-    "Flower Shop (Dexterity Up III)":                   11,
+    GYM:                     7,
+    YOGA_CLASS:              9,
+    FLOWER_SHOP:             11,
     # ── Weapon crit ──────────────────────────────────────────────────────────
-    "The Laundromat (Weapon Crit Damage Up)":           10,
+    LAUNDROMAT:              10,
     # ── Intelligence ─────────────────────────────────────────────────────────
-    "Study Hall (Intelligence Up I)":                   5,
-    "Math Club (Intelligence Up II)":                   8,
-    "University (Intelligence Up III)":                 10,
+    STUDY_HALL:              5,
+    MATH_CLUB:               8,
+    UNIVERSITY:              10,
     # ── Focus ────────────────────────────────────────────────────────────────
-    "Library (Focus Up I)":                             7,
-    "Hall of Wisdom (Focus Up II)":                     9,
-    "Court of the Wise (Focus Up III)":                 11,
+    LIBRARY:                 7,
+    HALL_OF_WISDOM:          9,
+    COURT_OF_THE_WISE:       11,
     # ── Magic crit damage ────────────────────────────────────────────────────
-    "The Lodge (Magic Crit Damage Up)":                 10,
+    LODGE:                   10,
     # ── Equipment weight ─────────────────────────────────────────────────────
-    "Fashion Chambers (Max Weight Up I)":               4,
-    "Tailors (Max Weight Up II)":                       6,
-    "Artisan (Max Weight Up III)":                      7,
+    FASHION_CHAMBERS:        4,
+    TAILORS:                 6,
+    ARTISAN:                 7,
     # ── Rune weight ──────────────────────────────────────────────────────────
-    "Etching Chambers (Max Rune Weight Up I)":          4,
-    "Pillow Mill (Max Rune Weight Up II)":              6,
-    "Bed Mill (Max Rune Weight Up III)":                7,
+    ETCHING_CHAMBERS:        4,
+    PILLOW_MILL:             6,
+    BED_MILL:                7,
     # ── Armor ────────────────────────────────────────────────────────────────
-    "Foundry (Armor Up I)":                             6,
-    "Blast Furnace (Armor Up II)":                      8,
-    "Some Kind of Kiln (Armor Up III)":                 10,
+    FOUNDRY:                 6,
+    BLAST_FURNACE:           8,
+    SOME_KIND_OF_KILN:       10,
     # ── Gold & economy ───────────────────────────────────────────────────────
-    "Universal Health Stair (Traits Give Gold)":        1,
-    "Repurposed Mining Shaft (Traits Gold Gain Up)":    3,
-    "Geologist's Camp (Ore Drop Chance Up)":            6,
-    "Dowsing Center (Red Aether Drop Chance Up)":       8,
-    "Massive Vault (Gold Gain Up I)":                   10,
+    UNIVERSAL_HEALTH_STAIR:  1,
+    REPURPOSED_MINING_SHAFT: 3,
+    GEOLOGISTS_CAMP:         6,
+    DOWSING_CENTER:          8,
+    MASSIVE_VAULT:           10,
     # ── Rerolls ──────────────────────────────────────────────────────────────
-    "Career Center (Re-Roll Children)":                 5,
-    "Aerobics Classroom (Encumbrance Limit Up)":        5,
+    CAREER_CENTER:           5,
+    AEROBICS_CLASSROOM:      5,
     # ── Living safe ──────────────────────────────────────────────────────────
-    "Courthouse (Living Safe Max Gold Up)":             4,
-    "Scribe's Office (Living Safe Conversion Up)":      5,
+    COURTHOUSE:              4,
+    SCRIBES_OFFICE:          5,
     # ── Class unlocks ────────────────────────────────────────────────────────
-    "Fighting Ring (Boxer Class)":                      6,
-    "Dance Hall (Duelist Class)":                       6,
-    "Guild of Dark Arts (Assassin Class)":              8,
-    "Drill Store (Architect Cost Reduction)":           6,
-    "Adoption Center (More Heirs)":                     10,
-    "The Kitchen (Chef Class)":                         6,
-    "Butcher's Shoppe (Barbarian Class)":               4,
-    "Academy (Mage Class)":                             4,
-    "Archery Range (Ranger Class)":                     2,
-    "Sand Pits (Valkyrie Class)":                       4,
-    "Saltpeter Mines (Gunslinger Class)":               8,
-    "Ryokan (Ronin Class)":                             8,
-    "The Tavern (Bard Class)":                          7,
-    "The Flying Docks (Pirate Class)":                  9,
-    "The Astral Gardens (Astromancer Class)":           9,
-    "The Aviary (Dragon Lancer Class)":                 7,
+    FIGHTING_RING:           6,
+    DANCE_HALL:              6,
+    GUILD_OF_DARK_ARTS:      8,
+    DRILL_STORE:             6,
+    ADOPTION_CENTER:         10,
+    KITCHEN:                 6,
+    BUTCHERS_SHOPPE:         4,
+    ACADEMY:                 4,
+    ARCHERY_RANGE:           2,
+    SAND_PITS:               4,
+    SALTPETER_MINES:         8,
+    RYOKAN:                  8,
+    TAVERN:                  7,
+    FLYING_DOCKS:            9,
+    ASTRAL_GARDENS:          9,
+    AVIARY:                  7,
     # ── Progression & utility ────────────────────────────────────────────────
-    "Trophy Room (XP Up)":                              5,
-    "Jeweler (Ore Gain Up)":                            11,
-    "Buried Tomb (Red Aether Gain Up)":                 9,
-    "Dummy (Training Dummy Unlock)":                    4,
-    "Meditation Studies (Boss Health/Mana Restore)":    5,
-    "Sage Totem (Mastery Rank Unlock)":                 4,
-    "Archaeology Camp (Relic Resolve Cost Down)":       7,
-    "Medieval Forgery (Relic Reroll Up)":               8,
-    "Alchemy Lab (Potion Recharge Talent)":             7,
-    "Psychiatrist (Resolve Up)":                        6,
-    "Jousting Studies (Dash Damage Reduction)":         7,
-    "Charity Dungeon (Charon Donation Bonus Unlock)":   3,
-    "The Dicer's Den (Weapon Crit Chance Up)":          10,
-    "The Quantum Observatory (Magic Crit Chance Up)":   11,
-    "The Bizarre Bazaar (Reroll Relic Room Cap Up)":    9,
-    "Screw Distillery (Architect Unlock)":              5,
+    TROPHY_ROOM:             5,
+    JEWELER:                 11,
+    BURIED_TOMB:             9,
+    DUMMY:                   4,
+    MEDITATION_STUDIES:      5,
+    SAGE_TOTEM:              4,
+    ARCHAEOLOGY_CAMP:        7,
+    MEDIEVAL_FORGERY:        8,
+    ALCHEMY_LAB:             7,
+    PSYCHIATRIST:            6,
+    JOUSTING_STUDIES:        7,
+    CHARITY_DUNGEON:         3,
+    DICERS_DEN:              10,
+    QUANTUM_OBSERVATORY:     11,
+    BIZARRE_BAZAAR:          9,
+    SCREW_DISTILLERY:        5,
     # ── NPC unlocks ──────────────────────────────────────────────────────────
-    "Offshore Bank Account (Living Safe)":              2,
-    "Foundation (Smithy Unlock)":                       3,
-    "Enchantress' Quarters (Enchantress Unlock)":       3,
+    OFFSHORE_BANK_ACCOUNT:   2,
+    FOUNDATION:              3,
+    ENCHANTRESS_QUARTERS:    3,
 }
 
 
@@ -158,7 +177,7 @@ class RogueLegacy2World(World):
         min_factor = 1.0 - self.options.manor_cost_min_subtractive_factor.value / 100.0
         max_factor = 1.0 + self.options.manor_cost_max_additive_factor.value / 100.0
         costs: list[int] = []
-        for upgrade in _CORE_MANOR_UPGRADES + _NPC_MANOR_UPGRADES:
+        for upgrade in CORE_MANOR_UPGRADES + NPC_MANOR_UPGRADES:
             depth = MANOR_UPGRADE_DEPTHS.get(upgrade, 1)
             factor = self.random.uniform(min_factor, max_factor)
             raw = base * depth * factor

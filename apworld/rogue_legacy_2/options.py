@@ -142,7 +142,7 @@ class ManorCostMaxAdditiveFactor(Range):
     """Maximum upward variance for manor costs, as a percentage (0–500).
 
     E.g. 120 means costs can be as high as (1 + 1.20) = 220% of the base formula.
-    Combined with ManorCostMinSubtractFactor, the random factor is drawn uniformly
+    Combined with ManorCostMinSubtractiveFactor, the random factor is drawn uniformly
     from [1 - subtract/100, 1 + add/100]. Set both to 0 for deterministic costs.
     """
     display_name = "Manor Cost Max Additive Factor"
@@ -161,5 +161,5 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     randomize_npc_unlocks: RandomizeNpcUnlocks
     journal_checks: JournalChecks
     manor_cost_base: ManorCostBase
-    manor_cost_min_subtractive_factor: ManorCostMinSubtractFactor
+    manor_cost_min_subtractive_factor: ManorCostMinSubtractiveFactor
     manor_cost_max_additive_factor: ManorCostMaxAdditiveFactor
