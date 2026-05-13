@@ -100,6 +100,81 @@ The full skill tree has 72 purchasable nodes (see `SkillTreeType` enum). Options
 - Option A seems best. Just replace a node (even if the node has tiered purchases) with just a single purchase that counts as a check.
 - There will likely need to be balancing done to make sure gold costs are reasonable.
 
+#### Manor Upgrade Path Tree
+- To see what depth in the manor upgrade tree each slot is, here is the tree of upgrades
+1: universal health stair
+ 2: bard class
+  3: vitality I
+   4: mages
+    5: int I
+     6: chefs
+      7: alchemy lab
+      7: focus I
+       8: int II
+        9: astromancer
+         10: adoption center
+         10: int III
+          11: quantum observatory
+       8: gunslingers
+        9: focus II
+         10: the lodge
+          11: focus III
+   4: barbarians
+    5: architect
+     6: drill store
+      7: bards
+       8: bamboo garden
+        9: red aether gain
+    5: vitality II
+     6: boxers
+      7: vitality III
+       8: institute of gastronomy
+    5: meditation studies
+     6: armor I
+      7: dragon lancers
+       8: armor up II
+        9: pirate
+         10: gold gain
+         10: armor III
+          11: ore gain
+     6: resolve up
+      7: archeology camp
+       8: medieval forgery
+        9: bizarre bazaar
+   4: Valkyries
+    5: strength I
+     6: strength II
+      7: jousting studies
+       8: ronin
+        9: strength III
+         10: dicer's den 
+     6: duelists
+      7: dexterity I
+       8: assassin
+        9: dexterity II
+         10: laundromat
+          11: dexterity III
+  3: enchantress'
+   4: sage totem
+    5: xp gain
+   4: rune weight I
+    5: career center
+     6: rune weight II
+      7: rune weight III
+       8: dowsing center
+  3: smithy
+   4: dummy
+   4: weight I
+    5: encumbrance limit
+     6: geologist camp
+     6: weight up II
+      7: weight up III
+ 2: living safe
+  3: charity dungeon
+   4: courthouse
+    5: scribe's office
+  3: repurposed mining shaft
+
 ### Regular Chest Openings (Bronze / Silver / Gold)
 Every room can have a Bronze, Silver, or Gold chest. These are reset each run.
 Tracked per-room via `StageSaveData.ChestTrackerDataList` and `RoomSaveData.ChestStates`.

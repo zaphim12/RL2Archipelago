@@ -103,11 +103,52 @@ class RandomizeNpcUnlocks(Toggle):
 
     When enabled (default), the three NPC upgrade slots (Living Safe, Smithy, Enchantress)
     are added as randomized Archipelago locations whose unlocks can be placed anywhere.
-    When disabled, these unlock slots will always be placed in their original location. 
+    When disabled, these unlock slots will always be placed in their original location.
     This allows them to be unlocked early instead of potentially gated far into a run.
     """
     display_name = "Randomize NPC Unlock Locations"
     default = 1
+
+
+class ManorCostBase(Range):
+    """Base gold multiplier for manor upgrade costs.
+
+    Cost formula: base * depth * random_factor, rounded to the nearest 25 gold.
+    'depth' is a per-slot value defined in the apworld that reflects how deep
+    in the manor unlock tree that slot sits (all default to 1 until configured).
+    The random_factor is determined by the ManorCostMinSubtractFactor and 
+    ManorCostMaxAdditiveFactor options.
+    """
+    display_name = "Manor Cost Base"
+    range_start = 1
+    range_end = 9999
+    default = 100
+
+
+class ManorCostMinSubtractiveFactor(Range):
+    """Maximum downward variance for manor costs, as a percentage (0–100).
+
+    E.g. 20 means costs can be as low as (1 - 0.20) = 80% of the base formula.
+    Combined with ManorCostMaxAdditiveFactor, the random factor is drawn uniformly from
+    [1 - subtract/100, 1 + add/100]. Set both to 0 for deterministic costs.
+    """
+    display_name = "Manor Cost Min Subtractive Factor"
+    range_start = 0
+    range_end = 100
+    default = 20
+
+
+class ManorCostMaxAdditiveFactor(Range):
+    """Maximum upward variance for manor costs, as a percentage (0–500).
+
+    E.g. 120 means costs can be as high as (1 + 1.20) = 220% of the base formula.
+    Combined with ManorCostMinSubtractFactor, the random factor is drawn uniformly
+    from [1 - subtract/100, 1 + add/100]. Set both to 0 for deterministic costs.
+    """
+    display_name = "Manor Cost Max Additive Factor"
+    range_start = 0
+    range_end = 500
+    default = 50
 
 
 @dataclass
@@ -119,3 +160,6 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     manor_useful_count: ManorUsefulCount
     randomize_npc_unlocks: RandomizeNpcUnlocks
     journal_checks: JournalChecks
+    manor_cost_base: ManorCostBase
+    manor_cost_min_subtractive_factor: ManorCostMinSubtractFactor
+    manor_cost_max_additive_factor: ManorCostMaxAdditiveFactor

@@ -26,6 +26,9 @@ public static class ItemRegistry
     // Canonical ordered list mapping list index → SkillTreeType.
     // MUST stay in lockstep with _CORE_MANOR_UPGRADES + _NPC_MANOR_UPGRADES in items.py.
     // Indices 0-68 are core upgrades; 69-71 are NPC unlock slots.
+    /// <summary>Ordered list mapping slot index → <see cref="SkillTreeType"/>, in lockstep with the Python apworld.</summary>
+    public static IReadOnlyList<SkillTreeType> SkillTreeTypes => s_skillTreeTypes;
+
     internal static readonly SkillTreeType[] s_skillTreeTypes =
     [
         SkillTreeType.Health_Up,                  // 0

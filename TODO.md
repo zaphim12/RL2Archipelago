@@ -44,7 +44,6 @@
   [x] Give rewards in a bundle of configurable size (e.g. 5 strength upgrades per item)
   [x] Have some number of rewards be useful and the rest be filler
   [ ] Allow setting a maximum number of total bundles
-[ ] Add traps
 
 ## Locations:
 [x] Boss kills
@@ -61,6 +60,7 @@
   [x] Configurable to be off, individual, or sets of memories/journals
 [x] Skill tree node purchases
   [x] Config for blacksmith, enchantress, and living safe to be non-randomized
+  [x] Custom cost algorithm with configurable values
 
 ## Maybe eventually:
 [ ] Figure out some visually appealing way to display the current stat bonuses the player has received

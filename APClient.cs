@@ -4,6 +4,7 @@ using Archipelago.MultiClient.Net.Enums;
 using Archipelago.MultiClient.Net.Helpers;
 using Archipelago.MultiClient.Net.MessageLog.Messages;
 using Archipelago.MultiClient.Net.Models;
+using Newtonsoft.Json.Linq;
 using RL2Archipelago.Items;
 using RL2Archipelago.Locations;
 using RL2Archipelago.Patches;
@@ -51,6 +52,13 @@ public static class APClient
 
     /// <summary>True when death_link is enabled for this slot.</summary>
     public static bool DeathLinkEnabled { get; private set; }
+
+    /// <summary>
+    /// Pre-computed gold costs for each manor upgrade slot, keyed by <see cref="SkillTreeType"/>.
+    /// Populated from slot data on connect. Empty when not connected.
+    /// </summary>
+    public static IReadOnlyDictionary<SkillTreeType, int> ManorUpgradeCosts { get; private set; }
+        = new Dictionary<SkillTreeType, int>();
 
     /// <summary>True while we are applying an incoming death beacon, so the death patch skips sending an echo.</summary>
     internal static bool IsReceivingDeathLink { get; private set; }
@@ -172,6 +180,20 @@ public static class APClient
 
             _slotName = connData.SlotName;
             DeathLinkEnabled = SlotData.TryGetValue("death_link", out var dlObj) && Convert.ToInt32(dlObj) != 0;
+
+            if (SlotData.TryGetValue("manor_upgrade_costs", out var costsObj) && costsObj is JArray costsArray)
+            {
+                var types = ItemRegistry.SkillTreeTypes;
+                var map = new Dictionary<SkillTreeType, int>(types.Count);
+                int i = 0;
+                foreach (var token in costsArray)
+                {
+                    if (i >= types.Count) break;
+                    map[types[i++]] = token.Value<int>();
+                }
+                ManorUpgradeCosts = map;
+            }
+
             _deathLinkService = Session.CreateDeathLinkService();
             if (DeathLinkEnabled)
             {

@@ -168,8 +168,9 @@ internal static class ManorUpgradePatch
             return false;
         }
 
-        // TODO: Devise some algorithm for radonly assigning gold costs (probably with a YAML config to adjust these costs)
-        int goldCost = skillTreeObj.GoldCostWithLevelAppreciation;
+        int goldCost = APClient.ManorUpgradeCosts.TryGetValue(skillTreeObj.SkillTreeType, out var precomputedCost)
+            ? precomputedCost
+            : skillTreeObj.GoldCostWithLevelAppreciation;
         if (SaveManager.PlayerSaveData.GoldCollectedIncludingBank < goldCost)
         {
             PlayFailAnim(__instance);
@@ -330,11 +331,13 @@ internal static class ManorUpgradePatch
             if (newIndicator != null)
             {
                 var skillTreeObj = SkillTreeManager.GetSkillTreeObj(__instance.SkillTreeType);
+                int slotCost = APClient.ManorUpgradeCosts.TryGetValue(__instance.SkillTreeType, out var precomputed)
+                    ? precomputed
+                    : skillTreeObj.GoldCostWithLevelAppreciation;
                 bool canAfford = skillTreeObj != null
                     && !skillTreeObj.IsLocked
                     && !skillTreeObj.IsSoulLocked
-                    && SaveManager.PlayerSaveData.GoldCollectedIncludingBank
-                       >= skillTreeObj.GoldCostWithLevelAppreciation;
+                    && SaveManager.PlayerSaveData.GoldCollectedIncludingBank >= slotCost;
                 newIndicator.gameObject.SetActive(canAfford);
             }
         }
@@ -449,6 +452,19 @@ internal static class ManorUpgradePatch
                     __instance.gameObject.SetActive(true);
                 purchaseText.text = string.Format(
                     LocalizationManager.GetString("LOC_ID_SKILL_TREE_UI_PURCHASE_MULTIPLE_1", isFemale: false), 1);
+            }
+            return;
+        }
+
+        if (__instance.DescriptionType == SkillTreeDescriptionUpdater.SkillTreeDescriptionType.Cost)
+        {
+            if (__instance.CurrentValue is { } costCv)
+            {
+                bool isChecked = APClient.RunState?.CheckedLocations?.Contains(locationId.Value) ?? false;
+                if (isChecked)
+                    costCv.text = LocalizationManager.GetString("LOC_ID_GENERAL_UI_NA_1", isFemale: false);
+                else if (APClient.ManorUpgradeCosts.TryGetValue(__0, out var customCost))
+                    costCv.text = customCost.ToString();
             }
             return;
         }
