@@ -1,0 +1,161 @@
+# Rogue Legacy 2 - Archipelago player YAML
+# ─────────────────────────────────────────
+# Fill in your desired slot name below, then drop this file into the Archipelago
+# "Players" folder and generate a game via the Archipelago Launcher.
+
+name: SirLee   # must match what you type in the in-game connection window under "Slot Name".
+
+game: Rogue Legacy 2
+
+description: Solo test game for RL2Archipelago development
+
+Rogue Legacy 2:
+
+  # ── Standard Archipelago options ────────────────────────────────────────
+
+  # How strictly the generator ensures all locations are reachable.
+  #   full      - every check is always reachable
+  #   items     - all relevant items are guaranteed reachable
+  #   minimal   - the seed is completable
+  accessibility: full
+
+  # Spreads progression items earlier to reduce early-game blocking.
+  # 0 = off, 50 = default gentle balancing, 99 = maximum front-loading.
+  progression_balancing: 50
+
+  # ── Death Link ──────────────────────────────────────────────────────────
+
+  # When you die, everyone dies - and when anyone else dies, so do you.
+  # Dying in Rogue Legacy 2 sends a death event to every other player in the
+  # multiworld who also has death_link enabled, killing their current heir.
+  # true / false  (default: false)
+  death_link: false
+
+  # ── Blueprint Checks ────────────────────────────────────────────────────
+
+  # Number of Archipelago location checks available from blueprint chest
+  # drops per biome. When a chest would normally award a blueprint, it instead
+  # awards an AP check (until this biome's pool is exhausted, after which extra
+  # drops revert to normal vanilla coin drops).
+  #
+  # There are 6 biomes, so the total blueprint check count is this value × 6.
+  # The default of 11 gives 66 checks, closely mirroring the 65 unique
+  # blueprints in the base game.
+  # Valid range: 0–16  (default: 11)
+  blueprint_checks_per_biome: 11
+
+  # ── Rune / Fairy Chest Checks ───────────────────────────────────────────
+
+  # Number of Archipelago location checks available from fairy chests per
+  # biome. When a fairy chest would normally drop a rune, it instead awards an
+  # AP check (until this biome's pool is exhausted, after which extra fairy
+  # chest completions drop red aether instead).
+  #
+  # There are 6 biomes, so the total fairy chest check count is this value × 6.
+  # The default of 4 gives 24 checks, matching the typical rune drop count.
+  # Valid range: 0–16  (default: 4)
+  rune_checks_per_biome: 4
+
+  # ── Manor Upgrade Bundle Size ────────────────────────────────────────────
+
+  # How many skill-tree levels are granted each time a manor upgrade item is
+  # received from the server. Multi-level skills (e.g. Strength Up) are split
+  # into multiple AP items whose copies each grant this many levels at once.
+  #
+  # Example with the default of 5: receiving "Manor: Strength Up I" instantly
+  # grants 5 strength levels rather than the 1 level a normal manor purchase
+  # gives. The final bundle may grant fewer levels if the skill is near its cap.
+  #
+  # Set to 1 to mirror the base-game's one-level-at-a-time behavior.
+  # Valid range: 1–35  (default: 5)
+  manor_upgrade_bundle_size: 5
+
+  # ── Manor Useful Upgrade Count ───────────────────────────────────────────
+
+  # For multi-level manor upgrades that require more than one AP item copy to
+  # reach max level, this controls how many of those copies are classified as
+  # "Useful" versus "Filler" in the Archipelago item pool.
+  #
+  # "Useful" items are prioritized for placement whereas
+  # "Filler" items may not be placed at all if the pool of items is larger than
+  # the number of available locations. 
+  # Single-level upgrades like class or NPC unlocks) are always "Useful" 
+  # regardless of this setting.
+  #
+  # Set to 0   - all multi-level manor skills are filler.
+  # Set to 35  - every manor skill remains useful.
+  # Valid range: 0–35  (default: 1)
+  manor_useful_count: 1
+
+  # ── Journal & Memory Checks ──────────────────────────────────────────────
+
+  # Controls whether reading journals and memory fragments awards AP checks.
+  #
+  #   disabled   - no journal or memory checks (0 extra locations).
+  #   individual - every journal entry and every memory fragment is its own
+  #                check (41 total checks across both categories).
+  #   grouped    - one check per biome when ALL journals in that biome are
+  #                read, and one check per biome when ALL memories in that
+  #                biome are read (8 total checks).
+  # Valid values: disabled, individual, grouped  (default: grouped)
+  journal_checks: grouped
+
+  # ── NPC Unlock Randomization ─────────────────────────────────────────────
+
+  # Whether the three NPC upgrade slots (Living Safe, Smithy, Enchantress) are
+  # included as randomized AP locations whose unlock items can be placed
+  # anywhere in the multiworld.
+  #
+  # true  - NPC unlocks are randomized; they may be unlocked from any AP location
+  #         before the NPCs become available.
+  # false - NPC unlocks remain in their vanilla manor slots so they can be
+  #         purchased early without being gated behind progression.
+  # true / false  (default: true)
+  randomize_npc_unlocks: true
+
+  # ── Traps ────────────────────────────────────────────────────────────────
+
+  # Total number of NG+ burden trap items placed in the item pool.
+  #
+  # Traps are harmful items that activate a biome hazard for your current heir
+  # when received from the multiworld. The hazard persists until the heir dies.
+  # The five trap types are:
+  #   - Cannonball Rain   (Burden of Mundi's Flagship)
+  #   - Dragon Lancers    (Burden of Irad's Torment)
+  #   - Automaton Swarm   (Burden of Pishon's Uprising)
+  #   - Giant Snowflakes  (Burden of Kerguelen's Frost)
+  #   - Void Waves        (Burden of the High Scholar's Metamorphosis)
+  #
+  # Items are distributed as evenly as possible across the five types.
+  # Set to 0 to disable traps entirely.
+  # Valid range: 0–25  (default: 3)
+  trap_count: 3
+
+  # ── Manor Upgrade Costs ──────────────────────────────────────────────────
+
+  # Base gold multiplier for manor upgrade costs.
+  #
+  # Cost formula: base * depth * random_factor, rounded to the nearest 25 gold.
+  # 'depth' is a per-slot value that reflects how deep in the manor unlock tree
+  # that slot sits. The random_factor is drawn from the range defined by
+  # ManorCostMinSubtractFactor and ManorCostMaxAdditiveFactor below.
+  # Valid range: 1–9999  (default: 100)
+  manor_cost_base: 100
+
+  # Maximum downward variance for manor costs, as a percentage (0–100).
+  #
+  # E.g. 20 means costs can be as low as (1 - 0.20) = 80% of the base formula.
+  # Combined with manor_cost_max_additive_factor, the random factor is drawn
+  # uniformly from [1 - subtract/100, 1 + add/100].
+  # Set both variance options to 0 for deterministic costs.
+  # Valid range: 0–100  (default: 20)
+  manor_cost_min_subtractive_factor: 20
+
+  # Maximum upward variance for manor costs, as a percentage (0–500).
+  #
+  # E.g. 120 means costs can be as high as (1 + 1.20) = 220% of the base formula.
+  # Combined with manor_cost_min_subtract_factor, the random factor is drawn
+  # uniformly from [1 - subtract/100, 1 + add/100].
+  # Set both variance options to 0 for deterministic costs.
+  # Valid range: 0–500  (default: 50)
+  manor_cost_max_additive_factor: 50
