@@ -18,7 +18,7 @@ from .constants import (
     TELEPORTER_NAMES,
 )
 
-# All non-event item IDs are offset from this base.
+# All item IDs are offset from this base.
 # TODO: Register an official base ID with the Archipelago project before publishing.
 BASE_ID = 0xBEEF0000
 
@@ -42,14 +42,11 @@ class RogueLegacy2ItemData(NamedTuple):
 
 # ---------------------------------------------------------------------------
 # Item table
-# Entries with code=None are event items (placed at matching event locations).
 # ---------------------------------------------------------------------------
 item_data_table: dict[str, RogueLegacy2ItemData] = {
     # ── Filler ───────────────────────────────────────────────────────────────
     "Gold Coins": RogueLegacy2ItemData(code=BASE_ID + FILLER_OFFSET + 0, classification=ItemClassification.filler),
 
-    # ── Events (no ID; placed by create_items at the matching event location) ─
-    "Victory":    RogueLegacy2ItemData(code=None, classification=ItemClassification.progression),
 }
 
 # Trap items: NG+ burden hazards activated as Archipelago traps.
@@ -127,14 +124,8 @@ for _i, _name in enumerate(CORE_MANOR_UPGRADES + NPC_MANOR_UPGRADES):
     )
     MANOR_ITEM_NAMES.append(_item_name)
 
-# Event items are placed at locations whose names differ from the item name.
-# Matches must be kept in sync with the "address=None" entries in locations_and_regions.py.
-event_item_to_location: dict[str, str] = {
-    "Victory": "The Traitor Defeated",
-}
-
 # Convenience: name→ID dict used by World.item_name_to_id
-all_non_event_items_table: dict[str, int] = {
+items_table: dict[str, int] = {
     name: data.code
     for name, data in item_data_table.items()
     if data.code is not None
@@ -147,13 +138,9 @@ def create_item(player: int, name: str) -> RogueLegacy2Item:
 
 
 def create_items(world: "RogueLegacy2World") -> None:
-    """Fill the multiworld item pool to match the number of non-event locations."""
+    """Fill the multiworld item pool to match the number of available locations."""
     multiworld = world.multiworld
     player = world.player
-
-    # Place every event item at its matching event location.
-    for item_name, location_name in event_item_to_location.items():
-        multiworld.get_location(location_name, player).place_locked_item(create_item(player, item_name))
 
     randomize_npc = bool(world.options.randomize_npc_unlocks.value)
 

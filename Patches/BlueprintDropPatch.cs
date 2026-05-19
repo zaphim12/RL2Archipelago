@@ -23,12 +23,21 @@ internal static class BlueprintDropPatch
     // Runs after ChestObj resolves what special item to drop. If AP is active but
     // there is no available location for this biome, we return null so the chest
     // coroutine falls back to its gold-drop path instead of granting a blueprint.
+    //
+    // We also handle the case where the game wanted to drop a blueprint but returned
+    // null because no equipment met the room's level/rarity requirements. The
+    // probability roll already happened in GetSpecialItemTypeToDrop, so we still
+    // owe an AP check; we inject a placeholder BlueprintDrop so the chest coroutine
+    // proceeds to DropSpecialItem (which our prefix intercepts and suppresses).
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ChestObj), "CalculateSpecialItemDropObj")]
-    private static void CalculateSpecialItemDropObj_Postfix(ref ISpecialItemDrop __result)
+    private static void CalculateSpecialItemDropObj_Postfix(ref ISpecialItemDrop __result, SpecialItemType specialItemType)
     {
         if (!APClient.IsConnected || APClient.RunState == null) return;
-        if (__result is not IBlueprintDrop) return;
+
+        bool triedBlueprint = specialItemType == SpecialItemType.Blueprint;
+        bool gotBlueprint   = __result is IBlueprintDrop;
+        if (!triedBlueprint && !gotBlueprint) return;
 
         var room = PlayerManager.GetCurrentPlayerRoom();
         if (room.IsNativeNull()) { __result = null; return; }
@@ -37,7 +46,13 @@ internal static class BlueprintDropPatch
         if (biomeIndex == null) { __result = null; return; }
 
         var locationId = LocationRegistry.NextBlueprintChestLocation(biomeIndex.Value, APClient.RunState.CheckedLocations);
-        if (locationId == null) { __result = null; } // pool exhausted — null triggers gold fallback in coroutine
+        if (locationId == null) { __result = null; return; } // pool exhausted — null triggers gold fallback in coroutine
+
+        // Level/rarity filter blocked the drop but the probability roll said "blueprint".
+        // Inject a placeholder so DropSpecialItem_Prefix can send the AP check; the
+        // prefix returns false so the dummy category/type values are never used.
+        if (!gotBlueprint)
+            __result = new BlueprintDrop(default, default);
     }
 
     [HarmonyPrefix]

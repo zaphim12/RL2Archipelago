@@ -475,6 +475,24 @@ public static class APClient
         }
     }
 
+    /// <summary>
+    /// Notifies the Archipelago server that the player has achieved the goal condition.
+    /// Call this instead of <see cref="SendLocationCheck"/> when the final boss is defeated.
+    /// </summary>
+    public static void SendGoalAchieved()
+    {
+        if (!IsConnected) return;
+        try
+        {
+            Session.SetGoalAchieved();
+            Plugin.Log.LogInfo("[AP] Goal achieved — sent status update to server.");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.LogError($"[AP] Failed to send goal achieved: {ex.Message}");
+        }
+    }
+
     /// <summary>Sends a death beacon to all other DeathLink-enabled players in the multiworld.</summary>
     public static void SendDeathLink()
     {

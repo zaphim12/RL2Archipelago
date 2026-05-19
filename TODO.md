@@ -70,3 +70,4 @@
 [ ] Charon tribute rewards as locations
   - Maybe charity donation should be in effect by default?
   - This should probably be configurable, off by default
+[ ] Have golden chests give a hint for an item location when they're opened

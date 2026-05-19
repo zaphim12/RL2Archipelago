@@ -20,8 +20,8 @@ from .constants import (
     TAILORS, TAVERN, TROPHY_ROOM, UNIVERSAL_HEALTH_STAIR, UNIVERSITY,
     YOGA_CLASS,
 )
-from .items import RogueLegacy2Item, all_non_event_items_table, create_item, create_items
-from .locations_and_regions import all_non_event_locations_table, create_regions
+from .items import RogueLegacy2Item, items_table, create_item, create_items
+from .locations_and_regions import locations_table, create_regions
 from .options import RogueLegacy2GameOptions
 
 # Tree depth for each manor upgrade slot. Depth 1 = available at the start of the game;
@@ -143,8 +143,8 @@ class RogueLegacy2World(World):
     options_dataclass = RogueLegacy2GameOptions
     options: RogueLegacy2GameOptions
 
-    item_name_to_id = all_non_event_items_table
-    location_name_to_id = all_non_event_locations_table
+    item_name_to_id = items_table
+    location_name_to_id = locations_table
 
     # ── World generation ─────────────────────────────────────────────────────
 

@@ -18,10 +18,13 @@ internal static class RuneDropPatch
 {
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ChestObj), "CalculateSpecialItemDropObj")]
-    private static void CalculateSpecialItemDropObj_Postfix(ref ISpecialItemDrop __result)
+    private static void CalculateSpecialItemDropObj_Postfix(ref ISpecialItemDrop __result, SpecialItemType specialItemType)
     {
         if (!APClient.IsConnected || APClient.RunState == null) return;
-        if (__result is not IRuneDrop) return;
+
+        bool triedRune = specialItemType == SpecialItemType.Rune;
+        bool gotRune   = __result is IRuneDrop;
+        if (!triedRune && !gotRune) return;
 
         var room = PlayerManager.GetCurrentPlayerRoom();
         if (room.IsNativeNull()) { __result = null; return; }
@@ -30,7 +33,10 @@ internal static class RuneDropPatch
         if (biomeIndex == null) { __result = null; return; }
 
         var locationId = LocationRegistry.NextRuneChestLocation(biomeIndex.Value, APClient.RunState.CheckedLocations);
-        if (locationId == null) { __result = null; } // pool exhausted — null triggers Rune Ore fallback
+        if (locationId == null) { __result = null; return; } // pool exhausted — null triggers Rune Ore fallback
+
+        if (!gotRune)
+            __result = new RuneDrop(default);
     }
 
     [HarmonyPrefix]

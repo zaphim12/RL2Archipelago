@@ -2,7 +2,7 @@ import typing
 from typing import NamedTuple
 
 from BaseClasses import Item, ItemClassification, Location, Region
-from worlds.generic.Rules import set_rule
+from worlds.generic.Rules import add_rule, set_rule
 
 if typing.TYPE_CHECKING:
     from . import RogueLegacy2World
@@ -87,8 +87,6 @@ location_data_table: dict[str, RogueLegacy2LocationData] = {
     "Sun Tower Teleporter Purchase":         RogueLegacy2LocationData(region="Overworld", address=BASE_ID + TELEPORTER_OFFSET + 3),
     "Pishon Dry Lake Teleporter Purchase":   RogueLegacy2LocationData(region="Overworld", address=BASE_ID + TELEPORTER_OFFSET + 4),
 
-    # ── Victory event (placed by __init__.py at the Traitor fight) ───────────
-    "The Traitor Defeated":         RogueLegacy2LocationData(region="Throne Room", address=None),
 }
 
 # Register all manor upgrade locations so location_name_to_id is complete.
@@ -144,7 +142,7 @@ for _bi, _biome_name in enumerate(BIOME_NAMES):
         )
 
 # Convenience: name→ID dict used by World.location_name_to_id
-all_non_event_locations_table: dict[str, int] = {
+locations_table: dict[str, int] = {
     name: data.address
     for name, data in location_data_table.items()
     if data.address is not None
@@ -227,6 +225,9 @@ def create_regions(world: "RogueLegacy2World") -> None:
     _add_event(regions["Overworld"], player, "Pishon Dry Lake - Estuary Tubal Cleared")
     _add_event(regions["Overworld"], player, "Garden of Eden - Jonah Cleared")
 
+    # ── Victory event ────────────────────────────────────────────────────────
+    _add_event(regions["Throne Room"], player, "Victory")
+
     # ── Helper states ────────────────────────────────────────────────────────
     def _all_six_bosses_cleared(state) -> bool:
         return (
@@ -297,7 +298,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
         _all_six_bosses_cleared,
     )
     set_rule(
-        multiworld.get_location("The Traitor Defeated", player),
+        multiworld.get_location("Victory", player),
         lambda state: state.has("Garden of Eden - Jonah Cleared", player),
     )
 
@@ -382,7 +383,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
     set_rule(
         multiworld.get_location("Kerguelen Plateau Teleporter Purchase", player),
         lambda state, p=player: (
-            state.has("Echo's Boots", p) or 
+            state.has("Echo's Boots", p) or
             state.has("Kerguelen Plateau Teleporter", p)
         )
     )
@@ -394,6 +395,19 @@ def create_regions(world: "RogueLegacy2World") -> None:
             state.has("Sun Tower Teleporter", p)
         ),
     )
+    _can_reach_pizza_girl = lambda state, p=player: (
+        state.has("Sun Tower Teleporter", p) or
+        state.has("Echo's Boots", p) or
+        (state.has("Ananke's Shawl", p) and state.has("Aether's Wings", p))
+    )
+    for _tp_name in [
+        "Axis Mundi Teleporter Purchase",
+        "Kerguelen Plateau Teleporter Purchase",
+        "Stygian Study Teleporter Purchase",
+        "Sun Tower Teleporter Purchase",
+        "Pishon Dry Lake Teleporter Purchase",
+    ]:
+        add_rule(multiworld.get_location(_tp_name, player), _can_reach_pizza_girl)
 
     # ── Biome access rules (shared by blueprints, runes, journals, memories) ───
     _biome_access_rules = {

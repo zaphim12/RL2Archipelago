@@ -34,6 +34,13 @@ internal static class BossDefeatPatch
         if (!APClient.IsConnected) return;
 
         var flag = Traverse.Create(__instance).Field<PlayerSaveFlag>("m_bossSaveFlag").Value;
+
+        if (flag == PlayerSaveFlag.FinalBoss_Defeated)
+        {
+            APClient.SendGoalAchieved();
+            return;
+        }
+
         var locationId = LocationRegistry.FromBossSaveFlag(flag);
         if (locationId is null)
         {

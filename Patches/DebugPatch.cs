@@ -55,5 +55,23 @@ internal static class DebugPatch
                 Plugin.Log.LogInfo("[Debug] Key 8 pressed but PlayerSaveData is not available.");
             }
         }
+
+        if (keyboard.GetKeyDown(KeyCode.Alpha7))
+        {
+            if (SaveManager.PlayerSaveData != null)
+            {
+                SaveManager.PlayerSaveData.SetFlag(PlayerSaveFlag.CastleBoss_Defeated, value: true);
+                SaveManager.PlayerSaveData.SetFlag(PlayerSaveFlag.BridgeBoss_Defeated, value: true);
+                SaveManager.PlayerSaveData.SetFlag(PlayerSaveFlag.ForestBoss_Defeated, value: true);
+                SaveManager.PlayerSaveData.SetFlag(PlayerSaveFlag.StudyBoss_Defeated, value: true);
+                SaveManager.PlayerSaveData.SetFlag(PlayerSaveFlag.TowerBoss_Defeated, value: true);
+                SaveManager.PlayerSaveData.SetFlag(PlayerSaveFlag.CaveBoss_Defeated, value: true);
+                Plugin.Log.LogInfo("[Debug] Set all 6 main boss defeated flags.");
+            }
+            else
+            {
+                Plugin.Log.LogInfo("[Debug] Key 7 pressed but PlayerSaveData is not available.");
+            }
+        }
     }
 }

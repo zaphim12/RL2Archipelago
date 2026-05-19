@@ -22,7 +22,7 @@ Tracked via `PlayerSaveFlag.*_Defeated_FirstTime`. One check per boss per NG cyc
 | `TowerBoss_Defeated_FirstTime`  | Estuary Irad | The Sun Tower |
 | `CaveBoss_Defeated_FirstTime`   | Estuary Tubal | Pishon Dry Lake |
 | `GardenBoss_Defeated_FirstTime` | Jonah | Garden of Eden |
-| `FinalBoss_Defeated_FirstTime`  | The Traitor / Cain | Castle Hamson |
+| `FinalBoss_Defeated_FirstTime`  | Cain | Castle Hamson |
 
 
 ### Heirloom Acquisition

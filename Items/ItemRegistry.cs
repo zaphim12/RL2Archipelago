@@ -337,8 +337,8 @@ public static class ItemRegistry
     {
         TrapCannonballRain  => BurdenType.BridgeBiomeUp,
         TrapDragonLancers   => BurdenType.TowerBiomeUp,
-        TrapAutomatonSwarm  => BurdenType.ForestBiomeUp,
-        TrapGiantSnowflakes => BurdenType.CaveBiomeUp,
+        TrapAutomatonSwarm  => BurdenType.CaveBiomeUp,
+        TrapGiantSnowflakes => BurdenType.ForestBiomeUp,
         TrapVoidWaves       => BurdenType.StudyBiomeUp,
         _                   => null,
     };

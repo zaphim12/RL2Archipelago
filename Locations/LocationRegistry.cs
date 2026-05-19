@@ -46,7 +46,8 @@ public static class LocationRegistry
     public const long TowerBossDefeated  = BASE_ID + BOSS_KILL_OFFSET + 4;
     public const long CaveBossDefeated   = BASE_ID + BOSS_KILL_OFFSET + 5;
     public const long GardenBossDefeated = BASE_ID + BOSS_KILL_OFFSET + 6;
-    public const long FinalBossDefeated  = BASE_ID + BOSS_KILL_OFFSET + 7;
+    // Offset + 7 (FinalBoss/Cain) is intentionally absent: defeating Cain triggers
+    // the goal status update (SetGoalAchieved), not a location check.
 
     // ── Heirloom interaction locations ──────────────────────────────────────
 
@@ -161,7 +162,6 @@ public static class LocationRegistry
             [TowerBossDefeated]  = "Estuary Irad Defeated",
             [CaveBossDefeated]   = "Estuary Tubal Defeated",
             [GardenBossDefeated] = "Jonah Defeated",
-            [FinalBossDefeated]  = "The Traitor Defeated",
 
             [StudyMiniboss_SwordKnight_Defeated] = "Gongheads Miniboss Defeated",
             [StudyMiniboss_SpearKnight_Defeated] = "Murmur Miniboss Defeated",
@@ -224,7 +224,6 @@ public static class LocationRegistry
         PlayerSaveFlag.TowerBoss_Defeated  => TowerBossDefeated,
         PlayerSaveFlag.CaveBoss_Defeated   => CaveBossDefeated,
         PlayerSaveFlag.GardenBoss_Defeated => GardenBossDefeated,
-        PlayerSaveFlag.FinalBoss_Defeated  => FinalBossDefeated,
         _ => null,
     };
 
