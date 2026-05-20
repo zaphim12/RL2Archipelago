@@ -130,7 +130,7 @@ cost = base × depth × random_factor
 
 ## Installation
 
-Rogue Legacy 2 must already be installed. All files needed can be downloaded from the GitHub releases page. Look at the most recent release and scroll down to Assets.
+Rogue Legacy 2 must already be installed. All files needed can be downloaded from the [GitHub releases page](https://github.com/zaphim12/RL2Archipelago/releases). Look at the most recent release and scroll down to Assets.
 
 > **Note:** Mac and Linux compatibility has not been tested, but should likely work fine.
 
