@@ -92,7 +92,7 @@ location_data_table: dict[str, RogueLegacy2LocationData] = {
 # Register all manor upgrade locations so location_name_to_id is complete.
 # Core (indices 0-68) are always registered; NPC unlocks (69-71) are registered
 # unconditionally here but only instantiated in create_regions when the option
-# is enabled — same pattern as blueprint/rune pool sizing.
+# is enabled; same pattern as blueprint/rune pool sizing.
 for _i, _name in enumerate(CORE_MANOR_UPGRADES + NPC_MANOR_UPGRADES):
     location_data_table[f"Manor - {_name}"] = RogueLegacy2LocationData(
         region="Manor",
@@ -320,7 +320,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
         lambda state: state.has("Pallas' Void Bell", player) and state.has("Theia's Sun Lantern", player),
     )
 
-    # Miniboss/boss Cleared events — same requirements as their Defeated checks.
+    # Miniboss/boss Cleared events - same requirements as their Defeated checks.
     set_rule(
         multiworld.get_location("Stygian Study - Murmur Miniboss Cleared", player),
         lambda state: state.has("Echo's Boots", player) and state.has("Pallas' Void Bell", player),

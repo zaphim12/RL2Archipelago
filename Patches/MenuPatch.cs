@@ -13,7 +13,7 @@ namespace RL2Archipelago.Patches;
 /// Injects an "Archipelago" button into Rogue Legacy 2's main menu.
 ///
 /// Strategy:
-///   Postfix MainMenuWindowController.Initialize() — called once when the window is
+///   Postfix MainMenuWindowController.Initialize() - called once when the window is
 ///   first loaded.  At that point m_menuButtonList is fully populated by
 ///   GetComponentsInChildren().  We clone one of the existing buttons, change its
 ///   text, clear its inherited event handlers, wire up the controller's private
@@ -73,14 +73,14 @@ internal static class MenuPatch
 
         if (buttonList == null || buttonList.Count == 0)
         {
-            Plugin.Log.LogWarning("[MenuPatch] m_menuButtonList is null or empty — skipping injection.");
+            Plugin.Log.LogWarning("[MenuPatch] m_menuButtonList is null or empty. skipping injection.");
             return;
         }
 
         // Guard: already injected (e.g. menu reopened after returning from gameplay).
         if (buttonList.Exists(b => b != null && b.gameObject.name == ButtonName))
         {
-            Plugin.Log.LogDebug("[MenuPatch] Archipelago button already present — skipping injection.");
+            Plugin.Log.LogDebug("[MenuPatch] Archipelago button already present. skipping injection.");
             return;
         }
 
@@ -98,7 +98,7 @@ internal static class MenuPatch
 
         var apButton = newGO.GetComponent<MainMenuButton>();
 
-        // Clear the event handlers cloned from the template — they still point
+        // Clear the event handlers cloned from the template; they still point
         // to the template's index, which would break navigation.
         apButton.MenuButtonSelected = null;
         apButton.MenuButtonActivated = null;
@@ -176,7 +176,7 @@ internal static class MenuPatch
         if (updateMethod == null || sfxMethod == null)
         {
             Plugin.Log.LogWarning(
-                "[MenuPatch] Could not find UpdateSelectedOptionItem / PlaySelectedSFX — " +
+                "[MenuPatch] Could not find UpdateSelectedOptionItem / PlaySelectedSFX. " +
                 "keyboard navigation may not work correctly for the Archipelago button.");
             return;
         }

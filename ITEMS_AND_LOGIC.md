@@ -1,8 +1,8 @@
-# Rogue Legacy 2 — Archipelago Items and Logic
+# Rogue Legacy 2 - Archipelago Items and Logic
 
 ---
 
-## Tier 1 — Key Items
+## Tier 1 - Key Items
 
 These are items which can unlock new areas/spheres
 - Aesop's Tome -> unlocks all memory related checks (in unlocked biomes)
@@ -16,7 +16,7 @@ These are items which can unlock new areas/spheres
 - Theia's Sun Lantern -> Unlocks Pishon checks
     - (if Pallas) Unlocks Pishon Onyx mini boss and Tubal
 
-## Tier 2 — Included and Potentially Included
+## Tier 2 - Included and Potentially Included
 
 ### Manor Upgrades
 - Not sure how I will display these, that will probably take a lot of work. But essentially, every class unlock must be a manor upgrade, and the other character improvements should also come from checks. They will probably need to be bundled in some way (e.g. +5 strength upgrades, instead of just +1). The number of these and how many upgrades are in each bundle should be configurable
@@ -31,10 +31,10 @@ These are items which can unlock new areas/spheres
 ### Mini-boss completion status
 - This can be considered, but for now I think that if killing bosses unlocks the final boss, then killing mini-bosses should do the same for their associated boss. 
 
-## Tier 3 — Likely not to be included
+## Tier 3 - Likely not to be included
 - Perhaps it could be worth adding checks for things like locking class or skill. But this feels like it would take away from the randomization and maybe isn't worth adding
 
-## Logic — What is needed to complete each check?
+## Logic - What is needed to complete each check?
 - Note: For now, we will only consider skill items and runes. Character strength upgrades can be considered later
 
 ### Boss kills:

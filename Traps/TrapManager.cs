@@ -25,7 +25,7 @@ internal static class TrapManager
     // Each entry tracks a running attack coroutine so we can stop it on room exit or death.
     private static readonly List<(object rule, BaseRoom room, Coroutine coroutine)> _activeCoroutines = new();
 
-    // Stable delegate instances — required so RemoveListener can match the exact reference.
+    // Stable delegate instances. required so RemoveListener can match the exact reference.
     private static readonly Action<object, EventArgs> _onEnterRoom = OnPlayerEnterRoom;
     private static readonly Action<object, EventArgs> _onExitRoom  = OnPlayerExitRoom;
 
@@ -103,7 +103,7 @@ internal static class TrapManager
         if (room == null || !IsValidTrapRoom(room)) return;
 
         // Biome transitions call CreatePoolsFromQueuedProjectiles which destroys any pool
-        // entry not in its queue — including ones we added. Re-pool on every room entry so
+        // entry not in its queue, including ones we added. Re-pool on every room entry so
         // the projectiles are always present when the coroutine tries to fire them.
         EnsureActiveTrapsPooled();
 
@@ -220,7 +220,7 @@ internal static class TrapManager
             }
         }
 
-        // Tunnel destination rooms are transition corridors — skip them.
+        // Tunnel destination rooms are transition corridors. skip them.
         if (room2     != null) return !room2.GridPointManager.IsTunnelDestination;
         if (mergeRoom != null) return !mergeRoom.StandaloneGridPointManagers[0].IsTunnelDestination;
 

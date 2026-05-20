@@ -161,7 +161,7 @@ internal static class ManorUpgradePatch
             return false;
         }
 
-        // Already purchased this AP location — prevent multiple purchases for slots which originally had multiple levels
+        // Already purchased this AP location; prevent multiple purchases for slots which originally had multiple levels
         if (APClient.RunState.CheckedLocations.Contains(locationId.Value))
         {
             PlayFailAnim(__instance);
@@ -198,7 +198,7 @@ internal static class ManorUpgradePatch
 
         __instance.FullyUpgradedRelay.Dispatch();
 
-        return false; // skip vanilla — no SetSkillObjLevel, no vanilla stat grant
+        return false; // skip vanilla. no SetSkillObjLevel, no vanilla stat grant
     }
 
     // ── Suppress purchase pop-up for AP slots ────────────────────────────────
@@ -302,7 +302,7 @@ internal static class ManorUpgradePatch
         var levelLockGO     = t.Field<GameObject>("m_levelLockGO").Value;
 
         // Manor-level gating (padlock) is suppressed in AP mode for all tracked
-        // slots — locations become purchasable as soon as they are visible.
+        // slots. locations become purchasable as soon as they are visible.
         if (levelLockGO != null && levelLockGO.activeSelf)
             levelLockGO.SetActive(false);
 
@@ -313,7 +313,7 @@ internal static class ManorUpgradePatch
                 iconFrame.overrideSprite = t.Field<Sprite>("m_goldFrameSprite").Value;
             if (iconCanvasGroup != null)
                 iconCanvasGroup.alpha = 1f;
-            // Slot already purchased — hide the "affordable" dollar-sign indicator.
+            // Slot already purchased - hide the "affordable" dollar-sign indicator.
             if (newIndicator != null && newIndicator.gameObject.activeSelf)
                 newIndicator.gameObject.SetActive(false);
         }

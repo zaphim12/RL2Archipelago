@@ -41,7 +41,7 @@
     <EmbeddedResource Include="Assets\ap_logo.png" />
   </ItemGroup>
 
-  <!-- Framework assemblies missing from Rogue Legacy's Unity Mono runtime — must be deployed with the plugin -->
+  <!-- Framework assemblies missing from Rogue Legacy's Unity Mono runtime. must be deployed with the plugin -->
   <ItemGroup>
     <Reference Include="System.Numerics">
       <Private>true</Private>
@@ -57,7 +57,7 @@
     </Reference>
   </ItemGroup>
 
-  <!-- BepInEx references — not copied to output (already in BepInEx/core at runtime) -->
+  <!-- BepInEx references. not copied to output (already in BepInEx/core at runtime) -->
   <ItemGroup>
     <Reference Include="BepInEx">
       <HintPath>$(BepInExDir)\core\BepInEx.dll</HintPath>
@@ -69,7 +69,7 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Game DLL references — not copied to output -->
+  <!-- Game DLL references. not copied to output -->
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
       <HintPath>$(ManagedDir)\Assembly-CSharp.dll</HintPath>

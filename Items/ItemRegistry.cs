@@ -119,14 +119,14 @@ public static class ItemRegistry
         SkillTreeType.Magic_Crit_Chance_Flat_Up,  // 66
         SkillTreeType.Reroll_Relic_Room_Cap,      // 67
         SkillTreeType.Architect,                  // 68
-        // NPC unlock slots — active only when randomize_npc_unlocks=true
+        // NPC unlock slots - active only when randomize_npc_unlocks=true
         SkillTreeType.Gold_Saved_Unlock,          // 69
         SkillTreeType.Smithy,                     // 70
         SkillTreeType.Enchantress,                // 71
         // SkillTreeType.Banker,                  
     ];
 
-    // Display names parallel to s_skillTreeTypes — sourced from GameConstants so the
+    // Display names parallel to s_skillTreeTypes - sourced from GameConstants so the
     // string literals live in exactly one place.
     internal static readonly string[] s_manorDisplayNames = GameConstants.ManorUpgradeNames;
 

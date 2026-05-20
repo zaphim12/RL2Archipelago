@@ -23,7 +23,7 @@ public class APRunState
 
     /// <summary>
     /// Number of AP items that have been successfully granted. Used to skip
-    /// items that were already applied in a previous session — the AP server
+    /// items that were already applied in a previous session. The AP server
     /// replays all items from index 0 on every reconnect when using AllItems.
     /// </summary>
     public int GrantedItemCount { get; set; } = 0;

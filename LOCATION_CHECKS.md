@@ -1,4 +1,4 @@
-# Rogue Legacy 2 — Archipelago Location Checks
+# Rogue Legacy 2 - Archipelago Location Checks
 
 Derived from Assembly-CSharp.dll decompilation. Organized by category and priority tier.
 Each entry represents a potential **location** (something the player "checks off") that could
@@ -6,7 +6,7 @@ contain a randomized item in the multiworld.
 
 ---
 
-## Tier 1 — Core / High-Value Checks
+## Tier 1 - Core / High-Value Checks
 
 These are the most natural checks for an RL2 randomizer. Every serious run touches them.
 
@@ -27,7 +27,7 @@ Tracked via `PlayerSaveFlag.*_Defeated_FirstTime`. One check per boss per NG cyc
 
 ### Heirloom Acquisition
 Found in dedicated Heirloom rooms accessed from each biome. Tracked via `PlayerSaveData.HeirloomLevelTable`.
-Each heirloom is a major mobility/ability unlock — natural randomizer items *and* locations.
+Each heirloom is a major mobility/ability unlock; natural randomizer items *and* locations.
 - Note: The post-heirloom collection platforming challenges should probably just be entirely skipped since they essentially function as a tutorial and you also won't necessarily have the item that you're supposed to get from that heirloom location yet to complete it.
   - Instead of opening a dialog to enter the challenge, it should just instead trigger the AP item collection
 
@@ -57,7 +57,7 @@ Tracked via `PlayerSaveFlag.*Miniboss*_Defeated`.
 
 ---
 
-## Tier 2 — Standard Checks
+## Tier 2 - Standard Checks
 
 These are reasonably natural for a full randomizer run and add interesting variety. On by default, but can be toggled off by a player
 
@@ -184,11 +184,11 @@ Tracked per-room via `StageSaveData.ChestTrackerDataList` and `RoomSaveData.Ches
 
 ---
 
-## Tier 3 — Granular / Optional Checks
+## Tier 3 - Granular / Optional Checks
 
 These are valid checks but don't seem suitable for a default run. If I decide to implement them, they can be enabled by player choice
 
-### Boss Prime (Advanced) — First-Time Defeat
+### Boss Prime (Advanced) - First-Time Defeat
 Tracked via `PlayerSaveFlag.*_Prime_Defeated_FirstTime`. Harder NG+ versions of each boss. These likely should be disabled for randomization by default, since a typical run should not require NG+.
 
 | Check |
@@ -217,7 +217,7 @@ The boss insight memories could be a location. However, it's easy to miss these 
 
 ---
 
-## Tier 4 — Theoretically could be checks, but are being discluded
+## Tier 4 - Theoretically could be checks, but are being discluded
 
 ### Boss Chests
 Each boss room spawns a chest on defeat. Tracked via `ChestObj.BossID` / `ChestSpawnController.BossID`.
@@ -231,37 +231,37 @@ Scar challenges are the named challenge rooms (tracked via `Challenge_EV.ScarUnl
 - It may even be worth disabling scars and soul stones entirely if this doesn't get randomized, since they wouldn't make sense as part of an AP run
 
 **Named Scars / Challenges (ChallengeType):**
-- `TwinMech` — Two Masters
-- `PlatformRanger` —  Narrow Praxis
-- `BrotherAndSister` — Bladed Rose
-- `SmallChest` — Closed Space
-- `PlatformBoat` — Preserver of Life
-- `PlatformAxe` — Heavy Weapons
-- `IntroCombat` — Simple Start
-- `PlatformKatana` — The Rebels' Road
-- `TwoLovers` — The Two Lovers
-- `NightmareKhidr` — Nightmare Premonitions
-- `PlatformClimb` — The Atlantis Spire
-- `BigBattle` — The Armada
-- `SubBossBattle` — Spreading Poison
-- `FourHands` — Automatons
-- `TwoRebels` — Divergent Dimensions
-- `DragonAspectFight` — DREAM: Dragon Flight
-- `PlatformSurf` — DREAM: Boogie Days
-- `QuinnFight` — Training Daze
+- `TwinMech` - Two Masters
+- `PlatformRanger` -  Narrow Praxis
+- `BrotherAndSister` - Bladed Rose
+- `SmallChest` - Closed Space
+- `PlatformBoat` - Preserver of Life
+- `PlatformAxe` - Heavy Weapons
+- `IntroCombat` - Simple Start
+- `PlatformKatana` - The Rebels' Road
+- `TwoLovers` - The Two Lovers
+- `NightmareKhidr` - Nightmare Premonitions
+- `PlatformClimb` - The Atlantis Spire
+- `BigBattle` - The Armada
+- `SubBossBattle` - Spreading Poison
+- `FourHands` - Automatons
+- `TwoRebels` - Divergent Dimensions
+- `DragonAspectFight` - DREAM: Dragon Flight
+- `PlatformSurf` - DREAM: Boogie Days
+- `QuinnFight` - Training Daze
 
 ### Soul Shop Purchases
 Permanent meta-progression unlocks bought with Souls. Tracked via `ModeSaveData.SoulShopTable`.
 - Discluded for the same reason as the above. They're not really tied to run-progression and they'd be slow to grind for and uninteresting since checks can already be bought with coins anyways.
 
 **Notable Soul Shop entries:**
-- `BaseStats01-04MaxUp` — Permanent stat increases
-- `ChooseYourClass` / `ChooseYourSpell` — Lineage customization
-- `MaxMasteryFlat` — Mastery cap increase
-- `MaxCharonDonationFlat` — Gold carry increase
-- `ReduceBurdenFlat` / `BurdenOverload` — Burden/NG+ management
-- `MaxEquipmentDrops` / `MaxRuneDrops` — Better drop rates
-- Fabled Weapon variants (ArcherVariant, AxeVariant, BoxerVariant, etc.) — alternate class kits
+- `BaseStats01-04MaxUp` - Permanent stat increases
+- `ChooseYourClass` / `ChooseYourSpell` - Lineage customization
+- `MaxMasteryFlat` - Mastery cap increase
+- `MaxCharonDonationFlat` - Gold carry increase
+- `ReduceBurdenFlat` / `BurdenOverload` - Burden/NG+ management
+- `MaxEquipmentDrops` / `MaxRuneDrops` - Better drop rates
+- Fabled Weapon variants (ArcherVariant, AxeVariant, BoxerVariant, etc.) - alternate class kits
 - `ForceRandomizeKit` / `UnlockJukebox` / `OreAetherSwap` / `UnlockOverload`
 
 ### Eggplant Hunt (4-Stage Collectible Chain)
@@ -297,9 +297,9 @@ Permanent meta-progression unlocks bought with Souls. Tracked via `ModeSaveData.
 
 ### Progression-Gating Considerations
 These items are natural progression gates (give as randomized items):
-- Heirlooms (especially Dash, Double Jump, Void Dash, Earth Shift) — gate platforming
-- Cave Lantern — gates Cave navigation
-- Rebel Key — gates Rebel Door area
-- Teleporter unlocks — gate fast travel
-- Class unlocks — gate available playstyles
-- Skill tree nodes — gate stats
+- Heirlooms (especially Dash, Double Jump, Void Dash, Earth Shift) - gate platforming
+- Cave Lantern - gates Cave navigation
+- Rebel Key - gates Rebel Door area
+- Teleporter unlocks - gate fast travel
+- Class unlocks - gate available playstyles
+- Skill tree nodes - gate stats

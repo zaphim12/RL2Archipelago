@@ -83,7 +83,7 @@ public class ConnectionDialog : MonoBehaviour
 
         // Enter is routed through TMP_InputField.onSubmit (see MakeInputField).
         // Escape has no built-in handling, and TMP_InputField would just
-        // deactivate its own focus on it — we want to cancel the whole dialog.
+        // deactivate its own focus on it; we want to cancel the whole dialog.
         if (Input.GetKeyDown(KeyCode.Escape))
             OnCancel();
     }
@@ -105,15 +105,15 @@ public class ConnectionDialog : MonoBehaviour
         _descText.text = _currentStep switch
         {
             Step.HostPort =>
-                "Step 1 / 3  —  Server Address\n\n" +
+                "Step 1 / 3  -  Server Address\n\n" +
                 "Enter the hostname and port of your Archipelago server.\n" +
                 "e.g.  archipelago.gg:12345  or  localhost:38281",
             Step.SlotName =>
-                "Step 2 / 3  —  Slot / Player Name\n\n" +
+                "Step 2 / 3  -  Slot / Player Name\n\n" +
                 "Enter your slot / player name exactly as it appears\n" +
                 "in the Archipelago multiworld (case-sensitive).",
             Step.Password =>
-                "Step 3 / 3  —  Password\n\n" +
+                "Step 3 / 3  -  Password\n\n" +
                 "Enter the room password, or leave blank if there is none.",
             _ => ""
         };
@@ -235,7 +235,7 @@ public class ConnectionDialog : MonoBehaviour
         var original = WindowManager.GetWindowController(WindowID.ConfirmMenu) as ConfirmMenuWindowController;
         if (original == null)
         {
-            Plugin.Log.LogError("[ConnectionDialog] ConfirmMenu not found in scene — cannot build dialog.");
+            Plugin.Log.LogError("[ConnectionDialog] ConfirmMenu not found in scene. cannot build dialog.");
             return;
         }
 
@@ -251,7 +251,7 @@ public class ConnectionDialog : MonoBehaviour
         _ctrl.WindowCanvas.gameObject.SetActive(true);
         _ctrl.WindowCanvas.sortingOrder = 500;
 
-        // Access serialized fields — these are correctly remapped to the clone's own objects by Instantiate.
+        // Access serialized fields; these are correctly remapped to the clone's own objects by Instantiate.
         var tv     = Traverse.Create(_ctrl);
         var fadeBG = tv.Field<CanvasGroup>("m_fadeBGCanvasGroup").Value;
         var boxRT  = tv.Field<RectTransform>("m_confirmBoxBGRectTransform").Value;
@@ -277,7 +277,7 @@ public class ConnectionDialog : MonoBehaviour
 
         var buttonArray = tv.Field<ConfirmMenu_Button[]>("m_buttonArray").Value;
 
-        // Expand background height.  Do NOT touch anchoredPosition or pivot — those
+        // Expand background height.  Do NOT touch anchoredPosition or pivot; those
         // are shared by m_confirmBoxBGRectTransform and m_confirmMenuBox when they are
         // the same object (or parent/child), and zeroing them detaches the visual frame
         // from the content it contains.
@@ -296,7 +296,7 @@ public class ConnectionDialog : MonoBehaviour
 
         LayoutRebuilder.ForceRebuildLayoutImmediate(boxRT);
 
-        // Use GetWorldCorners() — reliable regardless of anchor/pivot/sizeDelta setup.
+        // Use GetWorldCorners() - reliable regardless of anchor/pivot/sizeDelta setup.
         var descRT       = (RectTransform)desc.transform;
         var descCorners  = new Vector3[4];
         descRT.GetWorldCorners(descCorners);
@@ -328,7 +328,7 @@ public class ConnectionDialog : MonoBehaviour
             var confirmBtn = buttonArray[0];
             var cancelBtn  = buttonArray[1];
 
-            // Disable any LayoutGroup on the original button container — the ConfirmMenu
+            // Disable any LayoutGroup on the original button container; the ConfirmMenu
             // prefab uses one to lay buttons out side-by-side, which fights manual placement.
             if (confirmBtn.transform.parent != null)
             {
@@ -339,7 +339,7 @@ public class ConnectionDialog : MonoBehaviour
             var confirmRT = (RectTransform)confirmBtn.transform;
             var cancelRT  = (RectTransform)cancelBtn.transform;
 
-            // Reparent to box so both buttons share the input field's coordinate space —
+            // Reparent to box so both buttons share the input field's coordinate space
             // descCenterX / inputCenterY are computed in box-local coordinates.
             confirmRT.SetParent(box.transform, false);
             cancelRT .SetParent(box.transform, false);
@@ -390,7 +390,7 @@ public class ConnectionDialog : MonoBehaviour
         rt.sizeDelta = new Vector2(700f, 90f);
         rt.pivot     = new Vector2(0.5f, 0.5f);
 
-        // Background — raycastTarget=true so clicks route to the InputField.
+        // Background: raycastTarget=true so clicks route to the InputField.
         var bg = go.AddComponent<Image>();
         bg.color = new Color(0.08f, 0.08f, 0.12f, 0.95f);
 

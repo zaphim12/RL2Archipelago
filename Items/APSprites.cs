@@ -14,7 +14,7 @@ namespace RL2Archipelago.Items;
 /// </summary>
 internal static class APSprites
 {
-    // "<RootNamespace>.<path-with-dots>.<filename>" — set by the EmbeddedResource
+    // "<RootNamespace>.<path-with-dots>.<filename>" - set by the EmbeddedResource
     // entry in the csproj. Renaming the asset or changing RootNamespace breaks this.
     private const string AP_LOGO_RESOURCE = "RL2Archipelago.Assets.ap_logo.png";
 

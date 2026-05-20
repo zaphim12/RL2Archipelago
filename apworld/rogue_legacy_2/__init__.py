@@ -167,7 +167,7 @@ class RogueLegacy2World(World):
         """Compute a gold cost for each manor upgrade slot using the seeded world RNG.
 
         Costs are baked into slot data at generation time so the client always
-        receives pre-computed values — reconnecting to the same session yields
+        receives pre-computed values. Reconnecting to the same session yields
         identical costs without any client-side RNG.
 
         Formula per slot: base * depth * factor, rounded to the nearest 25 gold.

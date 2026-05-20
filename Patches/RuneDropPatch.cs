@@ -36,10 +36,10 @@ internal static class RuneDropPatch
 
         // Apply configured chance before checking the pool.
         if (Random.Range(0, 100) >= APClient.FairyChestApChance)
-        { __result = null; return; } // chance miss — null triggers red-aether fallback
+        { __result = null; return; } // chance miss - null triggers red-aether fallback
 
         var locationId = LocationRegistry.NextRuneChestLocation(biomeIndex.Value, APClient.RunState.CheckedLocations);
-        if (locationId == null) { __result = null; return; } // pool exhausted — null triggers red-aether fallback
+        if (locationId == null) { __result = null; return; } // pool exhausted - null triggers red-aether fallback
 
         if (!gotRune)
             __result = new RuneDrop(default);

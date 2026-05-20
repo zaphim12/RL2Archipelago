@@ -12,13 +12,13 @@ namespace RL2Archipelago.Patches;
 ///
 /// <para>The core problem: vanilla uses <c>GetTeleporterIsUnlocked</c> to drive
 /// pizza girl's visibility and dialogue state, but in AP mode the two systems
-/// are decoupled — the check is sent when the player pays, and the actual
+/// are decoupled; the check is sent when the player pays, and the actual
 /// teleporter unlock is applied when the AP item arrives from the server.
 /// All patches here use <c>APRunState.CheckedLocations</c> as the authoritative
 /// source for "has this location been purchased", and
 /// <c>GetTeleporterIsUnlocked</c> only for fast-travel availability.</para>
 ///
-/// <para><b>PlayUnlockTeleporterDialogue prefix</b> — corrects the dialogue
+/// <para><b>PlayUnlockTeleporterDialogue prefix</b> - corrects the dialogue
 /// branch chosen by vanilla:
 /// <list type="bullet">
 ///   <item>Location checked but item not yet received → show "already built" dialogue.</item>
@@ -26,13 +26,13 @@ namespace RL2Archipelago.Patches;
 ///   so the player can still complete the check.</item>
 /// </list></para>
 ///
-/// <para><b>UnlockTeleporter prefix</b> — intercepts the purchase confirmation.
+/// <para><b>UnlockTeleporter prefix</b> - intercepts the purchase confirmation.
 /// Deducts gold, sends the AP location check, and drives the success/failure
 /// dialogue flow, suppressing the vanilla call to
 /// <c>SetTeleporterIsUnlocked</c>. Also guards against a double-purchase if
 /// the location was somehow already checked before the confirm was clicked.</para>
 ///
-/// <para><b>InitializePooledPropOnEnter postfix</b> — corrects visibility on
+/// <para><b>InitializePooledPropOnEnter postfix</b> - corrects visibility on
 /// room entry:
 /// <list type="bullet">
 ///   <item>Location checked → hide pizza girl (check done, no re-purchase).</item>
@@ -97,14 +97,14 @@ internal static class PizzaGirlTeleporterPatch
         {
             // Let vanilla run the "already built" path when both systems agree.
             if (SaveManager.PlayerSaveData.GetTeleporterIsUnlocked(__instance.Room.BiomeType)) return true;
-            // Check sent but item not yet received — force "already built".
+            // Check sent but item not yet received; force "already built".
             var t2 = Traverse.Create(__instance);
             ShowAlreadyBuiltDialogue(t2.Field<NPCController>("m_npcController").Value,
                                      t2.Field<Action>("m_endInteraction").Value);
             return false;
         }
 
-        // Location not yet checked — build the payment dialogue ourselves so we can
+        // Location not yet checked. build the payment dialogue ourselves so we can
         // inject the scouted AP item the player will receive.
         var t                  = Traverse.Create(__instance);
         var npcController      = t.Field<NPCController>("m_npcController").Value;
@@ -175,7 +175,7 @@ internal static class PizzaGirlTeleporterPatch
         WindowManager.SetWindowIsOpen(WindowID.ConfirmMenu, isOpen: false);
 
         // Guard: location already checked (e.g. checked via another source between
-        // dialogue open and OK click) — show "already built" and bail out.
+        // dialogue open and OK click). show "already built" and bail out.
         if (APClient.RunState.CheckedLocations.Contains(locationId.Value))
         {
             ShowAlreadyBuiltDialogue(npcController, endInteraction);
@@ -244,7 +244,7 @@ internal static class PizzaGirlTeleporterPatch
 
         if (locationChecked)
         {
-            // Check sent — always hide.
+            // Check sent - always hide.
             __instance.gameObject.SetActive(false);
         }
         else if (!__instance.gameObject.activeSelf && teleporterUnlocked)

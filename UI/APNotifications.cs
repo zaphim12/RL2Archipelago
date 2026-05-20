@@ -12,11 +12,11 @@ namespace RL2Archipelago.UI;
 /// <para>Notifications are queued and drained on the main thread one at a time, with a
 /// fixed display window between each. The queue is bounded by <see cref="MaxQueueSize"/>
 /// so a flood of incoming items (e.g. when another player completes their game and
-/// releases everything) cannot pin the HUD on screen for minutes — extras are dropped.</para>
+/// releases everything) cannot pin the HUD on screen for minutes; extras are dropped.</para>
 ///
 /// <para>Display only happens while a gameplay scene is loaded (the HUD MonoBehaviour
 /// only exists then). Notifications enqueued from the title menu are silently dropped
-/// rather than queued, so the user just sees no UI for them — items still apply.</para>
+/// rather than queued, so the user just sees no UI for them; items still apply.</para>
 /// </summary>
 internal static class APNotifications
 {
@@ -53,11 +53,11 @@ internal static class APNotifications
 
     /// <summary>Queues a notification for display the next time the HUD is free.
     /// When <paramref name="critical"/> is true, both the no-HUD and queue-full
-    /// drops are bypassed so the notification is guaranteed to land — used for
+    /// drops are bypassed so the notification is guaranteed to land. Used for
     /// heirlooms and other items the player must not miss seeing.</summary>
     public static void Enqueue(string title, string subtitle, string description = null, bool critical = false)
     {
-        // Drop silently when off the main game scene — no HUD MonoBehaviour to fire it on.
+        // Drop silently when off the main game scene; no HUD MonoBehaviour to fire it on.
         // Critical notifications stay queued so they surface once gameplay resumes.
         if (GetHudController() == null && !critical)
         {

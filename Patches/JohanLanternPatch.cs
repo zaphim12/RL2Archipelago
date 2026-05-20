@@ -8,12 +8,12 @@ namespace RL2Archipelago.Patches;
 /// Patches covering the Theia's Sun Lantern location check, which is acquired by talking
 /// to Johan (an NPC) rather than interacting with a heirloom statue.
 ///
-/// <para><b>GiveHeirloomCoroutine prefix</b> — fires when Johan is about to hand the player
+/// <para><b>GiveHeirloomCoroutine prefix</b> - fires when Johan is about to hand the player
 /// the lantern. Sends the AP location check and suppresses the vanilla grant (heirloom,
 /// victory animation, SpecialItemDrop window). The lantern ability arrives later via
 /// <see cref="APClient.GrantItem"/> when the AP server responds.</para>
 ///
-/// <para><b>IsJohanSpawnConditionTrue postfix</b> — overrides the
+/// <para><b>IsJohanSpawnConditionTrue postfix</b> - overrides the
 /// <c>TowerBossBeatenAndNotCollectedLantern</c> spawn condition so that Johan keeps
 /// appearing until the AP location is checked, regardless of whether the player already
 /// received the lantern item from the AP server (e.g. sent early by another player).</para>

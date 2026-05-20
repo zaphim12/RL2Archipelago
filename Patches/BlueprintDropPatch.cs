@@ -33,7 +33,7 @@ internal static class BlueprintDropPatch
     //
     // Forcing Blueprint on a hit ensures the downstream postfix (and the coroutine's
     // existing blueprint code path) take over. Forcing Gold on a miss keeps the
-    // vanilla gold-drop flow intact - crucially, that path is safe with respect to
+    // vanilla gold-drop flow intact. Crucially, that path is safe with respect to
     // the coroutine's DisableInput / WaitUntil(IsMapEnabled) sequence.
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ChestObj), "GetSpecialItemTypeToDrop")]

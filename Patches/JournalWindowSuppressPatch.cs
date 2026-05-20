@@ -10,7 +10,7 @@ namespace RL2Archipelago.Patches;
 ///
 /// TriggerJournal opens the dialogue window (and calls SetJournalsRead, which triggers
 /// JournalReadPatch and enqueues a send notification). We set IsJournalWindowOpen = true
-/// in its Postfix — after the body runs but before the next Tick() drains the queue.
+/// in its Postfix; after the body runs but before the next Tick() drains the queue.
 /// OnJournalWindowClosed clears the flag once the player dismisses the text window.
 /// OnDisable acts as a safety reset for scene transitions or prop pooling.
 /// </summary>

@@ -8,20 +8,20 @@ namespace RL2Archipelago.Patches;
 /// <summary>
 /// Three patches covering the full heirloom-location lifecycle in AP mode.
 ///
-/// <para><b>TriggerHeirloom prefix</b> — fires when the player interacts with a
+/// <para><b>TriggerHeirloom prefix</b> - fires when the player interacts with a
 /// heirloom statue. Sends the AP location check, marks the room complete, and
 /// hides the statue visuals immediately, then suppresses the vanilla dialog +
 /// teleport by returning <c>false</c>. Does NOT call
-/// <c>SetHeirloomLevel</c> — the heirloom ability is only granted when the AP
+/// <c>SetHeirloomLevel</c> - the heirloom ability is only granted when the AP
 /// server actually sends the item back via <see cref="APClient.GrantItem"/>.</para>
 ///
-/// <para><b>RoomCompleted prefix</b> — suppresses the vanilla auto-completion that
+/// <para><b>RoomCompleted prefix</b> - suppresses the vanilla auto-completion that
 /// fires when <c>GetHeirloomLevel &gt; 0</c>. Without this, receiving a heirloom
 /// item from the AP server causes the statue room to auto-complete on entry, making
 /// the location uncollectable. Completion is only allowed once the AP location has
 /// been checked (i.e. it is present in <see cref="APRunState.CheckedLocations"/>).</para>
 ///
-/// <para><b>OnPlayerEnterRoom postfix</b> — fires every time the player enters a
+/// <para><b>OnPlayerEnterRoom postfix</b> - fires every time the player enters a
 /// heirloom room. If the AP location was already checked in a prior run (tracked
 /// in <see cref="APRunState.CheckedLocations"/>), marks the room complete and
 /// hides the statue so future runs show the alternate relic-choice layout without
@@ -137,8 +137,8 @@ internal static class HeirloomInteractPatch
     }
 
     /// <summary>
-    /// Suppresses the vanilla "Insight Discovered" HUD on heirloom statues —
-    /// our APNotifications system reuses the same HUD to display the AP item
+    /// Suppresses the vanilla "Insight Discovered" HUD on heirloom statues.
+    /// Our APNotifications system reuses the same HUD to display the AP item
     /// being sent, and double-firing would clobber that text.
     /// </summary>
     [HarmonyPrefix]

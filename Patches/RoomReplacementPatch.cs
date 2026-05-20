@@ -8,8 +8,8 @@ internal static class RoomReplacementPatch
 {
     // In vanilla, CreateSpecialRoomPool replaces the two Citadel Agartha heirloom rooms with relic
     // rooms on future runs by checking IsConditionFulfilled(ReplacementCriteria), which tests
-    // GetHeirloomLevel > 0. In AP mode we never set the heirloom level at collection time — the
-    // ability is only granted when the AP server sends the item back — so the replacement never
+    // GetHeirloomLevel > 0. In AP mode we never set the heirloom level at collection time; the
+    // ability is only granted when the AP server sends the item back, so the replacement never
     // triggers after the player dies and a new world is generated. This prefix treats a checked AP
     // location as equivalent to "heirloom obtained" for the purposes of that room-replacement check.
     [HarmonyPrefix]

@@ -7,8 +7,8 @@ namespace RL2Archipelago.Patches;
 /// Reports miniboss kills to the Archipelago server as location checks.
 ///
 /// <para>
-/// Hooks <c>PlayerSaveData.SetFlag</c> — the single write path for all
-/// <c>PlayerSaveFlag</c> values — and reacts only when a tracked miniboss
+/// Hooks <c>PlayerSaveData.SetFlag</c> - the single write path for all
+/// <c>PlayerSaveFlag</c> values, and reacts only when a tracked miniboss
 /// defeat flag is written as <c>true</c>.  This covers both the Study
 /// minibosses (Sword Knight, Spear Knight) and the Cave minibosses
 /// (White, Black) without needing to find each room controller separately.

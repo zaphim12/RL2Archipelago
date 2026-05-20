@@ -119,7 +119,7 @@ public static class APClient
 
     // Trap state lives only in memory, so it's lost on game restart. This flag
     // gates a one-time restore of RunState.ActiveTraps on the first ProcessPendingItems
-    // tick after entering a game — reset on each Connect so a fresh session restores correctly.
+    // tick after entering a game; reset on each Connect so a fresh session restores correctly.
     private static bool _trapsRestored = false;
 
     // ── Public API ─────────────────────────────────────────────────────────────
@@ -247,7 +247,7 @@ public static class APClient
             // Register websocket-thread event handlers AFTER resetting _nextItemIndex so
             // any items that arrive concurrently get correct indices. Then manually drain
             // the helper to pick up items the server sent during TryConnectAndLogin before
-            // the handler was wired — those sit in the library's buffer unfired.
+            // the handler was wired; those sit in the library's buffer unfired.
             Session.Items.ItemReceived += APSession_ItemReceived;
             Session.MessageLog.OnMessageReceived += APSession_OnMessageReceived;
             APSession_ItemReceived(Session.Items);
@@ -338,7 +338,7 @@ public static class APClient
         if (RunState == null)
         {
             Plugin.Log.LogWarning(
-                $"[AP] SendLocationCheck({locationId}) called while no run is active — ignoring.");
+                $"[AP] SendLocationCheck({locationId}) called while no run is active. ignoring.");
             return;
         }
 
@@ -347,7 +347,7 @@ public static class APClient
         // Persist first, then send. If the send is dropped, Resync will retry it.
         if (!RunState.CheckedLocations.Add(locationId))
         {
-            Plugin.Log.LogDebug($"[AP] Location '{displayName}' already checked — skipping re-send.");
+            Plugin.Log.LogDebug($"[AP] Location '{displayName}' already checked. skipping re-send.");
             return;
         }
         RunState.Save(APSaveDirectoryName);
@@ -361,7 +361,7 @@ public static class APClient
 
         if (!Session.Locations.AllLocations.Contains(locationId))
             Plugin.Log.LogWarning(
-                $"[AP] Location '{displayName}' (ID {locationId}) is not in this slot's location list — ensure the apworld defines it.");
+                $"[AP] Location '{displayName}' (ID {locationId}) is not in this slot's location list. ensure the apworld defines it.");
 
         try
         {
@@ -386,7 +386,7 @@ public static class APClient
     /// <summary>
     /// Pushes the "you sent X to Y" (or "you discovered your own item") HUD,
     /// using the scout reply cached at connect time. Silently no-ops when the
-    /// scout hasn't returned yet — the message log still shows the activity.
+    /// scout hasn't returned yet; the message log still shows the activity.
     /// </summary>
     private static void EnqueueSendNotification(long locationId)
     {
@@ -507,7 +507,7 @@ public static class APClient
         try
         {
             Session.SetGoalAchieved();
-            Plugin.Log.LogInfo("[AP] Goal achieved — sent status update to server.");
+            Plugin.Log.LogInfo("[AP] Goal achieved. sent status update to server.");
         }
         catch (Exception ex)
         {
@@ -671,7 +671,7 @@ public static class APClient
         var skillTreeType = ItemRegistry.ToSkillTreeType(itemId);
         if (skillTreeType.HasValue)
         {
-            // runEvents: false — prevents UnlockConnectedSkillSlots from revealing adjacent
+            // 'runEvents: false' prevents UnlockConnectedSkillSlots from revealing adjacent
             // manor slots prematurely. Adjacent slots should only become visible when the
             // player physically purchases the prerequisite slot in the manor (location check),
             // not when the corresponding AP item arrives from the multiworld.
@@ -703,7 +703,7 @@ public static class APClient
             return;
         }
 
-        Plugin.Log.LogWarning($"[AP] No handler for item '{displayName}' (ID {itemId}) — ignoring.");
+        Plugin.Log.LogWarning($"[AP] No handler for item '{displayName}' (ID {itemId}). ignoring.");
     }
 
     // ~~~ Websocket-thread event handlers ~~~
@@ -716,7 +716,7 @@ public static class APClient
         // Fires synchronously inside StartPolling(), which is called after the
         // WebSocket handshake completes.  Reaching here means the PollingLoop
         // and SendLoop tasks have been started.
-        Plugin.Log.LogInfo("[AP] Socket opened — PollingLoop started.");
+        Plugin.Log.LogInfo("[AP] Socket opened. PollingLoop started.");
     }
 
     private static void APSession_ItemReceived(IReceivedItemsHelper helper)
@@ -751,7 +751,7 @@ public static class APClient
         // TODO: Surface this in an in-game console / chat overlay.
     }
 
-    // Called on the AP websocket thread — only set flags; no game-state access.
+    // Called on the AP websocket thread. only set flags; no game-state access.
     private static void APSession_DeathLinkReceived(DeathLink deathLink)
     {
         Plugin.Log.LogInfo($"[AP] DeathLink received from '{deathLink.Source}': {deathLink.Cause}");

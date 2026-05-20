@@ -15,7 +15,7 @@ namespace RL2Archipelago.Patches;
 /// <para>
 /// The only subclass override, <c>FinalBossRoomController.SetBossFlagDefeated</c>,
 /// calls <c>base.SetBossFlagDefeated()</c>, so this single postfix covers every
-/// boss room — no per-subclass patch needed.
+/// boss room; no per-subclass patch needed.
 /// </para>
 ///
 /// <para>
@@ -45,7 +45,7 @@ internal static class BossDefeatPatch
         if (locationId is null)
         {
             Plugin.Log.LogDebug(
-                $"[BossDefeatPatch] Boss flag {flag} is not a tracked AP location — ignoring.");
+                $"[BossDefeatPatch] Boss flag {flag} is not a tracked AP location. ignoring.");
             return;
         }
 
