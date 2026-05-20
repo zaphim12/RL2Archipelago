@@ -196,6 +196,9 @@ class RogueLegacy2World(World):
             "manor_cost_base",
             "manor_cost_min_subtractive_factor",
             "manor_cost_max_additive_factor",
+            "bronze_chest_ap_chance",
+            "silver_chest_ap_chance",
+            "fairy_chest_ap_chance",
         )
         data["manor_upgrade_costs"] = self._compute_manor_upgrade_costs()
         return data

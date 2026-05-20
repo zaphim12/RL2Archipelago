@@ -34,9 +34,9 @@ Rogue Legacy 2:
   # ── Blueprint Checks ────────────────────────────────────────────────────
 
   # Number of Archipelago location checks available from blueprint chest
-  # drops per biome. When a chest would normally award a blueprint, it instead
-  # awards an AP check (until this biome's pool is exhausted, after which extra
-  # drops revert to normal vanilla coin drops).
+  # drops per biome. Each biome's pool can award at most this many checks;
+  # once exhausted, further chest openings drop gold regardless of the AP
+  # chance settings below.
   #
   # There are 6 biomes, so the total blueprint check count is this value × 6.
   # The default of 11 gives 66 checks, closely mirroring the 65 unique
@@ -44,17 +44,36 @@ Rogue Legacy 2:
   # Valid range: 0–16  (default: 11)
   blueprint_checks_per_biome: 11
 
+  # Percent chance that opening a bronze chest triggers an AP location check
+  # (when the biome's pool still has locations remaining). At 100, every bronze
+  # chest opening in will drop an AP item. At 1, bronze chests will drop gold
+  # 99% of the time. 
+  # Valid range: 1–100  (default: 15)
+  bronze_chest_ap_chance: 15
+
+  # Percent chance that opening a silver chest triggers an AP location check.
+  # Behaves identically to bronze_chest_ap_chance but applies to silver chests,
+  # which are rarer and have a higher vanilla blueprint rate.
+  # Valid range: 1–100  (default: 99)
+  silver_chest_ap_chance: 99
+
   # ── Rune / Fairy Chest Checks ───────────────────────────────────────────
 
   # Number of Archipelago location checks available from fairy chests per
-  # biome. When a fairy chest would normally drop a rune, it instead awards an
-  # AP check (until this biome's pool is exhausted, after which extra fairy
-  # chest completions drop red aether instead).
+  # biome. Once a biome's pool is exhausted, further fairy chest openings drop
+  # red aether regardless of the AP chance setting below.
   #
   # There are 6 biomes, so the total fairy chest check count is this value × 6.
   # The default of 4 gives 24 checks, matching the typical rune drop count.
   # Valid range: 0–16  (default: 4)
   rune_checks_per_biome: 4
+
+  # Percent chance that opening a fairy chest triggers an AP location check
+  # (when the biome's rune pool still has locations remaining). At 100, every
+  # fairy chest opening in a tracked biome consumes a pool slot. At 1, fairy
+  # chests always drop red aether 99% of the time.
+  # Valid range: 1–100  (default: 100)
+  fairy_chest_ap_chance: 100
 
   # ── Manor Upgrade Bundle Size ────────────────────────────────────────────
 

@@ -28,6 +28,12 @@ public class APRunState
     /// </summary>
     public int GrantedItemCount { get; set; } = 0;
 
+    /// <summary>
+    /// Trap burdens that are currently active for this run. Persisted so traps
+    /// can be restored if the player saves and quits mid-run. Cleared on death.
+    /// </summary>
+    public HashSet<BurdenType> ActiveTraps { get; set; } = new();
+
     // ── Persistence ──────────────────────────────────────────────────────────
 
     private static readonly string RootDir = Path.Combine(Paths.ConfigPath, "RL2Archipelago", "ap-runs");

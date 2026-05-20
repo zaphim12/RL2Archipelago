@@ -75,8 +75,8 @@ location_data_table: dict[str, RogueLegacy2LocationData] = {
     "Theia's Sun Lantern Conversation": RogueLegacy2LocationData(region="Overworld", address=BASE_ID + HEIRLOOM_OFFSET + 5),
 
     # ── Miniboss kills ───────────────────────────────────────────────────────
-    "Gongheads Miniboss Defeated":                  RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 0),
-    "Murmur Miniboss Defeated":                     RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 1),
+    "Murmur Miniboss Defeated":                     RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 0),
+    "Gongheads Miniboss Defeated":                  RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 1),
     "Briareus and Cottus Minibosses Defeated":      RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 2),
     "Gyges and Aegaeon Minibosses Defeated":        RogueLegacy2LocationData(region="Overworld", address=BASE_ID + MINIBOSS_KILL_OFFSET + 3),
 

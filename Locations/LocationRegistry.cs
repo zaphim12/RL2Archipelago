@@ -163,8 +163,8 @@ public static class LocationRegistry
             [CaveBossDefeated]   = "Estuary Tubal Defeated",
             [GardenBossDefeated] = "Jonah Defeated",
 
-            [StudyMiniboss_SwordKnight_Defeated] = "Gongheads Miniboss Defeated",
-            [StudyMiniboss_SpearKnight_Defeated] = "Murmur Miniboss Defeated",
+            [StudyMiniboss_SpearKnight_Defeated] = "Gongheads Miniboss Defeated",
+            [StudyMiniboss_SwordKnight_Defeated] = "Murmur Miniboss Defeated",
             [CaveMiniboss_White_Defeated]        = "Briareus and Cottus Minibosses Defeated",
             [CaveMiniboss_Black_Defeated]        = "Gyges and Aegaeon Minibosses Defeated",
 

@@ -1,5 +1,6 @@
 using HarmonyLib;
 using RL2Archipelago.Locations;
+using UnityEngine;
 
 namespace RL2Archipelago.Patches;
 
@@ -7,11 +8,12 @@ namespace RL2Archipelago.Patches;
 /// Intercepts rune drops from fairy chests and converts them into
 /// Archipelago location checks.
 ///
-/// Follows the same biome-pool strategy as <see cref="BlueprintDropPatch"/>:
-/// checks are allocated from a per-biome pool rather than tied to specific
-/// rune types. When the pool is exhausted the postfix returns null so the
-/// chest coroutine's existing null-check for fairy chests falls back to
-/// dropping red aether instead.
+/// Follows the same biome-pool strategy as <see cref="BlueprintDropPatch"/>.
+/// Fairy chests always roll SpecialItemType.Rune natively, so no override of
+/// GetSpecialItemTypeToDrop is needed; the configured fairy_chest_ap_chance is
+/// applied directly inside CalculateSpecialItemDropObj_Postfix before the pool
+/// check. A miss returns null, which the chest coroutine's existing null-check
+/// for fairy chests converts to a red-aether drop instead.
 /// </summary>
 [HarmonyPatch]
 internal static class RuneDropPatch
@@ -32,8 +34,12 @@ internal static class RuneDropPatch
         var biomeIndex = LocationRegistry.GetBiomeIndex(room.BiomeType);
         if (biomeIndex == null) { __result = null; return; }
 
+        // Apply configured chance before checking the pool.
+        if (Random.Range(0, 100) >= APClient.FairyChestApChance)
+        { __result = null; return; } // chance miss — null triggers red-aether fallback
+
         var locationId = LocationRegistry.NextRuneChestLocation(biomeIndex.Value, APClient.RunState.CheckedLocations);
-        if (locationId == null) { __result = null; return; } // pool exhausted — null triggers Rune Ore fallback
+        if (locationId == null) { __result = null; return; } // pool exhausted — null triggers red-aether fallback
 
         if (!gotRune)
             __result = new RuneDrop(default);

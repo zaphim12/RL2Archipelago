@@ -48,6 +48,15 @@ public static class APClient
     /// <summary>Controls whether journal/memory reads generate location checks. Read from slot data on connect.</summary>
     public static JournalChecksMode JournalChecksMode { get; private set; } = JournalChecksMode.Grouped;
 
+    /// <summary>Percent chance (1–100) a bronze chest triggers an AP check. Read from slot data on connect.</summary>
+    public static int BronzeChestApChance { get; private set; } = 15;
+
+    /// <summary>Percent chance (1–100) a silver chest triggers an AP check. Read from slot data on connect.</summary>
+    public static int SilverChestApChance { get; private set; } = 99;
+
+    /// <summary>Percent chance (1–100) a fairy chest triggers an AP check. Read from slot data on connect.</summary>
+    public static int FairyChestApChance { get; private set; } = 100;
+
     /// <summary>True once the player has left the main menu and entered an active run. Item processing is gated on this flag.</summary>
     public static bool IsInGame { get; internal set; } = false;
 
@@ -107,6 +116,11 @@ public static class APClient
     // not the index of the item's being received. So when receiving items after a reconnect,
     // the server's index will be higher than the index of the item being received until we catch up.
     private static int _nextItemIndex = 0;
+
+    // Trap state lives only in memory, so it's lost on game restart. This flag
+    // gates a one-time restore of RunState.ActiveTraps on the first ProcessPendingItems
+    // tick after entering a game — reset on each Connect so a fresh session restores correctly.
+    private static bool _trapsRestored = false;
 
     // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -173,6 +187,13 @@ public static class APClient
             else
                 LocationRegistry.SetRuneChecksPerBiome(4);
 
+            BronzeChestApChance = SlotData.TryGetValue("bronze_chest_ap_chance", out var bcObj)
+                ? Convert.ToInt32(bcObj) : 15;
+            SilverChestApChance = SlotData.TryGetValue("silver_chest_ap_chance", out var scObj)
+                ? Convert.ToInt32(scObj) : 99;
+            FairyChestApChance = SlotData.TryGetValue("fairy_chest_ap_chance", out var fcObj)
+                ? Convert.ToInt32(fcObj) : 100;
+
             ManorUpgradeBundleSize = SlotData.TryGetValue("manor_upgrade_bundle_size", out var bundleSizeObj)
                 ? Convert.ToInt32(bundleSizeObj) : 5;
 
@@ -221,6 +242,7 @@ public static class APClient
             // Load any prior run state (checked locations, etc.) for this seed+slot.
             RunState = APRunState.Load(APSaveDirectoryName);
             _nextItemIndex = 0;
+            _trapsRestored = false;
 
             // Register websocket-thread event handlers AFTER resetting _nextItemIndex so
             // any items that arrive concurrently get correct indices. Then manually drain
@@ -554,6 +576,13 @@ public static class APClient
     {
         if (!IsInGame) return;
 
+        if (!_trapsRestored && RunState != null)
+        {
+            foreach (var trap in RunState.ActiveTraps)
+                TrapManager.ActivateTrap(trap);
+            _trapsRestored = true;
+        }
+
         while (_pendingItems.TryDequeue(out var pending))
         {
             if (RunState != null && pending.Index < RunState.GrantedItemCount)
@@ -669,6 +698,7 @@ public static class APClient
         if (trapBurden.HasValue)
         {
             TrapManager.ActivateTrap(trapBurden.Value);
+            RunState?.ActiveTraps.Add(trapBurden.Value);
             Plugin.Log.LogInfo($"[AP] Activated trap: {displayName}");
             return;
         }

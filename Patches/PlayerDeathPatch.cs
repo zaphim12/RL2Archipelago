@@ -23,6 +23,11 @@ internal static class PlayerDeathPatch
         if (_wasAlreadyDead) return;
 
         TrapManager.ClearAllTraps();
+        if (APClient.RunState != null)
+        {
+            APClient.RunState.ActiveTraps.Clear();
+            APClient.RunState.Save(APClient.APSaveDirectoryName);
+        }
 
         if (!APClient.IsConnected || !APClient.DeathLinkEnabled || !APClient.IsInGame) return;
         if (APClient.IsReceivingDeathLink) return;

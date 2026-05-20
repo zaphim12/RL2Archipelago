@@ -44,6 +44,48 @@ class RuneChecksPerBiome(Range):
     default = 4
 
 
+class BronzeChestApChance(Range):
+    """Percent chance (1–100) that opening a bronze chest triggers an AP location check.
+
+    At 100, every bronze chest opening in a biome with available locations gives an AP
+    check. At 1, bronze chests drop gold 99% of the time. At 50, roughly half of openings
+    become AP checks.
+
+    When a biome's blueprint pool is exhausted, chests fall back to gold regardless
+    of this setting.
+    """
+    display_name = "Bronze Chest AP Chance"
+    range_start = 1
+    range_end = 100
+    default = 15
+
+
+class SilverChestApChance(Range):
+    """Percent chance (1–100) that opening a silver chest triggers an AP location check.
+
+    Behaves identically to Bronze Chest AP Chance but applies to silver chests, which
+    have a higher vanilla blueprint drop rate. Set independently to tune silver chests
+    separately from bronze.
+    """
+    display_name = "Silver Chest AP Chance"
+    range_start = 1
+    range_end = 100
+    default = 99
+
+
+class FairyChestApChance(Range):
+    """Percent chance (1–100) that opening a fairy chest triggers an AP location check.
+
+    At 100, every fairy chest in a biome with available rune locations gives an AP
+    check. At 1, fairy chests drop red aether 99% of the time. When a biome's rune
+    pool is exhausted, fairy chests fall back to red aether regardless of this setting.
+    """
+    display_name = "Fairy Chest AP Chance"
+    range_start = 1
+    range_end = 100
+    default = 100
+
+
 class ManorUpgradeBundleSize(Range):
     """Number of skill tree levels granted when receiving a manor upgrade item.
 
@@ -177,6 +219,9 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     death_link: RL2DeathLink
     blueprint_checks_per_biome: BlueprintChecksPerBiome
     rune_checks_per_biome: RuneChecksPerBiome
+    bronze_chest_ap_chance: BronzeChestApChance
+    silver_chest_ap_chance: SilverChestApChance
+    fairy_chest_ap_chance: FairyChestApChance
     manor_upgrade_bundle_size: ManorUpgradeBundleSize
     manor_useful_count: ManorUsefulCount
     randomize_npc_unlocks: RandomizeNpcUnlocks

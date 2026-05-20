@@ -43,29 +43,19 @@ internal static class TrapManager
 
             case BurdenType.TowerBiomeUp:
                 DragonLancersActive = true;
-                // Lancer_Attack_Coroutine indexes into m_lancerWarningProjectiles[] and
-                // m_fireProjectileCoroutines[] — these arrays are only created by Initialize().
-                // Initialize now so the coroutine doesn't NullRef at runtime.
-                var towerRule = FindBiomeRule<TowerBiomeUp_BiomeRule>();
-                if (towerRule != null)
-                {
-                    var t = Traverse.Create(towerRule);
-                    if (!t.Field("m_isInitialized").GetValue<bool>())
-                        t.Method("Initialize").GetValue();
-                }
                 EnsurePooled("TowerBiomeUpWarningProjectile",
                              "TowerBiomeUpExplosionProjectile",
                              "TowerBiomeUpLancerProjectile");
                 break;
 
             case BurdenType.ForestBiomeUp:
-                AutomatonSwarmActive = true;
+                GiantSnowflakesActive = true;
                 EnsurePooled("ForestBiomeUpSwirlWarningProjectile",
                              "ForestBiomeUpExplosionProjectile");
                 break;
 
             case BurdenType.CaveBiomeUp:
-                GiantSnowflakesActive = true;
+                AutomatonSwarmActive = true;
                 EnsurePooled("CaveBossWaveWarningProjectile",
                              "CaveBossWaveWarningLockedProjectile",
                              "CaveBossWaveProjectile");
@@ -112,16 +102,42 @@ internal static class TrapManager
         var room = roomArgs.Room;
         if (room == null || !IsValidTrapRoom(room)) return;
 
+        // Biome transitions call CreatePoolsFromQueuedProjectiles which destroys any pool
+        // entry not in its queue — including ones we added. Re-pool on every room entry so
+        // the projectiles are always present when the coroutine tries to fire them.
+        EnsureActiveTrapsPooled();
+
         if (CannonballRainActive)
             TryStartTrap<BridgeBiomeUp_BiomeRule>(room, "m_attackCoroutine",      "Attack_Coroutine");
         if (DragonLancersActive)
             TryStartTrap<TowerBiomeUp_BiomeRule> (room, "m_lancerAttackCoroutine","Lancer_Attack_Coroutine");
-        if (AutomatonSwarmActive)
-            TryStartTrap<ForestBiomeUp_BiomeRule>(room, "m_forestAttackCoroutine","ForestAttackCoroutine");
         if (GiantSnowflakesActive)
+            TryStartTrap<ForestBiomeUp_BiomeRule>(room, "m_forestAttackCoroutine","ForestAttackCoroutine");
+        if (AutomatonSwarmActive)
             TryStartTrap<CaveBiomeUp_BiomeRule>  (room, "m_waveAttackCoroutine",  "Wave_Attack_Coroutine");
         if (VoidWavesActive)
             TryStartTrap<StudyBiomeUp_BiomeRule> (room, "m_voidAttackCoroutine",  "Void_Attack_Coroutine");
+    }
+
+    private static void EnsureActiveTrapsPooled()
+    {
+        if (CannonballRainActive)
+            EnsurePooled("BridgeBiomeUpCannonBallWarningProjectile",
+                         "BridgeBiomeUpCannonBallProjectile");
+        if (DragonLancersActive)
+            EnsurePooled("TowerBiomeUpWarningProjectile",
+                         "TowerBiomeUpExplosionProjectile",
+                         "TowerBiomeUpLancerProjectile");
+        if (GiantSnowflakesActive)
+            EnsurePooled("ForestBiomeUpSwirlWarningProjectile",
+                         "ForestBiomeUpExplosionProjectile");
+        if (AutomatonSwarmActive)
+            EnsurePooled("CaveBossWaveWarningProjectile",
+                         "CaveBossWaveWarningLockedProjectile",
+                         "CaveBossWaveProjectile");
+        if (VoidWavesActive)
+            EnsurePooled("StudyBiomeUpVoidWarningProjectile",
+                         "StudyBiomeUpVoidProjectile");
     }
 
     private static void OnPlayerExitRoom(object sender, EventArgs args)
@@ -139,6 +155,16 @@ internal static class TrapManager
         {
             Plugin.Log.LogWarning($"[AP] TrapManager: could not find {typeof(T).Name}");
             return;
+        }
+
+        // TowerBiomeUp_BiomeRule allocates its projectile/coroutine arrays in Initialize().
+        // Call it here rather than in ActivateTrap so it always runs against a live rule instance,
+        // even when the trap is restored from a saved run before BiomeRuleManager is in the scene.
+        if (rule is TowerBiomeUp_BiomeRule)
+        {
+            var init = Traverse.Create(rule);
+            if (!init.Field("m_isInitialized").GetValue<bool>())
+                init.Method("Initialize").GetValue();
         }
 
         var traverse = Traverse.Create(rule);

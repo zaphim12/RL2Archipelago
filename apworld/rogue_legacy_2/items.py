@@ -54,8 +54,8 @@ item_data_table: dict[str, RogueLegacy2ItemData] = {
 _TRAP_NAMES = [
     "Trap: Cannonball Rain",   # 0 — BridgeBiomeUp (Burden of Mundi's Flagship)
     "Trap: Dragon Lancers",    # 1 — TowerBiomeUp  (Burden of Irad's Torment)
-    "Trap: Automaton Swarm",   # 2 — ForestBiomeUp (Burden of Pishon's Uprising)
-    "Trap: Giant Snowflakes",  # 3 — CaveBiomeUp   (Burden of Kerguelen's Frost)
+    "Trap: Automaton Swarm",   # 2 — CaveBiomeUp   (Burden of Pishon's Uprising)
+    "Trap: Giant Snowflakes",  # 3 — ForestBiomeUp (Burden of Kerguelen's Frost)
     "Trap: Void Waves",        # 4 — StudyBiomeUp  (Burden of the High Scholar's Metamorphosis)
 ]
 
