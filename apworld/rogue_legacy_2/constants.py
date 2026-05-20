@@ -1,6 +1,8 @@
 # String constants shared across multiple Python files.
 # These must stay in lockstep with GameConstants.cs in the C# mod.
 
+from typing import NamedTuple
+
 # ---------------------------------------------------------------------------
 # Biomes
 # ---------------------------------------------------------------------------
@@ -92,239 +94,118 @@ BLUEPRINT_TYPES: list[str] = [
 # Indices 0-68 are core upgrades; 69-71 are NPC unlock slots.
 # ---------------------------------------------------------------------------
 
-# ── Vitality ─────────────────────────────────────────────────────────────────
-MESS_HALL               = "Mess Hall (Vitality Up I)"                      # 0  Health_Up
-FRUIT_JUICE_BAR         = "Fruit Juice Bar (Vitality Up II)"               # 1  Health_Up2
-METEORA_GYM             = "Meteora Gym (Vitality Up III)"                  # 2  Health_Up3
-# ── Misc survival ────────────────────────────────────────────────────────────
-INSTITUTE_OF_GASTRONOMY = "Institute of Gastronomy (Health Drop Scaling)"  # 3  Potion_Up
-# ── Strength ─────────────────────────────────────────────────────────────────
-ARSENAL                 = "Arsenal (Strength Up I)"                        # 4  Attack_Up
-SAUNA                   = "Sauna (Strength Up II)"                         # 5  Attack_Up2
-ROCK_CLIMBING_WALL      = "Rock Climbing Wall (Strength Up III)"           # 6  Attack_Up3
-# ── Spin kicks ───────────────────────────────────────────────────────────────
-BAMBOO_GARDEN           = "Bamboo Garden (Spin Kick scales with INT)"      # 7  Down_Strike_Up
-# ── Dexterity ────────────────────────────────────────────────────────────────
-GYM                     = "Gym (Dexterity Up I)"                           # 8  Dexterity_Add1
-YOGA_CLASS              = "Yoga Class (Dexterity Up II)"                   # 9  Dexterity_Add2
-FLOWER_SHOP             = "Flower Shop (Dexterity Up III)"                 # 10 Dexterity_Add3
-# ── Weapon crit damage ───────────────────────────────────────────────────────
-LAUNDROMAT              = "The Laundromat (Weapon Crit Damage Up)"         # 11 Crit_Damage_Up
-# ── Intelligence ─────────────────────────────────────────────────────────────
-STUDY_HALL              = "Study Hall (Intelligence Up I)"                 # 12 Magic_Attack_Up
-MATH_CLUB               = "Math Club (Intelligence Up II)"                 # 13 Magic_Attack_Up2
-UNIVERSITY              = "University (Intelligence Up III)"               # 14 Magic_Attack_Up3
-# ── Focus ────────────────────────────────────────────────────────────────────
-LIBRARY                 = "Library (Focus Up I)"                           # 15 Focus_Up1
-HALL_OF_WISDOM          = "Hall of Wisdom (Focus Up II)"                   # 16 Focus_Up2
-COURT_OF_THE_WISE       = "Court of the Wise (Focus Up III)"               # 17 Focus_Up3
-# ── Magic crit damage ────────────────────────────────────────────────────────
-LODGE                   = "The Lodge (Magic Crit Damage Up)"               # 18 Magic_Crit_Damage_Up
-# ── Equipment weight ─────────────────────────────────────────────────────────
-FASHION_CHAMBERS        = "Fashion Chambers (Max Weight Up I)"             # 19 Equip_Up
-TAILORS                 = "Tailors (Max Weight Up II)"                     # 20 Equip_Up2
-ARTISAN                 = "Artisan (Max Weight Up III)"                    # 21 Equip_Up3
-# ── Rune weight ──────────────────────────────────────────────────────────────
-ETCHING_CHAMBERS        = "Etching Chambers (Max Rune Weight Up I)"        # 22 Rune_Equip_Up
-PILLOW_MILL             = "Pillow Mill (Max Rune Weight Up II)"            # 23 Rune_Equip_Up2
-BED_MILL                = "Bed Mill (Max Rune Weight Up III)"              # 24 Rune_Equip_Up3
-# ── Armor ────────────────────────────────────────────────────────────────────
-FOUNDRY                 = "Foundry (Armor Up I)"                           # 25 Armor_Up
-BLAST_FURNACE           = "Blast Furnace (Armor Up II)"                    # 26 Armor_Up2
-SOME_KIND_OF_KILN       = "Some Kind of Kiln (Armor Up III)"               # 27 Armor_Up3
-# ── Gold & economy ───────────────────────────────────────────────────────────
-UNIVERSAL_HEALTH_STAIR  = "Universal Health Stair (Traits Give Gold)"      # 28 Traits_Give_Gold
-REPURPOSED_MINING_SHAFT = "Repurposed Mining Shaft (Traits Gold Gain Up)"  # 29 Traits_Give_Gold_Gain_Mod
-GEOLOGISTS_CAMP         = "Geologist's Camp (Ore Drop Chance Up)"          # 30 Equipment_Ore_Find_Up
-DOWSING_CENTER          = "Dowsing Center (Red Aether Drop Chance Up)"     # 31 Rune_Ore_Find_Up
-MASSIVE_VAULT           = "Massive Vault (Gold Gain Up I)"                 # 32 Gold_Gain_Up
-# ── Rerolls ──────────────────────────────────────────────────────────────────
-CAREER_CENTER           = "Career Center (Re-Roll Children)"               # 33 Randomize_Children
-AEROBICS_CLASSROOM      = "Aerobics Classroom (Encumbrance Limit Up)"      # 34 Weight_CD_Reduce
-# ── Living safe ──────────────────────────────────────────────────────────────
-COURTHOUSE              = "Courthouse (Living Safe Max Gold Up)"           # 35 Gold_Saved_Cap_Up
-SCRIBES_OFFICE          = "Scribe's Office (Living Safe Conversion Up)"    # 36 Gold_Saved_Amount_Saved
-# ── Class unlocks ────────────────────────────────────────────────────────────
-FIGHTING_RING           = "Fighting Ring (Boxer Class)"                    # 37 BoxingGlove_Class_Unlock
-DANCE_HALL              = "Dance Hall (Duelist Class)"                     # 38 Saber_Class_Unlock
-GUILD_OF_DARK_ARTS      = "Guild of Dark Arts (Assassin Class)"            # 39 DualBlades_Class_Unlock
-DRILL_STORE             = "Drill Store (Architect Cost Reduction)"         # 40 Architect_Cost_Down
-ADOPTION_CENTER         = "Adoption Center (More Heirs)"                   # 41 More_Children
-KITCHEN                 = "The Kitchen (Chef Class)"                       # 42 Ladle_Class_Unlock
-BUTCHERS_SHOPPE         = "Butcher's Shoppe (Barbarian Class)"             # 43 Axe_Class_Unlock
-ACADEMY                 = "Academy (Mage Class)"                           # 44 Wand_Class_Unlock
-ARCHERY_RANGE           = "Archery Range (Ranger Class)"                   # 45 Bow_Class_Unlock
-SAND_PITS               = "Sand Pits (Valkyrie Class)"                     # 46 Spear_Class_Unlock
-SALTPETER_MINES         = "Saltpeter Mines (Gunslinger Class)"             # 47 Gun_Class_Unlock
-RYOKAN                  = "Ryokan (Ronin Class)"                           # 48 Samurai_Class_Unlock
-TAVERN                  = "The Tavern (Bard Class)"                        # 49 Music_Class_Unlock
-FLYING_DOCKS            = "The Flying Docks (Pirate Class)"                # 50 Pirate_Class_Unlock
-ASTRAL_GARDENS          = "The Astral Gardens (Astromancer Class)"         # 51 Astro_Class_Unlock
-AVIARY                  = "The Aviary (Dragon Lancer Class)"               # 52 Lancer_Class_Unlock
-# ── Progression & utility ────────────────────────────────────────────────────
-TROPHY_ROOM             = "Trophy Room (XP Up)"                            # 53 XP_Up
-JEWELER                 = "Jeweler (Ore Gain Up)"                          # 54 Equipment_Ore_Gain_Up
-BURIED_TOMB             = "Buried Tomb (Red Aether Gain Up)"               # 55 Rune_Ore_Gain_Up
-DUMMY                   = "Dummy (Training Dummy Unlock)"                  # 56 Unlock_Dummy
-MEDITATION_STUDIES      = "Meditation Studies (Boss Health/Mana Restore)"  # 57 Boss_Health_Restore
-SAGE_TOTEM              = "Sage Totem (Mastery Rank Unlock)"               # 58 Unlock_Totem
-ARCHAEOLOGY_CAMP        = "Archaeology Camp (Relic Resolve Cost Down)"     # 59 Relic_Cost_Down
-MEDIEVAL_FORGERY        = "Medieval Forgery (Relic Reroll Up)"             # 60 Reroll_Relic
-ALCHEMY_LAB             = "Alchemy Lab (Potion Recharge Talent)"           # 61 Potion_Recharge_Talent
-PSYCHIATRIST            = "Psychiatrist (Resolve Up)"                      # 62 Resolve_Up
-JOUSTING_STUDIES        = "Jousting Studies (Dash Damage Reduction)"       # 63 Dash_Strike_Up
-CHARITY_DUNGEON         = "Charity Dungeon (Charon Donation Bonus Unlock)" # 64 Charon_Gold_Stat_Bonus
-DICERS_DEN              = "The Dicer's Den (Weapon Crit Chance Up)"        # 65 Crit_Chance_Flat_Up
-QUANTUM_OBSERVATORY     = "The Quantum Observatory (Magic Crit Chance Up)" # 66 Magic_Crit_Chance_Flat_Up
-BIZARRE_BAZAAR          = "The Bizarre Bazaar (Reroll Relic Room Cap Up)"  # 67 Reroll_Relic_Room_Cap
-SCREW_DISTILLERY        = "Screw Distillery (Architect Unlock)"            # 68 Architect
-# ── NPC unlocks ──────────────────────────────────────────────────────────────
-OFFSHORE_BANK_ACCOUNT   = "Offshore Bank Account (Living Safe)"            # 69 Gold_Saved_Unlock
-FOUNDATION              = "Foundation (Smithy Unlock)"                     # 70 Smithy
-ENCHANTRESS_QUARTERS    = "Enchantress' Quarters (Enchantress Unlock)"     # 71 Enchantress
+class ManorSlot(NamedTuple):
+    item_name: str      # AP item display name  (e.g. "Vitality Up I")
+    location_name: str  # In-game building name (e.g. "Mess Hall")
+    max_level: int      # Max purchasable levels; single-level slots are 1
+    depth: int          # Manor tree depth; drives gold cost formula in __init__.py
 
-CORE_MANOR_UPGRADES: list[str] = [
-    MESS_HALL, FRUIT_JUICE_BAR, METEORA_GYM,
-    # "Veterinarian Clinic (Revive Chance Up)",
-    INSTITUTE_OF_GASTRONOMY,
-    # "Stadium (Invulnerability Up)",
-    ARSENAL, SAUNA, ROCK_CLIMBING_WALL,
-    BAMBOO_GARDEN,
-    GYM, YOGA_CLASS, FLOWER_SHOP,
-    LAUNDROMAT,
-    STUDY_HALL, MATH_CLUB, UNIVERSITY,
-    LIBRARY, HALL_OF_WISDOM, COURT_OF_THE_WISE,
-    LODGE,
-    # "The Thaumaturgy (Cooldown Reduction)",
-    FASHION_CHAMBERS, TAILORS, ARTISAN,
-    ETCHING_CHAMBERS, PILLOW_MILL, BED_MILL,
-    FOUNDRY, BLAST_FURNACE, SOME_KIND_OF_KILN,
-    UNIVERSAL_HEALTH_STAIR, REPURPOSED_MINING_SHAFT,
-    GEOLOGISTS_CAMP, DOWSING_CENTER, MASSIVE_VAULT,
-    # "Gold Gain Up II", "Gold Gain Up III", "Sky Bridge", "Tree Bridge",
-    CAREER_CENTER, AEROBICS_CLASSROOM,
-    # "The Fissary (Mana Cost Down)",
-    COURTHOUSE, SCRIBES_OFFICE,
-    FIGHTING_RING, DANCE_HALL, GUILD_OF_DARK_ARTS,
-    DRILL_STORE,
-    # "Genesis Pool (Polymorph Class)",
-    ADOPTION_CENTER, KITCHEN,
-    # "Forest Village (Chakram Class)", "Martial Arts School (Tonfa Class)", "The Pilgrim's Steps (Knight Class)",
-    BUTCHERS_SHOPPE, ACADEMY, ARCHERY_RANGE, SAND_PITS,
-    # "Hidden Dojo (Ninja Class)", "Ancestral Plot (Lich Class)", "Miner's Camp (Spelunker Class)",
-    SALTPETER_MINES, RYOKAN, TAVERN, FLYING_DOCKS, ASTRAL_GARDENS,
-    # "Weapon Master Upgrade", "Knight Upgrade",
-    AVIARY,
-    TROPHY_ROOM, JEWELER, BURIED_TOMB,
-    # "Herb Garden (Free Cast Up)",
-    DUMMY, MEDITATION_STUDIES, SAGE_TOTEM,
-    ARCHAEOLOGY_CAMP, MEDIEVAL_FORGERY, ALCHEMY_LAB,
-    PSYCHIATRIST, JOUSTING_STUDIES, CHARITY_DUNGEON,
-    DICERS_DEN, QUANTUM_OBSERVATORY, BIZARRE_BAZAAR,
-    SCREW_DISTILLERY,
-]
-
-NPC_MANOR_UPGRADES: list[str] = [
-    OFFSHORE_BANK_ACCOUNT,
-    FOUNDATION,
-    ENCHANTRESS_QUARTERS,
-    # "Banker Unlock",
-]
-
-# Max level for each manor upgrade slot, keyed by "Manor: {name}".
-# Used by create_items() to compute how many AP items to generate per slot.
-# Single-level slots (class/NPC unlocks, binary toggles) are set to 1.
-MANOR_MAX_LEVELS: dict[str, int] = {
+_MANOR_SLOTS: list[ManorSlot] = [
     # ── Vitality ─────────────────────────────────────────────────────────────
-    f"Manor: {MESS_HALL}":               10,
-    f"Manor: {FRUIT_JUICE_BAR}":         20,
-    f"Manor: {METEORA_GYM}":             30,
-    # ── Misc survival ────────────────────────────────────────────────────────
-    f"Manor: {INSTITUTE_OF_GASTRONOMY}": 10, # TODO technically max is 0 without Unbreakable Will
+    ManorSlot("Vitality Up I",               "Mess Hall",                 10,  3),  # 0  Health_Up
+    ManorSlot("Vitality Up II",              "Fruit Juice Bar",           20,  5),  # 1  Health_Up2
+    ManorSlot("Vitality Up III",             "Meteora Gym",               30,  7),  # 2  Health_Up3
     # ── Strength ─────────────────────────────────────────────────────────────
-    f"Manor: {ARSENAL}":                 10,
-    f"Manor: {SAUNA}":                   20,
-    f"Manor: {ROCK_CLIMBING_WALL}":      30,
-    # ── Spin Kicks ───────────────────────────────────────────────────────────
-    f"Manor: {BAMBOO_GARDEN}":           5,
+    ManorSlot("Strength Up I",               "Arsenal",                   10,  5),  # 3  Attack_Up
+    ManorSlot("Strength Up II",              "Sauna",                     20,  6),  # 4  Attack_Up2
+    ManorSlot("Strength Up III",             "Rock Climbing Wall",        30,  9),  # 5  Attack_Up3
     # ── Dexterity ────────────────────────────────────────────────────────────
-    f"Manor: {GYM}":                     10,
-    f"Manor: {YOGA_CLASS}":              25,
-    f"Manor: {FLOWER_SHOP}":             35,
-    # ── Weapon Crit Damage ───────────────────────────────────────────────────
-    f"Manor: {LAUNDROMAT}":              10,
+    ManorSlot("Dexterity Up I",              "Gym",                       10,  7),  # 6  Dexterity_Add1
+    ManorSlot("Dexterity Up II",             "Yoga Class",                25,  9),  # 7  Dexterity_Add2
+    ManorSlot("Dexterity Up III",            "Flower Shop",               35, 11),  # 8  Dexterity_Add3
+    # ── Weapon crit ──────────────────────────────────────────────────────────
+    ManorSlot("Weapon Crit Damage Up",       "The Laundromat",            10, 10),  # 9  Crit_Damage_Up
+    ManorSlot("Weapon Crit Chance Up",       "The Dicer's Den",           20, 10),  # 10 Crit_Chance_Flat_Up    TODO: technically max is 0 without Absolute Strength
     # ── Intelligence ─────────────────────────────────────────────────────────
-    f"Manor: {STUDY_HALL}":              10,
-    f"Manor: {MATH_CLUB}":               20,
-    f"Manor: {UNIVERSITY}":              30,
+    ManorSlot("Intelligence Up I",           "Study Hall",                10,  5),  # 11 Magic_Attack_Up
+    ManorSlot("Intelligence Up II",          "Math Club",                 20,  8),  # 12 Magic_Attack_Up2
+    ManorSlot("Intelligence Up III",         "University",                30, 10),  # 13 Magic_Attack_Up3
     # ── Focus ────────────────────────────────────────────────────────────────
-    f"Manor: {LIBRARY}":                 10,
-    f"Manor: {HALL_OF_WISDOM}":          25,
-    f"Manor: {COURT_OF_THE_WISE}":       25,
-    # ── Spell Crit Damage ────────────────────────────────────────────────────
-    f"Manor: {LODGE}":                   10,
+    ManorSlot("Focus Up I",                  "Library",                   10,  7),  # 14 Focus_Up1
+    ManorSlot("Focus Up II",                 "Hall of Wisdom",            25,  9),  # 15 Focus_Up2
+    ManorSlot("Focus Up III",                "Court of the Wise",         25, 11),  # 16 Focus_Up3
+    # ── Magic crit ───────────────────────────────────────────────────────────
+    ManorSlot("Magic Crit Damage Up",        "The Lodge",                 10, 10),  # 17 Magic_Crit_Damage_Up
+    ManorSlot("Magic Crit Chance Up",        "The Quantum Observatory",   20, 11),  # 18 Magic_Crit_Chance_Flat_Up  TODO: technically max is 0 without Infinite Knowledge
     # ── Equipment weight ─────────────────────────────────────────────────────
-    f"Manor: {FASHION_CHAMBERS}":        5,
-    f"Manor: {TAILORS}":                 15,
-    f"Manor: {ARTISAN}":                 25,
+    ManorSlot("Max Weight Up I",             "Fashion Chambers",           5,  4),  # 19 Equip_Up
+    ManorSlot("Max Weight Up II",            "Tailors",                   15,  6),  # 20 Equip_Up2
+    ManorSlot("Max Weight Up III",           "Artisan",                   25,  7),  # 21 Equip_Up3
     # ── Rune weight ──────────────────────────────────────────────────────────
-    f"Manor: {ETCHING_CHAMBERS}":        5,
-    f"Manor: {PILLOW_MILL}":             15,
-    f"Manor: {BED_MILL}":                15,
+    ManorSlot("Max Rune Weight Up I",        "Etching Chambers",           5,  4),  # 22 Rune_Equip_Up
+    ManorSlot("Max Rune Weight Up II",       "Pillow Mill",               15,  6),  # 23 Rune_Equip_Up2
+    ManorSlot("Max Rune Weight Up III",      "Bed Mill",                  15,  7),  # 24 Rune_Equip_Up3
     # ── Armor ────────────────────────────────────────────────────────────────
-    f"Manor: {FOUNDRY}":                 15,
-    f"Manor: {BLAST_FURNACE}":           25,
-    f"Manor: {SOME_KIND_OF_KILN}":       35,
+    ManorSlot("Armor Up I",                  "Foundry",                   15,  6),  # 25 Armor_Up
+    ManorSlot("Armor Up II",                 "Blast Furnace",             25,  8),  # 26 Armor_Up2
+    ManorSlot("Armor Up III",                "Some Kind of Kiln",         35, 10),  # 27 Armor_Up3
+    # ── Health restore ───────────────────────────────────────────────────────
+    ManorSlot("Health Drop Scaling",         "Institute of Gastronomy",   10,  8),  # 28 Potion_Up           TODO: technically max is 0 without Unbreakable Will
+    ManorSlot("Boss Health/Mana Restore",    "Meditation Studies",         5,  5),  # 29 Boss_Health_Restore
+    # ── Spin kicks ───────────────────────────────────────────────────────────
+    ManorSlot("Spin Kick scales with INT",   "Bamboo Garden",              5,  8),  # 30 Down_Strike_Up
     # ── Gold & economy ───────────────────────────────────────────────────────
-    f"Manor: {UNIVERSAL_HEALTH_STAIR}":  1,
-    f"Manor: {REPURPOSED_MINING_SHAFT}": 10,
-    f"Manor: {GEOLOGISTS_CAMP}":         5,
-    f"Manor: {DOWSING_CENTER}":          5,
-    f"Manor: {MASSIVE_VAULT}":           20, # TODO technically max is 0 without Unbreakable Will
-    # ── Rerolls ──────────────────────────────────────────────────────────────
-    f"Manor: {CAREER_CENTER}":           5,
-    f"Manor: {ADOPTION_CENTER}":         1,  # TODO technically max is 0 without Infinite Knowledge
-    # ── Encumbrance ──────────────────────────────────────────────────────────
-    f"Manor: {AEROBICS_CLASSROOM}":      10,
+    ManorSlot("Traits Give Gold",            "Universal Health Stair",     1,  1),  # 31 Traits_Give_Gold
+    ManorSlot("Traits Gold Gain Up",         "Repurposed Mining Shaft",   10,  3),  # 32 Traits_Give_Gold_Gain_Mod
+    ManorSlot("Ore Drop Chance Up",          "Geologist's Camp",           5,  6),  # 33 Equipment_Ore_Find_Up
+    ManorSlot("Red Aether Drop Chance Up",   "Dowsing Center",             5,  8),  # 34 Rune_Ore_Find_Up
+    ManorSlot("Gold Gain Up I",              "Massive Vault",             20, 10),  # 35 Gold_Gain_Up           TODO: technically max is 0 without Unbreakable Will
+    ManorSlot("Ore Gain Up",                 "Jeweler",                   20, 11),  # 36 Equipment_Ore_Gain_Up  TODO: technically max is 0 without Absolute Strength
+    ManorSlot("Red Aether Gain Up",          "Buried Tomb",               20,  9),  # 37 Rune_Ore_Gain_Up       TODO: technically max is 0 without Infinite Knowledge
+    # ── Heirs ────────────────────────────────────────────────────────────────
+    ManorSlot("Re-Roll Children",            "Career Center",              5,  5),  # 38 Randomize_Children
+    ManorSlot("More Heirs",                  "Adoption Center",            1, 10),  # 39 More_Children          TODO: technically max is 0 without Infinite Knowledge
     # ── Living safe ──────────────────────────────────────────────────────────
-    f"Manor: {COURTHOUSE}":              20,
-    f"Manor: {SCRIBES_OFFICE}":          10,
+    ManorSlot("Living Safe Max Gold Up",     "Courthouse",                20,  4),  # 40 Gold_Saved_Cap_Up
+    ManorSlot("Living Safe Conversion Up",   "Scribe's Office",           10,  5),  # 41 Gold_Saved_Amount_Saved
     # ── Architect ────────────────────────────────────────────────────────────
-    f"Manor: {DRILL_STORE}":             5,
+    ManorSlot("Architect Unlock",            "Screw Distillery",           1,  5),  # 42 Architect
+    ManorSlot("Architect Cost Reduction",    "Drill Store",                5,  6),  # 43 Architect_Cost_Down
     # ── Class unlocks ────────────────────────────────────────────────────────
-    f"Manor: {FIGHTING_RING}":           1,
-    f"Manor: {DANCE_HALL}":              1,
-    f"Manor: {GUILD_OF_DARK_ARTS}":      1,
-    f"Manor: {KITCHEN}":                 1,
-    f"Manor: {BUTCHERS_SHOPPE}":         1,
-    f"Manor: {ACADEMY}":                 1,
-    f"Manor: {ARCHERY_RANGE}":           1,
-    f"Manor: {SAND_PITS}":               1,
-    f"Manor: {SALTPETER_MINES}":         1,
-    f"Manor: {RYOKAN}":                  1,
-    f"Manor: {TAVERN}":                  1,
-    f"Manor: {FLYING_DOCKS}":            1,
-    f"Manor: {ASTRAL_GARDENS}":          1,
-    f"Manor: {AVIARY}":                  1,
+    ManorSlot("Boxer Class",                 "Fighting Ring",              1,  6),  # 44 BoxingGlove_Class_Unlock
+    ManorSlot("Duelist Class",               "Dance Hall",                 1,  6),  # 45 Saber_Class_Unlock
+    ManorSlot("Assassin Class",              "Guild of Dark Arts",         1,  8),  # 46 DualBlades_Class_Unlock
+    ManorSlot("Chef Class",                  "The Kitchen",                1,  6),  # 47 Ladle_Class_Unlock
+    ManorSlot("Barbarian Class",             "Butcher's Shoppe",           1,  4),  # 48 Axe_Class_Unlock
+    ManorSlot("Mage Class",                  "Academy",                    1,  4),  # 49 Wand_Class_Unlock
+    ManorSlot("Ranger Class",                "Archery Range",              1,  2),  # 50 Bow_Class_Unlock
+    ManorSlot("Valkyrie Class",              "Sand Pits",                  1,  4),  # 51 Spear_Class_Unlock
+    ManorSlot("Gunslinger Class",            "Saltpeter Mines",            1,  8),  # 52 Gun_Class_Unlock
+    ManorSlot("Ronin Class",                 "Ryokan",                     1,  8),  # 53 Samurai_Class_Unlock
+    ManorSlot("Bard Class",                  "The Tavern",                 1,  7),  # 54 Music_Class_Unlock
+    ManorSlot("Pirate Class",                "The Flying Docks",           1,  9),  # 55 Pirate_Class_Unlock
+    ManorSlot("Astromancer Class",           "The Astral Gardens",         1,  9),  # 56 Astro_Class_Unlock
+    ManorSlot("Dragon Lancer Class",         "The Aviary",                 1,  7),  # 57 Lancer_Class_Unlock
+    # ── Relics ───────────────────────────────────────────────────────────────
+    ManorSlot("Relic Resolve Cost Down",     "Archaeology Camp",           5,  7),  # 58 Relic_Cost_Down
+    ManorSlot("Relic Reroll Up",             "Medieval Forgery",          10,  8),  # 59 Reroll_Relic
+    ManorSlot("Reroll Relic Room Cap Up",    "The Bizarre Bazaar",         2,  9),  # 60 Reroll_Relic_Room_Cap  TODO: technically max is 0 without Master Smith
     # ── Progression & utility ────────────────────────────────────────────────
-    f"Manor: {TROPHY_ROOM}":             10,
-    f"Manor: {JEWELER}":                 20, # TODO technically max is 0 without Absolute Strength
-    f"Manor: {BURIED_TOMB}":             20, # TODO technically max is 0 without Infinite Knowledge
-    f"Manor: {DUMMY}":                   1,
-    f"Manor: {MEDITATION_STUDIES}":      5,
-    f"Manor: {SAGE_TOTEM}":              1,
-    f"Manor: {ARCHAEOLOGY_CAMP}":        5,
-    f"Manor: {MEDIEVAL_FORGERY}":        10,
-    f"Manor: {ALCHEMY_LAB}":             1,
-    f"Manor: {PSYCHIATRIST}":            20,
-    f"Manor: {JOUSTING_STUDIES}":        5,
-    f"Manor: {CHARITY_DUNGEON}":         1,
-    f"Manor: {DICERS_DEN}":              20, # TODO technically max is 0 without Absolute Strength
-    f"Manor: {QUANTUM_OBSERVATORY}":     20, # TODO technically max is 0 without Infinite Knowledge
-    f"Manor: {BIZARRE_BAZAAR}":          2,  # TODO technically max is 0 without Master Smith
-    f"Manor: {SCREW_DISTILLERY}":        1,
+    ManorSlot("Encumbrance Limit Up",        "Aerobics Classroom",        10,  5),  # 61 Weight_CD_Reduce
+    ManorSlot("XP Up",                       "Trophy Room",               10,  5),  # 62 XP_Up
+    ManorSlot("Resolve Up",                  "Psychiatrist",              20,  6),  # 63 Resolve_Up
+    ManorSlot("Training Dummy Unlock",       "Dummy",                      1,  4),  # 64 Unlock_Dummy
+    ManorSlot("Mastery Rank Unlock",         "Sage Totem",                 1,  4),  # 65 Unlock_Totem
+    ManorSlot("Potion Recharge Talent",      "Alchemy Lab",                1,  7),  # 66 Potion_Recharge_Talent
+    ManorSlot("Dash Damage Reduction",       "Jousting Studies",           5,  7),  # 67 Dash_Strike_Up
+    ManorSlot("Charon Donation Bonus Unlock","Charity Dungeon",            1,  3),  # 68 Charon_Gold_Stat_Bonus
     # ── NPC unlocks ──────────────────────────────────────────────────────────
-    f"Manor: {OFFSHORE_BANK_ACCOUNT}":   1,
-    f"Manor: {FOUNDATION}":              1,
-    f"Manor: {ENCHANTRESS_QUARTERS}":    1,
-}
+    ManorSlot("Living Safe",                 "Offshore Bank Account",      1,  2),  # 69 Gold_Saved_Unlock
+    ManorSlot("Blacksmith Unlock",           "Foundation",                 1,  3),  # 70 Blacksmith
+    ManorSlot("Enchantress Unlock",          "Enchantress' Quarters",      1,  3),  # 71 Enchantress
+]
+
+_CORE_COUNT = 69
+
+CORE_MANOR_UPGRADES:       list[str] = [f"Upgrade: {s.item_name}"    for s in _MANOR_SLOTS[:_CORE_COUNT]]
+CORE_MANOR_LOCATION_NAMES: list[str] = [f"Manor - {s.location_name}" for s in _MANOR_SLOTS[:_CORE_COUNT]]
+NPC_MANOR_UPGRADES:        list[str] = [f"Upgrade: {s.item_name}"    for s in _MANOR_SLOTS[_CORE_COUNT:]]
+NPC_MANOR_LOCATION_NAMES:  list[str] = [f"Manor - {s.location_name}" for s in _MANOR_SLOTS[_CORE_COUNT:]]
+
+# Keyed by "Upgrade: {item_name}" — used by create_items() to compute how many
+# AP items to generate per slot. Single-level slots are set to 1.
+MANOR_MAX_LEVELS: dict[str, int] = {f"Upgrade: {s.item_name}": s.max_level for s in _MANOR_SLOTS}
+
+# Keyed by "Upgrade: {item_name}" — depth in the manor unlock tree, used by
+# _compute_manor_upgrade_costs() to scale gold costs. Defaults to 1 if absent.
+MANOR_UPGRADE_DEPTHS: dict[str, int] = {f"Upgrade: {s.item_name}": s.depth for s in _MANOR_SLOTS}

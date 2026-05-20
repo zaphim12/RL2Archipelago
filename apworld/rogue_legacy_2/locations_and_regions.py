@@ -7,7 +7,7 @@ from worlds.generic.Rules import add_rule, set_rule
 if typing.TYPE_CHECKING:
     from . import RogueLegacy2World
 
-from .constants import BIOME_NAMES, CORE_MANOR_UPGRADES, NPC_MANOR_UPGRADES
+from .constants import BIOME_NAMES, CORE_MANOR_LOCATION_NAMES, NPC_MANOR_LOCATION_NAMES
 from .items import BASE_ID
 
 # ---------------------------------------------------------------------------
@@ -93,8 +93,8 @@ location_data_table: dict[str, RogueLegacy2LocationData] = {
 # Core (indices 0-68) are always registered; NPC unlocks (69-71) are registered
 # unconditionally here but only instantiated in create_regions when the option
 # is enabled; same pattern as blueprint/rune pool sizing.
-for _i, _name in enumerate(CORE_MANOR_UPGRADES + NPC_MANOR_UPGRADES):
-    location_data_table[f"Manor - {_name}"] = RogueLegacy2LocationData(
+for _i, _loc_name in enumerate(CORE_MANOR_LOCATION_NAMES + NPC_MANOR_LOCATION_NAMES):
+    location_data_table[_loc_name] = RogueLegacy2LocationData(
         region="Manor",
         address=BASE_ID + MANOR_OFFSET + _i,
     )

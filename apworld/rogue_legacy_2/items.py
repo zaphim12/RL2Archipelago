@@ -13,6 +13,7 @@ from .constants import (
     CORE_MANOR_UPGRADES,
     HEIRLOOM_NAMES,
     MANOR_MAX_LEVELS,
+    NPC_MANOR_LOCATION_NAMES,
     NPC_MANOR_UPGRADES,
     RUNE_NAMES,
     TELEPORTER_NAMES,
@@ -117,7 +118,7 @@ for _i, _rune in enumerate(RUNE_NAMES):
 # (active only when randomize_npc_unlocks=true).
 MANOR_ITEM_NAMES: list[str] = []
 for _i, _name in enumerate(CORE_MANOR_UPGRADES + NPC_MANOR_UPGRADES):
-    _item_name = f"Manor: {_name}"
+    _item_name = _name
     item_data_table[_item_name] = RogueLegacy2ItemData(
         code=BASE_ID + MANOR_OFFSET + _i,
         classification=ItemClassification.useful,
@@ -147,9 +148,9 @@ def create_items(world: "RogueLegacy2World") -> None:
     # When NPC unlocks are not randomized, lock each NPC item to its home
     # location so the server always returns it there on check.
     if not randomize_npc:
-        for npc_name in NPC_MANOR_UPGRADES:
-            loc = multiworld.get_location(f"Manor - {npc_name}", player)
-            loc.place_locked_item(create_item(player, f"Manor: {npc_name}"))
+        for npc_item, npc_loc in zip(NPC_MANOR_UPGRADES, NPC_MANOR_LOCATION_NAMES):
+            loc = multiworld.get_location(npc_loc, player)
+            loc.place_locked_item(create_item(player, npc_item))
 
     unfilled = len(multiworld.get_unfilled_locations(player))
 

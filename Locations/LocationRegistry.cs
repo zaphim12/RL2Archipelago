@@ -202,9 +202,9 @@ public static class LocationRegistry
             for (int slot = 0; slot < 16; slot++)
                 d[BASE_ID + RUNE_OFFSET + biome * 16 + slot] = $"{GameConstants.BiomeNames[biome]} - Fairy Chest {slot + 1}";
 
-        // Manor upgrade location names (parallel to ItemRegistry.s_manorDisplayNames)
-        for (int i = 0; i < ItemRegistry.s_skillTreeTypes.Length; i++)
-            d[BASE_ID + MANOR_OFFSET + i] = $"Manor - {ItemRegistry.s_manorDisplayNames[i]}";
+        // Manor upgrade location names
+        for (int i = 0; i < GameConstants.ManorLocationNames.Length; i++)
+            d[BASE_ID + MANOR_OFFSET + i] = GameConstants.ManorLocationNames[i];
 
         return d;
     }

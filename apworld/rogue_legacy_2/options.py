@@ -143,7 +143,7 @@ class JournalChecks(Choice):
 class RandomizeNpcUnlocks(Toggle):
     """Whether to randomize NPC unlock slots.
 
-    When enabled (default), the three NPC upgrade slots (Living Safe, Smithy, Enchantress)
+    When enabled (default), the three NPC upgrade slots (Living Safe, Blacksmith, Enchantress)
     are added as randomized Archipelago locations whose unlocks can be placed anywhere.
     When disabled, these unlock slots will always be placed in their original location.
     This allows them to be unlocked early instead of potentially gated far into a run.

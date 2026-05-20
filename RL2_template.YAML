@@ -121,7 +121,7 @@ Rogue Legacy 2:
 
   # ── NPC Unlock Randomization ─────────────────────────────────────────────
 
-  # Whether the three NPC upgrade slots (Living Safe, Smithy, Enchantress) are
+  # Whether the three NPC upgrade slots (Living Safe, Blacksmith, Enchantress) are
   # included as randomized AP locations whose unlock items can be placed
   # anywhere in the multiworld.
   #
