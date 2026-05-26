@@ -140,7 +140,7 @@ public static class GameConstants
     public const string BizarreBazaarItemName         = "Reroll Relic Room Cap Up";
     public const string ScrewDistilleryItemName       = "Architect Unlock";
     // NPC unlocks
-    public const string OffshoreBankAccountItemName   = "Living Safe";
+    public const string OffshoreBankAccountItemName   = "Living Safe Unlock";
     public const string FoundationItemName            = "Blacksmith Unlock";
     public const string EnchantressQuartersItemName   = "Enchantress Unlock";
 
@@ -240,12 +240,12 @@ public static class GameConstants
 
     // The following SkillTreeType values exist in the game's enum but are excluded
     // from the randomizer because they are unimplemented:
-    //   Death_Dodge           (Veterinarian Clinic  — Revive Chance Up)
-    //   Invuln_Time_Up        (Stadium              — Invulnerability Up)
-    //   Cooldown_Reduction_Up (The Thaumaturgy      — Cooldown Reduction)
-    //   Gold_Gain_Up_2/3/4/5  (Sky Bridge, Tree Bridge, ... — Gold Gain II-V)
-    //   Mana_Cost_Down        (The Fissary          — Mana Cost Down)
-    //   Potions_Free_Cast_Up  (Herb Garden          — Free Cast Up)
+    //   Death_Dodge           (Veterinarian Clinic  - Revive Chance Up)
+    //   Invuln_Time_Up        (Stadium              - Invulnerability Up)
+    //   Cooldown_Reduction_Up (The Thaumaturgy      - Cooldown Reduction)
+    //   Gold_Gain_Up_2/3/4/5  (Sky Bridge, Tree Bridge, ... - Gold Gain II-V)
+    //   Mana_Cost_Down        (The Fissary          - Mana Cost Down)
+    //   Potions_Free_Cast_Up  (Herb Garden          - Free Cast Up)
     //   Weapon_Master_Upgrade, Knight_Upgrade
     //   Polymorph_Class_Unlock  (Genesis Pool)
     //   Chakram_Class_Unlock    (Forest Village)
@@ -254,7 +254,7 @@ public static class GameConstants
     //   Kunai_Class_Unlock      (Hidden Dojo)
     //   Siphon_Class_Unlock     (Ancestral Plot)
     //   Cane_Class_Unlock       (Miner's Camp)
-    //   Banker                  (NPC — not present in base game)
+    //   Banker                  (NPC - not present in base game)
 
     /// <summary>
     /// One entry per randomized manor slot, ordered to match <c>_MANOR_SLOTS</c> in
@@ -361,7 +361,7 @@ public static class GameConstants
         new(SkillTreeType.Potion_Recharge_Talent,    AlchemyLabItemName,            AlchemyLabLocationName),            // 66
         new(SkillTreeType.Dash_Strike_Up,            JoustingStudiesItemName,       JoustingStudiesLocationName),       // 67
         new(SkillTreeType.Charon_Gold_Stat_Bonus,    CharityDungeonItemName,        CharityDungeonLocationName),        // 68
-        // ── NPC unlock slots (active only when randomize_npc_unlocks=true) ───
+        // ── NPC unlock slots ─────────────────────────────────────────────────
         new(SkillTreeType.Gold_Saved_Unlock,         OffshoreBankAccountItemName,   OffshoreBankAccountLocationName),   // 69
         new(SkillTreeType.Smithy,                    FoundationItemName,            FoundationLocationName),            // 70
         new(SkillTreeType.Enchantress,               EnchantressQuartersItemName,   EnchantressQuartersLocationName),   // 71

@@ -105,25 +105,6 @@ class ManorUpgradeBundleSize(Range):
     default = 5
 
 
-class ManorUsefulCount(Range):
-    """How many copies of each multi-level manor upgrade are classified as 'useful'.
-
-    When a manor upgrade has more than one AP item copy (because its max level exceeds
-    the bundle size), the first N copies are marked 'useful' and the remainder are
-    'filler'. 'Useful' and 'Filler' are Archipelago terms which determine how items 
-    are randomized in the world.
-
-    The first bundle (the only bundle for single-level upgrades like class unlocks, NPC unlocks, 
-    etc.) are always 'useful' regardless of this setting.
-
-    Set to 0 to make all extra copies filler. Set to a large number (e.g. 99) to
-    keep every copy useful.
-    """
-    display_name = "Manor Useful Upgrade Count"
-    range_start = 0
-    range_end = 35
-    default = 1
-
 
 class JournalChecks(Choice):
     """Controls how journals and memories give out location checks.
@@ -140,18 +121,6 @@ class JournalChecks(Choice):
     default = 2
 
 
-class RandomizeNpcUnlocks(Toggle):
-    """Whether to randomize NPC unlock slots.
-
-    When enabled (default), the three NPC upgrade slots (Living Safe, Blacksmith, Enchantress)
-    are added as randomized Archipelago locations whose unlocks can be placed anywhere.
-    When disabled, these unlock slots will always be placed in their original location.
-    This allows them to be unlocked early instead of potentially gated far into a run.
-    """
-    display_name = "Randomize NPC Unlock Locations"
-    default = 1
-
-
 class TrapCount(Range):
     """Total number of NG+ burden trap items placed in the item pool.
 
@@ -164,7 +133,7 @@ class TrapCount(Range):
       - Giant Snowflakes   (Burden of Kerguelen's Frost)
       - Void Waves         (Burden of the High Scholar's Metamorphosis)
 
-    Items are distributed as evenly as possible across the five trap types.
+    Items are distributed as evenly as possible across the five possible trap types.
     Set to 0 to disable traps entirely.
     """
     display_name = "Trap Count"
@@ -213,6 +182,91 @@ class ManorCostMaxAdditiveFactor(Range):
     range_end = 500
     default = 50
 
+# The below options are all designed to allow tuning of progression gating
+# They can be adjusted to smooth out run progression and reduce tedium
+# Warning: Altering these settings can easily create generation errors if
+# the resulting logical requirements are too tight
+
+class ManorDepthsPerBoss(Range):
+    """Number of manor depth tiers that are considered 'in-logic' per boss killed.
+
+    'Depth' is a value assigned to each manor upgrade that reflects how many upgrades
+    were required beforehand to reach that upgrade in the manor tree. 
+
+    The first 'x' depth tiers are always in logic; each additional boss killed
+    opens the next x tiers. With the default of 3: depths 1–3
+    are available from the start, depths 4–6 require 1 boss cleared, depths 7–9
+    require 2, and so on. 
+
+    Set to 0 to disable this gating entirely.
+    """
+    display_name = "Manor Depths Per Boss Gate"
+    range_start = 0
+    range_end = 11
+    default = 3
+
+
+class ChestPreBossPercent(Range):
+    """Percentage of each biome's chests considered in logic before the biome boss is killed.
+
+    This setting can be used to reduce the likelihood of a tedious grind being required
+    where all chests-related checks in a biome need to be cleared in order to unlock 
+    the items needed to beat the boss.
+    
+    This percentage of blueprint chest and fairy chest locations are considered 
+    'in-logic' before the biome's boss is killed. The remaining chests
+    are only considered 'in-logic' after the boss is defeated. 
+    """
+    display_name = "Chest Pre-Boss Percent"
+    range_start = 50
+    range_end = 100
+    default = 75
+
+
+class StatUpgradesPerBoss(Range):
+    """Number of received stat upgrade items logically required for killing a boss 
+    to be considered 'in-logic'. Each subsequent boss requires an additional multiple
+    of this number of upgrades.
+
+    With the default of 5: Estuary Lamech requires 5 upgrades, Byarrrith and
+    Halpharr require 10, Estuary Naamah requires 15, Estuary Enoch requires 20,
+    Estuary Irad requires 25, and Estuary Tubal requires 30. Gongheads and Murmur
+    minibosses use the same threshold as Naamah; Pishon Dry Lake minibosses use the
+    same threshold as Irad. 
+
+    Set to 0 to disable stat-upgrade gating for bosses.
+    """
+    display_name = "Stat Upgrades Per Boss"
+    range_start = 0
+    range_end = 10
+    default = 5
+
+
+class StatUpgradesPerBiomeTier(Range):
+    """Base number of received manor upgrade items logically required per biome tier.
+
+    The latter four biomes each require progressively more upgrades before their
+    chest and journal/memory locations are considered in logic: Kerguelen Plateau
+    requires x, Stygian Study requires 2x, Sun Tower requires 3x, and Pishon Dry
+    Lake requires 4x. Citadel Agartha and Axis Mundi are never gated. 
+
+    Set to 0 to disable stat-upgrade gating for biomes.
+    """
+    display_name = "Stat Upgrades Per Biome Tier"
+    range_start = 0
+    range_end = 10
+    default = 5
+
+
+class EarlyNPCUnlocks(Toggle):
+    """Whether to shift the NPC unlocks earlier in the run to ensure they aren't gated too far into the game.
+
+    When enabled, the three NPC unlock items (Living Safe, Blacksmith,
+    Enchantress) use soft rules to push their locations earlier in the run
+    """
+    display_name = "Early NPC Unlocks"
+    default = 1
+
 
 @dataclass
 class RogueLegacy2GameOptions(PerGameCommonOptions):
@@ -223,10 +277,13 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     silver_chest_ap_chance: SilverChestApChance
     fairy_chest_ap_chance: FairyChestApChance
     manor_upgrade_bundle_size: ManorUpgradeBundleSize
-    manor_useful_count: ManorUsefulCount
-    randomize_npc_unlocks: RandomizeNpcUnlocks
     journal_checks: JournalChecks
     trap_count: TrapCount
     manor_cost_base: ManorCostBase
     manor_cost_min_subtractive_factor: ManorCostMinSubtractiveFactor
     manor_cost_max_additive_factor: ManorCostMaxAdditiveFactor
+    manor_depths_per_boss: ManorDepthsPerBoss
+    chest_pre_boss_percent: ChestPreBossPercent
+    stat_upgrades_per_boss: StatUpgradesPerBoss
+    stat_upgrades_per_biome_tier: StatUpgradesPerBiomeTier
+    early_npc_unlocks: EarlyNPCUnlocks

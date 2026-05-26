@@ -60,15 +60,6 @@ If the max level for a particular skill is not divisible by the bundle size, the
 
 ---
 
-### Manor Useful Count (`manor_useful_count`)
-
-**Range:** 0–35 | **Default:** 1
-
-Within Archipelago, items can be classified as "useful" or "filler". Filler items are considered unimportant and can be omitted if there are too few locations to fit them. "Useful" items are spread throughout the run to help the player progress at a reasonable rate. This spread of "useful" items can be tuned via Archipelago's [progression_balancing](https://archipelago.gg/tutorial/Archipelago/advanced_settings_en#game-options) setting to weight "useful" items towards the beginning or end of a run.
-
-This setting controls how many bundles per multi-level manor upgrade are classified as "useful". All single-level upgrades are always considered "useful". Setting this to 0 means all multi-level manor upgrades will be treated as "filler".
-
----
 
 ### Journal/Memory Checks (`journal_checks`)
 
@@ -81,14 +72,6 @@ Controls how AP checks are awarded from reading journals and memories.
 - **grouped** - one check after reading all journals in a biome, and one after reading all memories in a biome
 
 There are 41 total memories and journals, and 8 groups (some biomes have no memories and therefore no group check).
-
----
-
-### Randomize NPC Unlocks (`randomize_npc_unlocks`)
-
-**Values:** true / false | **Default:** true
-
-The living safe, the enchantress, and the blacksmith are three highly valuable NPCs. When randomized, they may not appear until very late in a run, significantly weakening the player. Setting this to false keeps these NPCs at their default unlock locations so they can be purchased early.
 
 ---
 
@@ -124,6 +107,58 @@ cost = base × depth × random_factor
 ```
 
 `random_factor` is a random decimal chosen uniformly between `(1 - subtractive_factor/100)` and `(1 + additive_factor/100)`. With the defaults, this means each upgrade costs `base × depth`, then randomly adjusted to be up to 20% cheaper or 50% more expensive.
+
+---
+
+### Progression Gating
+
+> **Warning:** Tightening these options can cause generation errors if the resulting logical requirements become too difficult to satisfy.
+
+#### Manor Depths Per Boss Gate (`manor_depths_per_boss`)
+
+**Range:** 0–11 | **Default:** 3
+
+Each manor upgrade has a "depth" value reflecting how many upgrades are required to be purchased before this upgrade becomes available. This setting controls how many depth tiers are added into the "in-logic" pool per boss killed. The first *x* tiers are always in logic; each subsequent boss opens the next *x* tiers.
+
+With the default of 3: depths 1–3 are available from the start, depths 4–6 require 1 boss cleared, depths 7–9 require 2, and so on. Set to 0 to disable this gating entirely.
+
+---
+
+#### Chest Pre-Boss Percent (`chest_pre_boss_percent`)
+
+**Range:** 50–100 | **Default:** 75
+
+The percentage of each biome's blueprint chest and fairy chest locations considered in logic *before* the biome's boss is killed. The remaining checks only become in-logic after the boss is defeated.
+
+This reduces the chance of a situation where every chest in a biome must be cleared just to obtain the items needed to beat its boss.
+
+---
+
+#### Stat Upgrades Per Boss (`stat_upgrades_per_boss`)
+
+**Range:** 0–10 | **Default:** 5
+
+The number of received stat upgrade items required such that the next boss is considered "in-logic", scaling additively per boss. With the default of 5: Estuary Lamech requires 5 upgrades, Byarrrith and Halpharr require 10, Estuary Naamah requires 15, Estuary Enoch requires 20, Estuary Irad requires 25, and Estuary Tubal requires 30. The Gonghead and Murmur minibosses share Naamah's threshold; the Pishon Dry Lake minibosses share Irad's.
+
+Set to 0 to disable stat-upgrade gating for bosses.
+
+---
+
+#### Stat Upgrades Per Biome Tier (`stat_upgrades_per_biome_tier`)
+
+**Range:** 0–10 | **Default:** 5
+
+The base number of received stat upgrade items logically required before each later biome's chest and journal/memory locations are considered in logic. The requirement scales per biome starting at biome 3: Kerguelen Plateau requires *x*, Stygian Study requires *2x*, Sun Tower requires *3x*, and Pishon Dry Lake requires *4x*. Citadel Agartha and Axis Mundi are never gated by this setting.
+
+Set to 0 to disable stat-upgrade gating for biomes.
+
+---
+
+#### Early NPC Unlocks (`early_npc_unlocks`)
+
+**Values:** true / false | **Default:** true
+
+When enabled, soft logic rules push the three NPC unlock items (Living Safe, Blacksmith, Enchantress) toward earlier locations in the run, reducing the chance they are gated deep into a long seed.
 
 </details>
 

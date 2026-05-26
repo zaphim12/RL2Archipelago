@@ -13,7 +13,6 @@ from .constants import (
     CORE_MANOR_UPGRADES,
     HEIRLOOM_NAMES,
     MANOR_MAX_LEVELS,
-    NPC_MANOR_LOCATION_NAMES,
     NPC_MANOR_UPGRADES,
     RUNE_NAMES,
     TELEPORTER_NAMES,
@@ -114,16 +113,12 @@ for _i, _rune in enumerate(RUNE_NAMES):
 
 # Manor upgrade items: one per SkillTreeType slot.
 # ID = BASE_ID + MANOR_OFFSET + listIndex
-# Indices 0-68 are core upgrades; indices 69-71 are NPC unlock slots
-# (active only when randomize_npc_unlocks=true).
-MANOR_ITEM_NAMES: list[str] = []
+# Indices 0-68 are core upgrades; indices 69-71 are NPC unlock slots.
 for _i, _name in enumerate(CORE_MANOR_UPGRADES + NPC_MANOR_UPGRADES):
-    _item_name = _name
-    item_data_table[_item_name] = RogueLegacy2ItemData(
+    item_data_table[_name] = RogueLegacy2ItemData(
         code=BASE_ID + MANOR_OFFSET + _i,
         classification=ItemClassification.useful,
     )
-    MANOR_ITEM_NAMES.append(_item_name)
 
 # Convenience: name→ID dict used by World.item_name_to_id
 items_table: dict[str, int] = {
@@ -143,34 +138,41 @@ def create_items(world: "RogueLegacy2World") -> None:
     multiworld = world.multiworld
     player = world.player
 
-    randomize_npc = bool(world.options.randomize_npc_unlocks.value)
-
-    # When NPC unlocks are not randomized, lock each NPC item to its home
-    # location so the server always returns it there on check.
-    if not randomize_npc:
-        for npc_item, npc_loc in zip(NPC_MANOR_UPGRADES, NPC_MANOR_LOCATION_NAMES):
-            loc = multiworld.get_location(npc_loc, player)
-            loc.place_locked_item(create_item(player, npc_item))
-
     unfilled = len(multiworld.get_unfilled_locations(player))
 
     bundle_size = max(1, world.options.manor_upgrade_bundle_size.value)
-    useful_count = world.options.manor_useful_count.value
-    core_names = MANOR_ITEM_NAMES[:len(CORE_MANOR_UPGRADES)]
-    npc_names  = MANOR_ITEM_NAMES[len(CORE_MANOR_UPGRADES):]
+    core_names = CORE_MANOR_UPGRADES
+    npc_names  = NPC_MANOR_UPGRADES
+
+    # Manor upgrades are used in count-based stat-gate access rules. They must be
+    # progression_skip_balancing (not merely useful) so the fill algorithm places
+    # them before the inaccessible_location_rules sweep; otherwise stat-gated
+    # locations are locked to filler-only and can't be filled. When no stat gating
+    # is configured, plain useful is fine and avoids unnecessary fill pressure.
+    manor_classification = (
+        ItemClassification.progression_skip_balancing
+        if world.options.stat_upgrades_per_biome_tier.value > 0
+        or world.options.stat_upgrades_per_boss.value > 0
+        else ItemClassification.useful
+    )
 
     # Priority: always included regardless of location count.
-    # NPC items are in the free pool only when randomize_npc=True; when False they
-    # were already locked to their home locations above.
-    # Heirlooms, Teleporters, and single-level manor upgrades are always priority items
+    # Heirlooms, Teleporters, NPC unlocks, and single-level manor upgrades are always priority items
     priority_items: list[RogueLegacy2Item] = []
     priority_items += [create_item(player, n) for n in HEIRLOOM_ITEM_NAMES]
     priority_items += [create_item(player, n) for n in TELEPORTER_ITEM_NAMES]
-    if randomize_npc:
-        priority_items += [create_item(player, n) for n in npc_names]
+    npc_classification = (
+        ItemClassification.progression
+        if world.options.early_npc_unlocks.value
+        else manor_classification
+    )
+    for n in npc_names:
+        data = item_data_table[n]
+        priority_items.append(RogueLegacy2Item(n, npc_classification, data.code, player))
     for name in core_names:
         if MANOR_MAX_LEVELS.get(name, 1) <= 1:
-            priority_items.append(create_item(player, name))
+            data = item_data_table[name]
+            priority_items.append(RogueLegacy2Item(name, manor_classification, data.code, player))
 
     # Traps: placed immediately after priority items, before useful items.
     # Distribute evenly across the 5 trap types by cycling through the list.
@@ -183,60 +185,49 @@ def create_items(world: "RogueLegacy2World") -> None:
 
     # Optional pools, in preference order. These fill up remaining slots after the priority pool.
     # If there aren't enough slots remaining for all useful items, they are allocated from each item
-    #  type be percentages (currently 25% blueprints, 25% runes, 50% manor)
-    # useful_manor_pool: first useful_count copies of multi-level upgrades.
-    # filler_manor_pool: remaining copies; used only after all useful items are placed.
+    #  type by percentages (currently 25% blueprints, 25% runes, 50% manor)
     blueprint_pool: list[RogueLegacy2Item] = [create_item(player, n) for n in BLUEPRINT_ITEM_NAMES]
     rune_pool:      list[RogueLegacy2Item] = [create_item(player, n) for n in RUNE_ITEM_NAMES]
-    useful_manor_pool: list[RogueLegacy2Item] = []
-    filler_manor_pool: list[RogueLegacy2Item] = []
+    manor_pool: list[RogueLegacy2Item] = []
     for name in core_names:
         max_level = MANOR_MAX_LEVELS.get(name, 1)
         if max_level <= 1:
             continue
         copies = max(1, math.ceil(max_level / bundle_size))
         data = item_data_table[name]
-        for copy_idx in range(copies):
-            if copy_idx < useful_count:
-                useful_manor_pool.append(RogueLegacy2Item(name, ItemClassification.useful, data.code, player))
-            else:
-                filler_manor_pool.append(RogueLegacy2Item(name, ItemClassification.filler, data.code, player))
+        for _ in range(copies):
+            manor_pool.append(RogueLegacy2Item(name, manor_classification, data.code, player))
 
     # Traps are guaranteed slots; subtract them from remaining before the useful/filler split.
     remaining    = unfilled - len(priority_items) - len(trap_items)
-    total_useful = len(blueprint_pool) + len(rune_pool) + len(useful_manor_pool)
-
-    world.random.shuffle(filler_manor_pool)
+    total_useful = len(blueprint_pool) + len(rune_pool) + len(manor_pool)
 
     if total_useful <= remaining:
-        # All useful items fit; fill leftover slots with filler manor items.
-        pool = priority_items + trap_items + blueprint_pool + rune_pool + useful_manor_pool
-        leftover = remaining - total_useful
-        pool += filler_manor_pool[:leftover]
+        # All useful items fit.
+        pool = priority_items + trap_items + blueprint_pool + rune_pool + manor_pool
         padding_candidates = []
     else:
-        # Truncation: distribute remaining slots 25% blueprints / 25% runes / 50% useful manor.
+        # Truncation: distribute remaining slots 25% blueprints / 25% runes / 50% manor.
         blueprint_slots = remaining // 4
         rune_slots      = remaining // 4
         manor_slots     = remaining - blueprint_slots - rune_slots
 
         world.random.shuffle(blueprint_pool)
         world.random.shuffle(rune_pool)
-        world.random.shuffle(useful_manor_pool)
+        world.random.shuffle(manor_pool)
 
         pool = (
             priority_items
             + trap_items
             + blueprint_pool[:blueprint_slots]
             + rune_pool[:rune_slots]
-            + useful_manor_pool[:manor_slots]
+            + manor_pool[:manor_slots]
         )
-        # padding_candidates: leftover useful items (not yet in pool) before filler
+        # padding_candidates: leftover useful items not yet in pool
         padding_candidates = (
             blueprint_pool[blueprint_slots:]
             + rune_pool[rune_slots:]
-            + useful_manor_pool[manor_slots:]
-            + filler_manor_pool
+            + manor_pool[manor_slots:]
         )
 
     # Fill any remaining slots using candidates that are not already in the pool.

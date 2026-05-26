@@ -76,8 +76,6 @@ class RogueLegacy2World(World):
             "blueprint_checks_per_biome",
             "rune_checks_per_biome",
             "manor_upgrade_bundle_size",
-            "manor_useful_count",
-            "randomize_npc_unlocks",
             "journal_checks",
             "manor_cost_base",
             "manor_cost_min_subtractive_factor",
@@ -85,6 +83,11 @@ class RogueLegacy2World(World):
             "bronze_chest_ap_chance",
             "silver_chest_ap_chance",
             "fairy_chest_ap_chance",
+            "manor_depths_per_boss",
+            "chest_pre_boss_percent",
+            "stat_upgrades_per_boss",
+            "stat_upgrades_per_biome_tier",
+            "early_npc_unlocks",
         )
         data["manor_upgrade_costs"] = self._compute_manor_upgrade_costs()
         return data

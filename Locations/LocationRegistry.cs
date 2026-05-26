@@ -98,8 +98,6 @@ public static class LocationRegistry
     //
     // One location per SkillTreeType slot, using the same canonical ordered list
     // as ItemRegistry.s_skillTreeTypes. Index in that array = ID offset from MANOR_OFFSET.
-    // NPC unlock locations are always tracked; when randomize_npc_unlocks=false the
-    // Python apworld places their items locked in-place rather than randomizing them.
 
     // Built once at startup: SkillTreeType → location ID.
     private static readonly Dictionary<SkillTreeType, long> s_skillTreeToLocation
