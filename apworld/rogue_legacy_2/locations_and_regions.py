@@ -2,7 +2,7 @@ import math
 import typing
 from typing import NamedTuple
 
-from BaseClasses import Item, ItemClassification, Location, Region
+from BaseClasses import Entrance, Item, ItemClassification, Location, Region
 from worlds.generic.Rules import add_rule, set_rule
 
 if typing.TYPE_CHECKING:
@@ -251,7 +251,7 @@ for _i, _loc_name in enumerate(CORE_MANOR_LOCATION_NAMES + NPC_MANOR_LOCATION_NA
 for _biome_idx, _biome_name in enumerate(BIOME_NAMES):
     for _slot in range(_MAX_BLUEPRINT_CHECKS_PER_BIOME):
         location_data_table[blueprint_chest_name(_biome_name, _slot)] = RogueLegacy2LocationData(
-            region="Overworld",
+            region=_biome_name,
             address=BASE_ID + BLUEPRINT_OFFSET + _biome_idx * 16 + _slot,
         )
 
@@ -260,7 +260,7 @@ for _biome_idx, _biome_name in enumerate(BIOME_NAMES):
 for _biome_idx, _biome_name in enumerate(BIOME_NAMES):
     for _slot in range(_MAX_RUNE_CHECKS_PER_BIOME):
         location_data_table[fairy_chest_name(_biome_name, _slot)] = RogueLegacy2LocationData(
-            region="Overworld",
+            region=_biome_name,
             address=BASE_ID + RUNE_OFFSET + _biome_idx * 16 + _slot,
         )
 
@@ -269,22 +269,22 @@ for _biome_idx, _biome_name in enumerate(BIOME_NAMES):
 for _bi, _biome_name in enumerate(BIOME_NAMES):
     if _JOURNAL_COUNTS[_bi] > 0:
         location_data_table[all_journals_read_name(_biome_name)] = RogueLegacy2LocationData(
-            region="Overworld",
+            region=_biome_name,
             address=BASE_ID + JOURNAL_GROUPED_OFFSET + _bi,
         )
     if _MEMORY_COUNTS[_bi] > 0:
         location_data_table[all_memories_read_name(_biome_name)] = RogueLegacy2LocationData(
-            region="Overworld",
+            region=_biome_name,
             address=BASE_ID + MEMORY_GROUPED_OFFSET + _bi,
         )
     for _j in range(_JOURNAL_COUNTS[_bi]):
         location_data_table[journal_entry_name(_biome_name, _j)] = RogueLegacy2LocationData(
-            region="Overworld",
+            region=_biome_name,
             address=BASE_ID + JOURNAL_INDIVIDUAL_OFFSET + _bi * 16 + _j,
         )
     for _m in range(_MEMORY_COUNTS[_bi]):
         location_data_table[memory_fragment_name(_biome_name, _m)] = RogueLegacy2LocationData(
-            region="Overworld",
+            region=_biome_name,
             address=BASE_ID + MEMORY_INDIVIDUAL_OFFSET + _bi * 16 + _m,
         )
 
@@ -324,7 +324,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
     }
 
     # ── Build regions ────────────────────────────────────────────────────────
-    region_names = {"Menu", "Overworld", "Throne Room", "Manor"}
+    region_names = {"Menu", "Overworld", "Throne Room", "Manor"} | set(BIOME_NAMES)
     regions: dict[str, Region] = {}
     for name in region_names:
         region = Region(name, player, multiworld)
@@ -556,7 +556,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
     ]:
         add_rule(multiworld.get_location(_tp_name, player), _can_reach_pizza_girl)
 
-    # ── Biome access rules (shared by blueprints, runes, journals, memories) ───
+    # ── Biome entrance rules (heirloom requirements to access each biome) ───────
     _biome_access_rules = {
         BIOME_CITADEL_AGARTHA:   None,  # always accessible
         BIOME_AXIS_MUNDI:        lambda state, p=player: (
@@ -576,63 +576,32 @@ def create_regions(world: "RogueLegacy2World") -> None:
         ),
         BIOME_PISHON_DRY_LAKE:   lambda state, p=player: state.has(HEIRLOOM_THEIAS_SUN_LANTERN, p),
     }
+    biome_entrances: dict[str, Entrance] = {}
+    for biome_name in BIOME_NAMES:
+        entrance = regions["Overworld"].connect(
+            regions[biome_name],
+            name=f"To {biome_name}",
+            rule=_biome_access_rules[biome_name],
+        )
+        biome_entrances[biome_name] = entrance
 
-    # ── Blueprint chest access rules ─────────────────────────────────────────
-    if blueprint_n > 0:
-        for biome_name in BIOME_NAMES:
-            rule = _biome_access_rules[biome_name]
-            if rule is None:
-                continue
-            for slot in range(blueprint_n):
-                set_rule(
-                    multiworld.get_location(blueprint_chest_name(biome_name, slot), player),
-                    rule,
-                )
-
-    # ── Fairy chest (rune) access rules ──────────────────────────────────────
-    if rune_n > 0:
-        for biome_name in BIOME_NAMES:
-            rule = _biome_access_rules[biome_name]
-            if rule is None:
-                continue
-            for slot in range(rune_n):
-                set_rule(
-                    multiworld.get_location(fairy_chest_name(biome_name, slot), player),
-                    rule,
-                )
-
-    # ── Journal/memory access rules ───────────────────────────────────────────
-    if journal_mode != 0:
+    # ── Memory locations additionally require Aesop's Tome ───────────────────
+    # Biome access is handled by the entrance rule above; this is the only
+    # per-location rule needed on top of that.
+    if journal_mode == 1:
         for bi, biome_name in enumerate(BIOME_NAMES):
-            biome_rule = _biome_access_rules[biome_name]
-            # Memories additionally require Aesop's Tome regardless of biome.
-            if biome_rule is None:
-                mem_rule = lambda state, p=player: state.has(HEIRLOOM_AESOPS_TOME, p)
-            else:
-                mem_rule = lambda state, p=player, r=biome_rule: r(state, p) and state.has(HEIRLOOM_AESOPS_TOME, p)
-            if journal_mode == 1:  # individual entries
-                if biome_rule is not None:
-                    for j in range(_JOURNAL_COUNTS[bi]):
-                        set_rule(
-                            multiworld.get_location(journal_entry_name(biome_name, j), player),
-                            biome_rule,
-                        )
-                for m in range(_MEMORY_COUNTS[bi]):
-                    set_rule(
-                        multiworld.get_location(memory_fragment_name(biome_name, m), player),
-                        mem_rule,
-                    )
-            else:  # journal_mode == 2, grouped
-                if biome_rule is not None and _JOURNAL_COUNTS[bi] > 0:
-                    set_rule(
-                        multiworld.get_location(all_journals_read_name(biome_name), player),
-                        biome_rule,
-                    )
-                if _MEMORY_COUNTS[bi] > 0:
-                    set_rule(
-                        multiworld.get_location(all_memories_read_name(biome_name), player),
-                        mem_rule,
-                    )
+            for m in range(_MEMORY_COUNTS[bi]):
+                add_rule(
+                    multiworld.get_location(memory_fragment_name(biome_name, m), player),
+                    lambda state, p=player: state.has(HEIRLOOM_AESOPS_TOME, p),
+                )
+    elif journal_mode == 2:
+        for bi, biome_name in enumerate(BIOME_NAMES):
+            if _MEMORY_COUNTS[bi] > 0:
+                add_rule(
+                    multiworld.get_location(all_memories_read_name(biome_name), player),
+                    lambda state, p=player: state.has(HEIRLOOM_AESOPS_TOME, p),
+                )
 
     # The below rules aren't technical requirements, but they help ensure that
     # spheres are reasonably sized and the player isn't forced into technically
@@ -719,52 +688,21 @@ def create_regions(world: "RogueLegacy2World") -> None:
                 lambda state, n=req: _count_stat_upgrades(state) >= n,
             )
 
-    # ── [4] Biome chest and journal locations gated by stat-upgrade count ─────
+    # ── [4] Biome entrances gated by stat-upgrade count ──────────────────────
     # Kerguelen=1x, Stygian=2x, Sun Tower=3x, Pishon=4x; Citadel and Axis Mundi
-    # have no gating (tier 0). Applies to all active blueprint, rune, and
-    # journal/memory locations in the affected biomes.
+    # have no gating (tier 0). Gating the entrance covers all blueprint, rune,
+    # and journal/memory locations in the biome automatically.
     stat_per_biome_tier = world.options.stat_upgrades_per_biome_tier.value
     if stat_per_biome_tier > 0:
-        for biome_idx, biome_name in enumerate(BIOME_NAMES):
+        for biome_name in BIOME_NAMES:
             tier = _BIOME_STAT_UPGRADE_TIERS[biome_name]
             if tier == 0:
                 continue
-            stat_req  = tier * stat_per_biome_tier
-            stat_rule = lambda state, n=stat_req: _count_stat_upgrades(state) >= n
-            if blueprint_n > 0:
-                for slot in range(blueprint_n):
-                    add_rule(
-                        multiworld.get_location(blueprint_chest_name(biome_name, slot), player),
-                        stat_rule,
-                    )
-            if rune_n > 0:
-                for slot in range(rune_n):
-                    add_rule(
-                        multiworld.get_location(fairy_chest_name(biome_name, slot), player),
-                        stat_rule,
-                    )
-            if journal_mode == 1:  # individual entries
-                for j in range(_JOURNAL_COUNTS[biome_idx]):
-                    add_rule(
-                        multiworld.get_location(journal_entry_name(biome_name, j), player),
-                        stat_rule,
-                    )
-                for m in range(_MEMORY_COUNTS[biome_idx]):
-                    add_rule(
-                        multiworld.get_location(memory_fragment_name(biome_name, m), player),
-                        stat_rule,
-                    )
-            elif journal_mode == 2:  # grouped
-                if _JOURNAL_COUNTS[biome_idx] > 0:
-                    add_rule(
-                        multiworld.get_location(all_journals_read_name(biome_name), player),
-                        stat_rule,
-                    )
-                if _MEMORY_COUNTS[biome_idx] > 0:
-                    add_rule(
-                        multiworld.get_location(all_memories_read_name(biome_name), player),
-                        stat_rule,
-                    )
+            stat_req = tier * stat_per_biome_tier
+            add_rule(
+                biome_entrances[biome_name],
+                lambda state, n=stat_req: _count_stat_upgrades(state) >= n,
+            )
 
     # ── [5] Late-game bosses and biome checks gated by NPC unlock count ──────
     # Used to impose soft rules that will encourage NPC unlocks to be earlier in the run
@@ -778,45 +716,14 @@ def create_regions(world: "RogueLegacy2World") -> None:
                 lambda state, n=req: _count_npcs_unlocked(state) >= n,
             )
 
-        for biome_idx, biome_name in enumerate(BIOME_NAMES):
+        for biome_name in BIOME_NAMES:
             npc_req = _BIOME_NPC_TIERS[biome_name]
             if npc_req == 0:
                 continue
-            npc_rule = lambda state, n=npc_req: _count_npcs_unlocked(state) >= n
-            if blueprint_n > 0:
-                for slot in range(blueprint_n):
-                    add_rule(
-                        multiworld.get_location(blueprint_chest_name(biome_name, slot), player),
-                        npc_rule,
-                    )
-            if rune_n > 0:
-                for slot in range(rune_n):
-                    add_rule(
-                        multiworld.get_location(fairy_chest_name(biome_name, slot), player),
-                        npc_rule,
-                    )
-            if journal_mode == 1:  # individual
-                for j in range(_JOURNAL_COUNTS[biome_idx]):
-                    add_rule(
-                        multiworld.get_location(journal_entry_name(biome_name, j), player),
-                        npc_rule,
-                    )
-                for m in range(_MEMORY_COUNTS[biome_idx]):
-                    add_rule(
-                        multiworld.get_location(memory_fragment_name(biome_name, m), player),
-                        npc_rule,
-                    )
-            elif journal_mode == 2:  # grouped
-                if _JOURNAL_COUNTS[biome_idx] > 0:
-                    add_rule(
-                        multiworld.get_location(all_journals_read_name(biome_name), player),
-                        npc_rule,
-                    )
-                if _MEMORY_COUNTS[biome_idx] > 0:
-                    add_rule(
-                        multiworld.get_location(all_memories_read_name(biome_name), player),
-                        npc_rule,
-                    )
+            add_rule(
+                biome_entrances[biome_name],
+                lambda state, n=npc_req: _count_npcs_unlocked(state) >= n,
+            )
 
     # ── Wire up region connections ───────────────────────────────────────────
     regions["Menu"].connect(regions["Overworld"])
