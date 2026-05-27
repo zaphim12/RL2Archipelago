@@ -87,9 +87,14 @@ internal static class SuboptionsPatch
                 APClient.ApplyDeathLinkSetting(v);
             });
 
-        BuildToggleItem(clonedItemsParent, template, "Show Item Names",
-            getter: () => APSettings.ShowItemNames,
-            setter: v  => APSettings.ShowItemNames = v);
+        BuildToggleItem(clonedItemsParent, template, "Minimalist AP Log",
+            getter: () => APSettings.UseMinimalistAPLog,
+            setter: v =>
+            {
+                APSettings.UseMinimalistAPLog = v;
+                APClient.SavePlayerSettings();
+                if (!v) APTextLog.Instance?.Clear();
+            });
 
         dict[APSuboptionType] = parentGO;
 

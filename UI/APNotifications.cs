@@ -57,6 +57,12 @@ internal static class APNotifications
     /// heirlooms and other items the player must not miss seeing.</summary>
     public static void Enqueue(string title, string subtitle, string description = null, bool critical = false)
     {
+        if (APSettings.UseMinimalistAPLog)
+        {
+            APTextLog.Instance.Add(title, subtitle, description);
+            return;
+        }
+
         // Drop silently when off the main game scene; no HUD MonoBehaviour to fire it on.
         // Critical notifications stay queued so they surface once gameplay resumes.
         if (GetHudController() == null && !critical)
@@ -87,6 +93,7 @@ internal static class APNotifications
         _nextDisplayTime = 0f;
         _cachedHud = null;
         IsJournalWindowOpen = false;
+        APTextLog.ClearIfExists();
     }
 
     /// <summary>Drains the queue at one HUD per <see cref="DisplayDurationSec"/>.

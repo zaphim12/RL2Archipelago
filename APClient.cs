@@ -543,10 +543,21 @@ public static class APClient
     public static void ProcessPendingDeaths()
     {
         if (!_pendingDeathLink || !IsInGame) return;
+        if (!WorldBuilder.IsInstantiated || WorldBuilder.State != BiomeBuildStateID.Complete)
+        {
+            _pendingDeathLink = false;
+            return;
+        }
         if (!PlayerManager.IsInstantiated) return;
 
         var player = PlayerManager.GetPlayerController();
         if (player == null || player.IsDead)
+        {
+            _pendingDeathLink = false;
+            return;
+        }
+
+        if (PlayerManager.GetCurrentPlayerRoom()?.BiomeType == BiomeType.HubTown)
         {
             _pendingDeathLink = false;
             return;
@@ -716,7 +727,8 @@ public static class APClient
 
     private struct PlayerSettingsData
     {
-        public bool? DeathLink { get; set; }
+        public bool? DeathLink   { get; set; }
+        public bool? UseMinimalistAPLog  { get; set; }
     }
 
     private static string PlayerSettingsPath(string saveDirectoryName) =>
@@ -729,8 +741,9 @@ public static class APClient
         {
             if (!File.Exists(path)) return;
             var data = JsonConvert.DeserializeObject<PlayerSettingsData>(File.ReadAllText(path));
-            APSettings.DeathLink = data.DeathLink;
-            Plugin.Log.LogInfo($"[AP] Player settings loaded (DeathLink={APSettings.DeathLink}).");
+            APSettings.DeathLink   = data.DeathLink;
+            APSettings.UseMinimalistAPLog  = data.UseMinimalistAPLog ?? false;
+            Plugin.Log.LogInfo($"[AP] Player settings loaded (DeathLink={APSettings.DeathLink}, UseMinimalistAPLog={APSettings.UseMinimalistAPLog}).");
         }
         catch (Exception ex)
         {
@@ -745,7 +758,7 @@ public static class APClient
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path));
-            var data = new PlayerSettingsData { DeathLink = APSettings.DeathLink };
+            var data = new PlayerSettingsData { DeathLink = APSettings.DeathLink, UseMinimalistAPLog = APSettings.UseMinimalistAPLog };
             File.WriteAllText(path, JsonConvert.SerializeObject(data, Formatting.Indented));
             Plugin.Log.LogDebug("[AP] Player settings saved.");
         }
