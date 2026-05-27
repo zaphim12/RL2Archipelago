@@ -4,6 +4,7 @@ using Archipelago.MultiClient.Net.Enums;
 using Archipelago.MultiClient.Net.Helpers;
 using Archipelago.MultiClient.Net.MessageLog.Messages;
 using Archipelago.MultiClient.Net.Models;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RL2Archipelago.Items;
 using RL2Archipelago.Locations;
@@ -201,7 +202,7 @@ public static class APClient
                 ? (JournalChecksMode)Convert.ToInt32(jObj) : JournalChecksMode.Grouped;
 
             _slotName = connData.SlotName;
-            DeathLinkEnabled = SlotData.TryGetValue("death_link", out var dlObj) && Convert.ToInt32(dlObj) != 0;
+            bool serverDeathLink = SlotData.TryGetValue("death_link", out var dlObj) && Convert.ToInt32(dlObj) != 0;
 
             if (SlotData.TryGetValue("manor_upgrade_costs", out var costsObj) && costsObj is JArray costsArray)
             {
@@ -214,14 +215,6 @@ public static class APClient
                     map[types[i++]] = token.Value<int>();
                 }
                 ManorUpgradeCosts = map;
-            }
-
-            _deathLinkService = Session.CreateDeathLinkService();
-            if (DeathLinkEnabled)
-            {
-                _deathLinkService.OnDeathLinkReceived += APSession_DeathLinkReceived;
-                _deathLinkService.EnableDeathLink();
-                Plugin.Log.LogInfo("[AP] DeathLink enabled.");
             }
 
             Plugin.Log.LogInfo(
@@ -243,6 +236,19 @@ public static class APClient
             RunState = APRunState.Load(APSaveDirectoryName);
             _nextItemIndex = 0;
             _trapsRestored = false;
+
+            // Load per-seed player settings; user override wins over server value.
+            APSettings.DeathLink = null;
+            LoadPlayerSettings(APSaveDirectoryName);
+            DeathLinkEnabled = APSettings.DeathLink ?? serverDeathLink;
+
+            _deathLinkService = Session.CreateDeathLinkService();
+            if (DeathLinkEnabled)
+            {
+                _deathLinkService.OnDeathLinkReceived += APSession_DeathLinkReceived;
+                _deathLinkService.EnableDeathLink();
+                Plugin.Log.LogInfo("[AP] DeathLink enabled.");
+            }
 
             // Register websocket-thread event handlers AFTER resetting _nextItemIndex so
             // any items that arrive concurrently get correct indices. Then manually drain
@@ -704,6 +710,70 @@ public static class APClient
         }
 
         Plugin.Log.LogWarning($"[AP] No handler for item '{displayName}' (ID {itemId}). ignoring.");
+    }
+
+    // ── Player settings (per-seed persistence) ───────────────────────────────
+
+    private struct PlayerSettingsData
+    {
+        public bool? DeathLink { get; set; }
+    }
+
+    private static string PlayerSettingsPath(string saveDirectoryName) =>
+        Path.Combine(Locations.APRunState.RootDir, saveDirectoryName, "player-settings.json");
+
+    private static void LoadPlayerSettings(string saveDirectoryName)
+    {
+        var path = PlayerSettingsPath(saveDirectoryName);
+        try
+        {
+            if (!File.Exists(path)) return;
+            var data = JsonConvert.DeserializeObject<PlayerSettingsData>(File.ReadAllText(path));
+            APSettings.DeathLink = data.DeathLink;
+            Plugin.Log.LogInfo($"[AP] Player settings loaded (DeathLink={APSettings.DeathLink}).");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.LogError($"[AP] Failed to load player settings: {ex.Message}");
+        }
+    }
+
+    internal static void SavePlayerSettings()
+    {
+        if (string.IsNullOrEmpty(APSaveDirectoryName)) return;
+        var path = PlayerSettingsPath(APSaveDirectoryName);
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            var data = new PlayerSettingsData { DeathLink = APSettings.DeathLink };
+            File.WriteAllText(path, JsonConvert.SerializeObject(data, Formatting.Indented));
+            Plugin.Log.LogDebug("[AP] Player settings saved.");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.LogError($"[AP] Failed to save player settings: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Applies a runtime death-link toggle change. Safe to call when disconnected (no-op on the service).
+    /// </summary>
+    public static void ApplyDeathLinkSetting(bool enabled)
+    {
+        DeathLinkEnabled = enabled;
+        if (_deathLinkService == null) return;
+
+        if (enabled)
+        {
+            _deathLinkService.OnDeathLinkReceived -= APSession_DeathLinkReceived;
+            _deathLinkService.OnDeathLinkReceived += APSession_DeathLinkReceived;
+            _deathLinkService.EnableDeathLink();
+        }
+        else
+        {
+            _deathLinkService.OnDeathLinkReceived -= APSession_DeathLinkReceived;
+            _deathLinkService.DisableDeathLink();
+        }
     }
 
     // ~~~ Websocket-thread event handlers ~~~

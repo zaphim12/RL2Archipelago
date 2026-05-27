@@ -36,7 +36,7 @@ public class APRunState
 
     // ── Persistence ──────────────────────────────────────────────────────────
 
-    private static readonly string RootDir = Path.Combine(Paths.ConfigPath, "RL2Archipelago", "ap-runs");
+    internal static readonly string RootDir = Path.Combine(Paths.ConfigPath, "RL2Archipelago", "ap-runs");
 
     private static string FilePathFor(string saveDirectoryName) =>
         Path.Combine(RootDir, saveDirectoryName, "run-state.json");

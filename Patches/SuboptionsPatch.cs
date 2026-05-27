@@ -79,8 +79,13 @@ internal static class SuboptionsPatch
             : null) ?? parentGO.transform;
 
         BuildToggleItem(clonedItemsParent, template, "Death Link",
-            getter: () => APSettings.DeathLink,
-            setter: v  => APSettings.DeathLink = v);
+            getter: () => APSettings.DeathLink ?? APClient.DeathLinkEnabled,
+            setter: v =>
+            {
+                APSettings.DeathLink = v;
+                APClient.SavePlayerSettings();
+                APClient.ApplyDeathLinkSetting(v);
+            });
 
         BuildToggleItem(clonedItemsParent, template, "Show Item Names",
             getter: () => APSettings.ShowItemNames,
@@ -186,6 +191,11 @@ internal static class SuboptionsPatch
         // DO NOT call InitializeSuboptionPrefab; that wires delegates which would
         // then be double-wired by ChangeSuboptionDisplayed when the panel first opens.
         newItem.Initialize();
+
+        // The cloned template text starts white (selected color). OnDeselect resets both
+        // text colors and selectedBG to their unselected state so only the item that
+        // receives gamepad focus on first open appears highlighted.
+        newItem.OnDeselect(null);
 
         return newItem;
     }
