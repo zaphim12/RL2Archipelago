@@ -208,6 +208,16 @@ STAT_UPGRADE_MANOR_UPGRADES: list[str] = [f"Upgrade: {s.item_name}"  for s in _M
 # AP items to generate per slot. Single-level slots are set to 1.
 MANOR_MAX_LEVELS: dict[str, int] = {f"Upgrade: {s.item_name}": s.max_level for s in _MANOR_SLOTS}
 
+# The 14 non-Knight class unlock item names, in ManorSlot order (indices 44–57).
+# Index 0 = Boxer Class, index 13 = Dragon Lancer Class.
+# Used by the randomize_starting_class option: starting_class_index 1–14 maps to
+# CLASS_UNLOCK_ITEM_NAMES[index - 1].
+CLASS_UNLOCK_ITEM_NAMES: list[str] = [f"Upgrade: {s.item_name}" for s in _MANOR_SLOTS[44:58]]
+
+# Knight Class as an AP item (granted when starting class is not Knight and the player
+# finds it in the multiworld). Not a manor slot - has its own item ID at index 72.
+KNIGHT_CLASS_ITEM_NAME: str = "Upgrade: Knight Class"
+
 # Keyed by "Upgrade: {item_name}" - depth in the manor unlock tree, used by
 # _compute_manor_upgrade_costs() to scale gold costs. Defaults to 1 if absent.
 MANOR_UPGRADE_DEPTHS: dict[str, int] = {f"Upgrade: {s.item_name}": s.depth for s in _MANOR_SLOTS}

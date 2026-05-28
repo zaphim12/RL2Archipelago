@@ -42,6 +42,11 @@ public static class ItemRegistry
     public const long TrapGiantSnowflakes = BASE_ID + TRAP_OFFSET + 3;
     public const long TrapVoidWaves       = BASE_ID + TRAP_OFFSET + 4;
 
+    // ── Special items ────────────────────────────────────────────────────────
+    // Knight Class is not a manor slot; it only enters the pool when a non-Knight
+    // starting class is chosen. Index 72 follows the NPC unlock slots (69–71).
+    public const long KnightClassItem = BASE_ID + MANOR_OFFSET + 72;
+
     // ── Filler items ─────────────────────────────────────────────────────────
 
     public const long GoldCoins = BASE_ID + FILLER_OFFSET + 0;
@@ -104,6 +109,8 @@ public static class ItemRegistry
         // Manor upgrade item names
         for (int i = 0; i < GameConstants.ManorItemNames.Length; i++)
             d[BASE_ID + MANOR_OFFSET + i] = GameConstants.ManorItemNames[i];
+
+        d[KnightClassItem] = $"Upgrade: {GameConstants.KnightClassItemName}";
 
         return d;
     }

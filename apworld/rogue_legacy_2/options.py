@@ -268,6 +268,17 @@ class EarlyNPCUnlocks(Toggle):
     default = 1
 
 
+class RandomizeStartingClass(Toggle):
+    """When enabled, picks a random starting class instead of always starting with Knight.
+
+    The chosen starting class is pre-unlocked at run start and removed from the item pool.
+    If the starting class is not Knight, the Knight class becomes a randomizable item in
+    the multiworld instead.
+    """
+    display_name = "Randomize Starting Class"
+    default = 1
+
+
 @dataclass
 class RogueLegacy2GameOptions(PerGameCommonOptions):
     death_link: RL2DeathLink
@@ -287,3 +298,4 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     stat_upgrades_per_boss: StatUpgradesPerBoss
     stat_upgrades_per_biome_tier: StatUpgradesPerBiomeTier
     early_npc_unlocks: EarlyNPCUnlocks
+    randomize_starting_class: RandomizeStartingClass

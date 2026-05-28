@@ -10,8 +10,10 @@ if typing.TYPE_CHECKING:
 from .constants import (
     BLUEPRINT_CATEGORIES,
     BLUEPRINT_TYPES,
+    CLASS_UNLOCK_ITEM_NAMES,
     CORE_MANOR_UPGRADES,
     HEIRLOOM_NAMES,
+    KNIGHT_CLASS_ITEM_NAME,
     MANOR_MAX_LEVELS,
     NPC_MANOR_UPGRADES,
     RUNE_NAMES,
@@ -120,6 +122,13 @@ for _i, _name in enumerate(CORE_MANOR_UPGRADES + NPC_MANOR_UPGRADES):
         classification=ItemClassification.useful,
     )
 
+# Knight Class unlock item (index 72, after NPC slots 69-71).
+# Only enters the pool when a non-Knight starting class is chosen; handled in create_items().
+item_data_table[KNIGHT_CLASS_ITEM_NAME] = RogueLegacy2ItemData(
+    code=BASE_ID + MANOR_OFFSET + 72,
+    classification=ItemClassification.useful,
+)
+
 # Convenience: name→ID dict used by World.item_name_to_id
 items_table: dict[str, int] = {
     name: data.code
@@ -156,6 +165,11 @@ def create_items(world: "RogueLegacy2World") -> None:
         else ItemClassification.useful
     )
 
+    # Determine the starting class item to exclude from the pool (if any).
+    # starting_class_index: 0 = Knight (no change), 1–14 = one of CLASS_UNLOCK_ITEM_NAMES.
+    starting_class_idx = getattr(world, '_starting_class_index', 0)
+    excluded_class_name = CLASS_UNLOCK_ITEM_NAMES[starting_class_idx - 1] if starting_class_idx > 0 else None
+
     # Priority: always included regardless of location count.
     # Heirlooms, Teleporters, NPC unlocks, and single-level manor upgrades are always priority items
     priority_items: list[RogueLegacy2Item] = []
@@ -171,8 +185,14 @@ def create_items(world: "RogueLegacy2World") -> None:
         priority_items.append(RogueLegacy2Item(n, npc_classification, data.code, player))
     for name in core_names:
         if MANOR_MAX_LEVELS.get(name, 1) <= 1:
+            if name == excluded_class_name:
+                continue  # starting class - pre-unlocked at run start, not in pool
             data = item_data_table[name]
             priority_items.append(RogueLegacy2Item(name, manor_classification, data.code, player))
+
+    # If the starting class is not Knight, add Knight Class as a randomizable item instead.
+    if excluded_class_name is not None:
+        priority_items.append(create_item(player, KNIGHT_CLASS_ITEM_NAME))
 
     # Traps: placed immediately after priority items, before useful items.
     # Distribute evenly across the 5 trap types by cycling through the list.

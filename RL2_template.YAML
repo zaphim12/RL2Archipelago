@@ -31,6 +31,16 @@ Rogue Legacy 2:
   # true / false  (default: false)
   death_link: false
 
+  # ── Starting Class ──────────────────────────────────────────────────────
+
+  # When enabled, a random class is chosen as your starting class instead of
+  # always starting as the Knight. The chosen class is pre-unlocked at run
+  # start and removed from the item pool. If the starting class is not Knight,
+  # the Knight class becomes a randomizable multiworld item that must be found
+  # before Knight heirs can appear.
+  # true / false  (default: true)
+  randomize_starting_class: true
+
   # ── Blueprint Checks ────────────────────────────────────────────────────
 
   # Number of Archipelago location checks available from blueprint chest

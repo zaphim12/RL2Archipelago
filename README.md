@@ -160,6 +160,14 @@ Set to 0 to disable stat-upgrade gating for biomes.
 
 When enabled, soft logic rules push the three NPC unlock items (Living Safe, Blacksmith, Enchantress) toward earlier locations in the run, reducing the chance they are gated deep into a long seed.
 
+---
+
+### Randomize Starting Class (`randomize_starting_class`)
+
+**Values:** enabled / disabled | **Default:** enabled
+
+When enabled, the default unlocked class is randomized instead of always being a knight. The chosen class is pre-unlocked at run start and removed from the item pool. If the starting class is not Knight, the Knight class becomes a randomizable item in the multiworld and must be found before Knight heirs can appear.
+
 </details>
 
 

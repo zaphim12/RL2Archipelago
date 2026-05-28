@@ -34,6 +34,14 @@ class RogueLegacy2World(World):
 
     # ── World generation ─────────────────────────────────────────────────────
 
+    def generate_early(self) -> None:
+        if self.options.randomize_starting_class:
+            # 0 = Knight (vanilla), 1–14 = one of the 14 non-Knight classes in
+            # CLASS_UNLOCK_ITEM_NAMES order (ManorSlots[44]–ManorSlots[57]).
+            self._starting_class_index: int = self.random.randint(0, 14)
+        else:
+            self._starting_class_index = 0
+
     def create_regions(self) -> None:
         create_regions(self)
 
@@ -90,4 +98,6 @@ class RogueLegacy2World(World):
             "early_npc_unlocks",
         )
         data["manor_upgrade_costs"] = self._compute_manor_upgrade_costs()
+        data["randomize_starting_class"] = int(self.options.randomize_starting_class.value)
+        data["starting_class_index"] = self._starting_class_index
         return data

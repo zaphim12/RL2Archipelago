@@ -143,6 +143,8 @@ public static class GameConstants
     public const string OffshoreBankAccountItemName   = "Living Safe Unlock";
     public const string FoundationItemName            = "Blacksmith Unlock";
     public const string EnchantressQuartersItemName   = "Enchantress Unlock";
+    // Knight Class (conditional AP item; only in pool when starting class ≠ Knight)
+    public const string KnightClassItemName           = "Knight Class";
 
     // ── Manor location slot names ─────────────────────────────────────────────────────
 

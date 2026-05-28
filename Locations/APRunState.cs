@@ -34,6 +34,19 @@ public class APRunState
     /// </summary>
     public HashSet<BurdenType> ActiveTraps { get; set; } = new();
 
+    /// <summary>
+    /// True once the randomized starting class has been applied to the save via
+    /// SkillTreeManager. Prevents redundant re-application on reconnect.
+    /// </summary>
+    public bool StartingClassApplied { get; set; } = false;
+
+    /// <summary>
+    /// True once the Knight Class item has been received from the multiworld.
+    /// When false (and RandomizeStartingClass is on), Knight is removed from the
+    /// available heir class pool.
+    /// </summary>
+    public bool KnightClassReceived { get; set; } = false;
+
     // ── Persistence ──────────────────────────────────────────────────────────
 
     internal static readonly string RootDir = Path.Combine(Paths.ConfigPath, "RL2Archipelago", "ap-runs");

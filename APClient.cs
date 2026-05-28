@@ -64,6 +64,21 @@ public static class APClient
     /// <summary>True when death_link is enabled for this slot.</summary>
     public static bool DeathLinkEnabled { get; private set; }
 
+    /// <summary>True when the randomize_starting_class option is on for this seed.</summary>
+    public static bool RandomizeStartingClass { get; private set; } = false;
+
+    /// <summary>
+    /// Index of the chosen starting class: 0 = Knight (vanilla), 1–14 = one of the 14
+    /// non-Knight classes in ManorSlots[44]–ManorSlots[57] order.
+    /// </summary>
+    public static int StartingClassIndex { get; private set; } = 0;
+
+    /// <summary>
+    /// True once the Knight Class item has been received from the multiworld.
+    /// When false (and RandomizeStartingClass is on), Knight is excluded from available heirs.
+    /// </summary>
+    public static bool KnightClassReceived { get; private set; } = false;
+
     /// <summary>
     /// Pre-computed gold costs for each manor upgrade slot, keyed by <see cref="SkillTreeType"/>.
     /// Populated from slot data on connect. Empty when not connected.
@@ -237,6 +252,12 @@ public static class APClient
             _nextItemIndex = 0;
             _trapsRestored = false;
 
+            RandomizeStartingClass = SlotData.TryGetValue("randomize_starting_class", out var rscObj)
+                && Convert.ToInt32(rscObj) != 0;
+            StartingClassIndex = SlotData.TryGetValue("starting_class_index", out var sciObj)
+                ? Convert.ToInt32(sciObj) : 0;
+            KnightClassReceived = RunState.KnightClassReceived;
+
             // Load per-seed player settings; user override wins over server value.
             APSettings.DeathLink = null;
             LoadPlayerSettings(APSaveDirectoryName);
@@ -300,6 +321,9 @@ public static class APClient
         }
         DeathLinkEnabled = false;
         _pendingDeathLink = false;
+        RandomizeStartingClass = false;
+        StartingClassIndex = 0;
+        KnightClassReceived = false;
 
         // Deactivate the save redirect before restoring the vanilla profile so
         // LoadCurrentProfileData reads from the original paths.
@@ -586,6 +610,28 @@ public static class APClient
     }
 
     /// <summary>
+    /// Grants the randomized starting class unlock to the save on the first game
+    /// entry for this seed. Only called when <see cref="RandomizeStartingClass"/> is
+    /// true and <see cref="APRunState.StartingClassApplied"/> is not yet set.
+    /// </summary>
+    internal static void ApplyStartingClass()
+    {
+        if (StartingClassIndex <= 0) // 0 = Knight - already always available
+        {
+            RunState.StartingClassApplied = true;
+            RunState.Save(APSaveDirectoryName);
+            return;
+        }
+
+        // ManorSlots[44] = index 1 (Boxer), …, ManorSlots[57] = index 14 (Dragon Lancer).
+        var slot = GameConstants.ManorSlots[43 + StartingClassIndex];
+        SkillTreeManager.SetSkillObjLevel(slot.SkillTree, ManorUpgradeBundleSize, additive: false, runEvents: false);
+        Plugin.Log.LogInfo($"[AP] Starting class applied: {slot.ItemName}");
+        RunState.StartingClassApplied = true;
+        RunState.Save(APSaveDirectoryName);
+    }
+
+    /// <summary>
     /// Called from <see cref="Plugin.Update"/> each frame to drain any item IDs
     /// received on the AP websocket thread and apply them to game state.
     /// </summary>
@@ -599,6 +645,9 @@ public static class APClient
                 TrapManager.ActivateTrap(trap);
             _trapsRestored = true;
         }
+
+        if (RandomizeStartingClass && RunState != null && !RunState.StartingClassApplied)
+            ApplyStartingClass();
 
         while (_pendingItems.TryDequeue(out var pending))
         {
@@ -682,6 +731,15 @@ public static class APClient
         {
             RuneManager.SetUpgradeBlueprintsFound(runeType.Value, 1, additive: true);
             Plugin.Log.LogInfo($"[AP] Granted rune blueprint: {displayName}");
+            return;
+        }
+
+        if (itemId == ItemRegistry.KnightClassItem)
+        {
+            RunState.KnightClassReceived = true;
+            KnightClassReceived = true;
+            RunState.Save(APSaveDirectoryName);
+            Plugin.Log.LogInfo($"[AP] Knight Class unlocked.");
             return;
         }
 
