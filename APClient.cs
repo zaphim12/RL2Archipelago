@@ -4,6 +4,7 @@ using Archipelago.MultiClient.Net.Enums;
 using Archipelago.MultiClient.Net.Helpers;
 using Archipelago.MultiClient.Net.MessageLog.Messages;
 using Archipelago.MultiClient.Net.Models;
+using HarmonyLib;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RL2Archipelago.Items;
@@ -244,6 +245,7 @@ public static class APClient
             APSaveDirectoryName = SanitizeDirectoryName($"{connData.RoomId}_{connData.SlotName}");
             APSaveActive = true;
             SaveManager.ConfigData.CurrentProfile = 0;
+            EnsureRedirectedSaveDirectories();
             SaveManager.LoadCurrentProfileData();
             Plugin.Log.LogInfo($"[AP] Save redirected to AP_Saves/{APSaveDirectoryName}");
 
@@ -329,6 +331,11 @@ public static class APClient
         // LoadCurrentProfileData reads from the original paths.
         APSaveActive = false;
         SaveManager.ConfigData.CurrentProfile = _previousProfile;
+        // Force the game to re-verify its save directories against the now-restored vanilla path
+        // on the next save, mirroring what we do on connect. Guards against the reverse of the
+        // AP-save-directory bug (solved via EnsureRedirectedSaveDirectories())
+        // for a session that connected before any vanilla save occurred.
+        ResetSaveDirectoryCheck();
         SaveManager.LoadCurrentProfileData();
         Plugin.Log.LogInfo("[AP] Save redirect deactivated; vanilla profile restored.");
 
@@ -354,6 +361,64 @@ public static class APClient
         foreach (char c in Path.GetInvalidFileNameChars())
             name = name.Replace(c, '_');
         return name;
+    }
+
+    /// <summary>
+    /// Ensures the game's save directory tree exists under the active AP save redirect.
+    ///
+    /// RL2 builds its save directories only once per session, guarded by SaveManager's private
+    /// <c>m_checkedForSaveDirectories</c> flag. If anything triggered a save before the player
+    /// connected (an autosave, or changing a config option), that flag is consumed against the
+    /// vanilla save path. Once we redirect <see cref="SaveFileSystem.PersistentDataPath"/> to
+    /// <c>AP_Saves/{dir}</c>, the game then never creates that redirected tree:
+    ///   - game saves (<c>SaveGameData</c>) fail silently, because <c>CreateSaveFile</c> swallows
+    ///     the IO exception, so the player's run progress quietly never reaches disk; and
+    ///   - <c>SaveConfigFile</c> re-throws on menu close, and that exception propagates out of
+    ///     <c>SuboptionsWindowController.OnClose</c> before the window is removed, leaving the
+    ///     options submenu permanently unclosable (force-close is the only escape, losing the
+    ///     unsaved run).
+    ///
+    /// We fix both by (1) creating the config directory immediately so the very next config save
+    /// can't throw, and (2) clearing the one-time flag so the game rebuilds its full profile and
+    /// backup tree under the redirected path on the next save.
+    /// </summary>
+    private static void EnsureRedirectedSaveDirectories()
+    {
+        try
+        {
+            // (1) Immediately create the directory GameConfig.ini lives in so that backing out of
+            //     a settings submenu (which calls SaveConfigFile) can't throw before any other
+            //     save has had a chance to create it.
+            var configDir = Path.GetDirectoryName(SaveManager.GetConfigPath());
+            if (!string.IsNullOrEmpty(configDir))
+                Directory.CreateDirectory(configDir);
+
+            // (2) Clear SaveManager's one-time directory-check flag so its own
+            //     CreateSaveDirectoriesIfNeeded() rebuilds the full profile/backup tree under the
+            //     redirected path on the next save. This also restores reliable run saves.
+            ResetSaveDirectoryCheck();
+
+            Plugin.Log.LogInfo("[AP] Ensured redirected save directories exist.");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.LogError($"[AP] Failed to ensure redirected save directories: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Clears SaveManager's private <c>m_checkedForSaveDirectories</c> flag so the game rebuilds
+    /// its save directory tree against the current <see cref="SaveFileSystem.PersistentDataPath"/>
+    /// on the next save. Called whenever the save path changes (connect and disconnect) so neither
+    /// the redirected AP tree nor the vanilla tree can be left uncreated for the active path.
+    /// </summary>
+    private static void ResetSaveDirectoryCheck()
+    {
+        var instance = Traverse.Create(typeof(SaveManager)).Field("m_instance").GetValue();
+        if (instance != null)
+            Traverse.Create(instance).Field("m_checkedForSaveDirectories").SetValue(false);
+        else
+            Plugin.Log.LogWarning("[AP] Could not access SaveManager instance to reset the save-directory flag.");
     }
 
     /// <summary>
