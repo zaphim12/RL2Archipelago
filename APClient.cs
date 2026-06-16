@@ -17,10 +17,19 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace RL2Archipelago;
 
 public enum JournalChecksMode { Disabled = 0, Individual = 1, Grouped = 2 }
+
+/// <summary>
+/// High-level connection lifecycle state. Distinct from <see cref="APClient.IsConnected"/>
+/// (a raw socket bool) so the UI can tell an in-progress reconnect from a clean
+/// user-initiated disconnect.
+/// </summary>
+public enum APConnectionState { Disconnected = 0, Connected = 1, Reconnecting = 2 }
 
 /// <summary>
 /// Manages the Archipelago session lifecycle: connect, disconnect, item/message
@@ -33,7 +42,17 @@ public static class APClient
     /// <summary>A list of options determined by the yaml which can modify the AP client's behavior. E.g. death_link, completion_criteria, etc.</summary>
     public static Dictionary<string, object> SlotData { get; private set; }
 
+    /// <summary>True only when the websocket is live. Use for decisions that require a
+    /// real connection right now (sending to the server, queue-vs-send).</summary>
     public static bool IsConnected => Session?.Socket?.Connected ?? false;
+
+    /// <summary>
+    /// True whenever an AP session is logically active, i.e. connected OR temporarily
+    /// reconnecting after a drop. Gameplay patches gate on this (rather than the raw
+    /// <see cref="IsConnected"/>) so checks keep being recorded locally and queued for
+    /// resync, and randomizer behavior stays consistent, while the connection is down.
+    /// </summary>
+    public static bool IsSessionActive => ConnectionState != APConnectionState.Disconnected;
 
     /// <summary>True while an AP session's save directory is active; controls the SaveFileSystem path redirect.</summary>
     public static bool APSaveActive { get; private set; }
@@ -93,6 +112,10 @@ public static class APClient
     private static DeathLinkService _deathLinkService;
     private static string _slotName;
 
+    // Our own player slot number, cached on (re)connect so send notifications can resolve
+    // "found by yourself" vs "sent to X" even while disconnected (Session may be null then).
+    private static int _ourSlot = -1;
+
     // Incoming death beacon queued for main-thread application. Written by the websocket thread,
     // read by the main thread; volatile ensures the flag write is visible after the string fields.
     private static volatile bool _pendingDeathLink;
@@ -139,6 +162,47 @@ public static class APClient
     // tick after entering a game; reset on each Connect so a fresh session restores correctly.
     private static bool _trapsRestored = false;
 
+    // ── Connection lifecycle / auto-reconnect ───────────────────────────────────
+
+    /// <summary>High-level connection state used by the UI (e.g. the disconnect overlay).</summary>
+    public static APConnectionState ConnectionState
+    {
+        get => _connectionState;
+        private set => _connectionState = value;
+    }
+    private static volatile APConnectionState _connectionState = APConnectionState.Disconnected;
+
+    // True from the moment a user-initiated Disconnect() begins until the next Connect().
+    // Lets the SocketClosed handler and reconnect worker distinguish an intentional
+    // teardown from a dropped connection so they don't fight a manual disconnect.
+    private static volatile bool _intentionalDisconnect;
+
+    // The connection parameters for the active session, captured on Connect() so the
+    // background reconnect worker can re-establish the session after a drop.
+    private static APConnectionData _activeConnData;
+
+    // Guards RunState.CheckedLocations against concurrent access: the main thread adds
+    // checks via SendLocationCheck while the reconnect worker reads them in Resync.
+    private static readonly object _checkedLock = new object();
+
+    // 0 = no reconnect worker running, 1 = running. Toggled via Interlocked so only one
+    // backoff loop exists at a time.
+    private static int _reconnectWorkerRunning;
+
+    private static readonly Random _reconnectRng = new Random();
+
+    private const int ReconnectBaseDelayMs = 2000;
+    private const int ReconnectMaxDelayMs  = 30000;
+
+    // Client-side cap on a single connect+login attempt. The sync TryConnectAndLogin can
+    // block indefinitely if the TCP socket connects but the AP handshake never completes,
+    // which would stall the whole reconnect loop on one attempt.
+    private const int ConnectTimeoutMs = 10000;
+
+    // Set by the reconnect worker (background thread) on success; drained on the main
+    // thread by ProcessConnectionEvents() so the toast is raised where Unity is safe.
+    private static volatile bool _pendingReconnectedToast;
+
     // ── Public API ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -158,42 +222,24 @@ public static class APClient
         try
         {
             // Tear down any existing session cleanly before creating a new one.
-            if (IsConnected)
+            if (IsConnected || ConnectionState != APConnectionState.Disconnected)
                 Disconnect(manual: false);
 
-            Session = ArchipelagoSessionFactory.CreateSession(connData.Hostname, connData.Port);
+            // Clear the intentional-disconnect latch the teardown above set, so the
+            // SocketClosed handler will react to drops on this new session.
+            _intentionalDisconnect = false;
 
-            // Hook diagnostics before TryConnectAndLogin so we capture events that
-            // fire during the handshake
-            Session.Socket.SocketOpened    += APSession_SocketOpened;
-            Session.Socket.ErrorReceived   += APSession_ErrorReceived;
-
-            Plugin.Log.LogDebug("[AP] Calling TryConnectAndLogin...");
-
-            LoginResult loginResult = Session.TryConnectAndLogin(
-                "Rogue Legacy 2",
-                connData.SlotName,
-                ItemsHandlingFlags.AllItems,
-                password: string.IsNullOrEmpty(connData.Password) ? null : connData.Password,
-                requestSlotData: true);
-
-            Plugin.Log.LogDebug($"[AP] TryConnectAndLogin returned. Successful={loginResult.Successful}");
-
-            Session.Socket.SocketOpened -= APSession_SocketOpened;
-
-            if (!loginResult.Successful)
+            if (!OpenSessionAndLogin(connData, out var loginError))
             {
-                LoginFailure failure = (LoginFailure)loginResult;
-                var errors = string.Join("\n", failure.Errors);
-                Plugin.Log.LogError($"AP login failed:\n{errors}");
-                Session = null;
-                onFailure?.Invoke(errors);
+                Plugin.Log.LogError($"AP login failed:\n{loginError}");
+                onFailure?.Invoke(loginError);
                 return;
             }
 
-            var success = (LoginSuccessful)loginResult;
-            SlotData = success.SlotData;
+            _activeConnData = connData;
 
+            // ── One-time per-session setup (slot data, save redirect, run state). ──
+            // The reconnect worker skips all of this; it reuses the state established here.
             if (SlotData.TryGetValue("blueprint_checks_per_biome", out var bpCountObj))
                 LocationRegistry.SetBlueprintChecksPerBiome(Convert.ToInt32(bpCountObj));
             else
@@ -235,10 +281,7 @@ public static class APClient
 
             Plugin.Log.LogInfo(
                 $"Connected! Room: {Session.RoomState.Seed}  " +
-                $"Slot data keys: {string.Join(", ", success.SlotData.Keys)}");
-
-            // Persist the room ID so we can warn on multiworld mismatch later.
-            connData.RoomId = Session.RoomState.Seed;
+                $"Slot data keys: {string.Join(", ", SlotData.Keys)}");
 
             // Redirect all save I/O to a directory scoped to this room + slot.
             _previousProfile = SaveManager.ConfigData.CurrentProfile;
@@ -251,7 +294,6 @@ public static class APClient
 
             // Load any prior run state (checked locations, etc.) for this seed+slot.
             RunState = APRunState.Load(APSaveDirectoryName);
-            _nextItemIndex = 0;
             _trapsRestored = false;
 
             RandomizeStartingClass = SlotData.TryGetValue("randomize_starting_class", out var rscObj)
@@ -265,30 +307,10 @@ public static class APClient
             LoadPlayerSettings(APSaveDirectoryName);
             DeathLinkEnabled = APSettings.DeathLink ?? serverDeathLink;
 
-            _deathLinkService = Session.CreateDeathLinkService();
-            if (DeathLinkEnabled)
-            {
-                _deathLinkService.OnDeathLinkReceived += APSession_DeathLinkReceived;
-                _deathLinkService.EnableDeathLink();
-                Plugin.Log.LogInfo("[AP] DeathLink enabled.");
-            }
-
-            // Register websocket-thread event handlers AFTER resetting _nextItemIndex so
-            // any items that arrive concurrently get correct indices. Then manually drain
-            // the helper to pick up items the server sent during TryConnectAndLogin before
-            // the handler was wired; those sit in the library's buffer unfired.
-            Session.Items.ItemReceived += APSession_ItemReceived;
-            Session.MessageLog.OnMessageReceived += APSession_OnMessageReceived;
-            APSession_ItemReceived(Session.Items);
-
-            // Reconcile local and server state. If the client recorded a check
-            // that never made it to the server (e.g. network drop mid-send),
-            // resend it now so the multiworld stays consistent.
-            ResyncCheckedLocations();
-
-            // Scout every unchecked tracked location so in-world graphics
-            // (e.g. heirloom pedestals) can show the item that will drop there.
-            ScoutTrackedLocations();
+            // ── Per-(re)connect wiring: item/message handlers, DeathLink service,
+            //    check resync, and location scouting. The reconnect worker runs the
+            //    same helper after re-establishing a session. ──
+            WirePostLogin();
 
             // Fire the session-opened event and the caller's success callback on
             // the main thread.  We're already on the main thread here (called from UI),
@@ -304,17 +326,302 @@ public static class APClient
         }
     }
 
-    /// <summary>Tears down the current session and fires <see cref="OnSessionClosed"/>.</summary>
+    /// <summary>
+    /// Creates a fresh session, wires the diagnostic + lifecycle socket handlers,
+    /// and attempts login. On success assigns <see cref="Session"/> / <see cref="SlotData"/>,
+    /// stamps <c>connData.RoomId</c>, and returns true. On failure tears the failed
+    /// session down, sets <paramref name="error"/>, and returns false.
+    /// Shared by the initial <see cref="Connect"/> and the reconnect worker.
+    /// </summary>
+    private static bool OpenSessionAndLogin(APConnectionData connData, out string error)
+    {
+        error = null;
+
+        Session = ArchipelagoSessionFactory.CreateSession(connData.Hostname, connData.Port);
+
+        // Hook diagnostics + lifecycle before TryConnectAndLogin so we capture events
+        // that fire during the handshake. SocketClosed drives the auto-reconnect.
+        Session.Socket.SocketOpened  += APSession_SocketOpened;
+        Session.Socket.ErrorReceived += APSession_ErrorReceived;
+        Session.Socket.SocketClosed  += APSession_SocketClosed;
+
+        Plugin.Log.LogDebug("[AP] Calling TryConnectAndLogin...");
+
+        // Run the blocking login on a worker task with a client-side timeout: TryConnectAndLogin
+        // can block forever when the TCP socket connects but the AP handshake never finishes,
+        // which would hang the single reconnect worker and stall every later attempt. Aborting
+        // the session on timeout unblocks the abandoned task shortly after.
+        LoginResult loginResult;
+        try
+        {
+            var session = Session;
+            var loginTask = Task.Run(() => session.TryConnectAndLogin(
+                "Rogue Legacy 2",
+                connData.SlotName,
+                ItemsHandlingFlags.AllItems,
+                password: string.IsNullOrEmpty(connData.Password) ? null : connData.Password,
+                requestSlotData: true));
+
+            if (!loginTask.Wait(ConnectTimeoutMs))
+            {
+                error = $"Connect attempt timed out after {ConnectTimeoutMs}ms.";
+                Plugin.Log.LogDebug($"[AP] {error} Abandoning attempt.");
+                ObserveFault(loginTask, "Abandoned login");  // don't let the orphan task fault unobserved
+                DetachAndAbort(Session);
+                Session = null;
+                return false;
+            }
+
+            loginResult = loginTask.Result;
+        }
+        catch (Exception ex)
+        {
+            error = ex.InnerException?.Message ?? ex.Message;
+            DetachAndAbort(Session);
+            Session = null;
+            return false;
+        }
+
+        Session.Socket.SocketOpened -= APSession_SocketOpened;
+
+        Plugin.Log.LogDebug($"[AP] TryConnectAndLogin returned. Successful={loginResult.Successful}");
+
+        if (!loginResult.Successful)
+        {
+            error = string.Join("\n", ((LoginFailure)loginResult).Errors);
+            // Abort (not just detach): leaving a half-open socket behind makes the *next*
+            // reconnect attempt hang instead of timing out cleanly.
+            DetachAndAbort(Session);
+            Session = null;
+            return false;
+        }
+
+        SlotData = ((LoginSuccessful)loginResult).SlotData;
+        // Persist the room ID so we can warn on multiworld mismatch later.
+        connData.RoomId = Session.RoomState.Seed;
+        return true;
+    }
+
+    /// <summary>
+    /// Per-(re)connect wiring that must run every time a session is established:
+    /// websocket item/message handlers, the DeathLink service, check resync, and
+    /// location scouting. Assumes the one-time setup (slot-data parsing, save
+    /// redirect, RunState load, <see cref="DeathLinkEnabled"/>) has already happened.
+    /// Ends by marking the connection <see cref="APConnectionState.Connected"/>.
+    /// May run on the reconnect worker thread; touches only network/library state.
+    /// </summary>
+    private static void WirePostLogin()
+    {
+        // Reset the index BEFORE wiring/draining so concurrently-arriving items get
+        // correct indices. AllItems replays from index 0 on every (re)connect; the
+        // GrantedItemCount guard in ProcessPendingItems skips already-applied items.
+        _nextItemIndex = 0;
+
+        Session.Items.ItemReceived += APSession_ItemReceived;
+        Session.MessageLog.OnMessageReceived += APSession_OnMessageReceived;
+        // Manually drain items the server sent during the handshake before the handler
+        // was wired; those sit in the library's buffer unfired.
+        APSession_ItemReceived(Session.Items);
+
+        // Recreate the DeathLink service against the new session.
+        // Cache our slot so notifications work without a live Session during a drop.
+        _ourSlot = Session.ConnectionInfo.Slot;
+
+        _deathLinkService = Session.CreateDeathLinkService();
+        if (DeathLinkEnabled)
+        {
+            _deathLinkService.OnDeathLinkReceived += APSession_DeathLinkReceived;
+            _deathLinkService.EnableDeathLink();
+            Plugin.Log.LogInfo("[AP] DeathLink enabled.");
+        }
+
+        // Reconcile local and server state. If the client recorded a check that never
+        // made it to the server (network drop mid-send, or checks made while offline),
+        // resend it now so the multiworld stays consistent.
+        ResyncCheckedLocations();
+
+        // Re-send goal completion if the final boss was beaten while disconnected.
+        // SetGoalAchieved is idempotent server-side.
+        if (RunState?.GoalAchieved == true)
+        {
+            try
+            {
+                Session.SetGoalAchieved();
+                Plugin.Log.LogInfo("[AP] Re-sent goal completion after reconnect.");
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.LogError($"[AP] Failed to re-send goal completion: {ex.Message}");
+            }
+        }
+
+        // Scout every unchecked tracked location so in-world graphics (e.g. heirloom
+        // pedestals) can show the item that will drop there.
+        ScoutTrackedLocations();
+
+        ConnectionState = APConnectionState.Connected;
+    }
+
+    private static void APSession_SocketClosed(string reason) => HandleConnectionDropped(reason);
+
+    /// <summary>Observes a fire-and-forget task so a fault is logged here instead of
+    /// surfacing later as an unobserved TaskScheduler exception at GC time.</summary>
+    private static void ObserveFault(Task task, string what) =>
+        task?.ContinueWith(
+            t => Plugin.Log.LogWarning($"[AP] {what} failed: {t.Exception?.Flatten().Message}"),
+            TaskContinuationOptions.OnlyOnFaulted);
+
+    /// <summary>Detaches our handlers from a dead/abandoned session and aborts its socket so
+    /// its polling loop exits instead of looping on errors. Safe to call with a null session.</summary>
+    private static void DetachAndAbort(ArchipelagoSession dead)
+    {
+        if (dead == null) return;
+        dead.Socket.SocketOpened  -= APSession_SocketOpened;
+        dead.Items.ItemReceived -= APSession_ItemReceived;
+        dead.MessageLog.OnMessageReceived -= APSession_OnMessageReceived;
+        dead.Socket.ErrorReceived -= APSession_ErrorReceived;
+        dead.Socket.SocketClosed  -= APSession_SocketClosed;
+        try { ObserveFault(dead.Socket.DisconnectAsync(), "Socket abort"); } catch { /* best-effort */ }
+    }
+
+    /// <summary>
+    /// Handles a dropped connection on the websocket thread. Triggered both by
+    /// <see cref="IArchipelagoSocketHelper.SocketClosed"/> and by a fatal
+    /// <see cref="IArchipelagoSocketHelper.ErrorReceived"/>. The MultiClient.Net polling
+    /// loop does not always raise SocketClosed on a forcible close; it can instead spin
+    /// firing ErrorReceived, so we must react to the error too.
+    ///
+    /// <para>Only the first event while <see cref="APConnectionState.Connected"/> acts:
+    /// it transitions to Reconnecting, detaches and aborts the dead session (so its
+    /// polling loop stops spamming), and starts the backoff worker. Local state
+    /// (checked locations, scout cache, save redirect) is left intact so play
+    /// continues offline.</para>
+    /// </summary>
+    private static void HandleConnectionDropped(string reason)
+    {
+        if (_intentionalDisconnect) return;
+
+        // Only a live session going down should start a reconnect. Ignore errors while
+        // Disconnected (no session) or Reconnecting (already handling). This also
+        // collapses the rapid ErrorReceived spam down to a single reconnect trigger.
+        if (ConnectionState != APConnectionState.Connected) return;
+        ConnectionState = APConnectionState.Reconnecting;
+
+        Plugin.Log.LogWarning($"[AP] Connection lost: {reason}. Attempting to reconnect.");
+
+        // Detach + abort the dead session so its polling loop stops firing into us.
+        DetachAndAbort(Session);
+
+        StartReconnectWorker();
+    }
+
+    /// <summary>
+    /// Launches (at most one) background task that retries the connection with
+    /// exponential backoff + jitter, capped at <see cref="ReconnectMaxDelayMs"/>,
+    /// until it reconnects or the player manually disconnects. Runs off the main
+    /// thread because <see cref="ArchipelagoSession.TryConnectAndLogin"/> blocks.
+    /// </summary>
+    private static void StartReconnectWorker()
+    {
+        if (Interlocked.CompareExchange(ref _reconnectWorkerRunning, 1, 0) != 0)
+            return; // a worker is already running
+
+        Task.Run(() =>
+        {
+            try
+            {
+                int attempt = 0;
+                while (ConnectionState == APConnectionState.Reconnecting && !_intentionalDisconnect)
+                {
+                    int delay = (int)Math.Min(
+                        ReconnectBaseDelayMs * Math.Pow(2, attempt), ReconnectMaxDelayMs);
+                    // ±20% jitter so many clients reconnecting at once don't sync up.
+                    int jitter = delay / 5;
+                    delay += _reconnectRng.Next(-jitter, jitter + 1);
+                    Thread.Sleep(Math.Max(500, delay));
+
+                    if (_intentionalDisconnect || ConnectionState != APConnectionState.Reconnecting)
+                        break;
+
+                    var conn = _activeConnData;
+                    if (conn == null) break; // disconnected out from under us
+
+                    Plugin.Log.LogInfo($"[AP] Reconnect attempt {attempt + 1}...");
+                    try
+                    {
+                        if (OpenSessionAndLogin(conn, out var error))
+                        {
+                            // The player may have manually disconnected during the blocking
+                            // login; if so, abandon the just-opened session.
+                            if (_intentionalDisconnect)
+                            {
+                                DetachAndAbort(Session);
+                                Session = null;
+                                break;
+                            }
+
+                            WirePostLogin();
+                            Plugin.Log.LogInfo("[AP] Reconnected successfully.");
+                            // Defer the toast to the main thread (Unity isn't safe here).
+                            _pendingReconnectedToast = true;
+                            break;
+                        }
+
+                        Plugin.Log.LogWarning($"[AP] Reconnect attempt {attempt + 1} failed: {error}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.Log.LogError($"[AP] Reconnect attempt threw: {ex.Message}");
+                        // If login succeeded but WirePostLogin threw, a live half-wired session
+                        // is attached to our handlers. Tear it down before retrying so we don't
+                        // leak a second event source feeding items/errors into the client.
+                        if (Session != null && ConnectionState != APConnectionState.Connected)
+                        {
+                            DetachAndAbort(Session);
+                            Session = null;
+                        }
+                    }
+
+                    attempt++;
+                }
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _reconnectWorkerRunning, 0);
+            }
+        });
+    }
+
+    /// <summary>Tears down the current session and fires <see cref="OnSessionClosed"/>.
+    /// Safe to call mid-reconnect (when no live <see cref="Session"/> exists).</summary>
     public static void Disconnect(bool manual = true)
     {
-        if (Session == null) return;
+        // Nothing to tear down (and avoid double-teardown from the Connect() preamble).
+        if (Session == null && RunState == null && ConnectionState == APConnectionState.Disconnected)
+            return;
 
-        Session.Items.ItemReceived -= APSession_ItemReceived;
-        Session.MessageLog.OnMessageReceived -= APSession_OnMessageReceived;
-        Session.Socket.ErrorReceived -= APSession_ErrorReceived;
+        // Latch this first so the reconnect worker / SocketClosed handler stand down.
+        _intentionalDisconnect = true;
+        ConnectionState = APConnectionState.Disconnected;
 
-        if (Session.Socket.Connected)
-            Session.Socket.DisconnectAsync().Wait(2000);
+        if (Session != null)
+        {
+            Session.Items.ItemReceived -= APSession_ItemReceived;
+            Session.MessageLog.OnMessageReceived -= APSession_OnMessageReceived;
+            Session.Socket.ErrorReceived -= APSession_ErrorReceived;
+            Session.Socket.SocketClosed  -= APSession_SocketClosed;
+
+            // Guard the blocking close: on a faulted socket .Wait() throws, and the
+            // save-redirect revert below MUST still run or saves keep going to AP_Saves/.
+            if (Session.Socket.Connected)
+            {
+                try { Session.Socket.DisconnectAsync().Wait(2000); }
+                catch (Exception ex)
+                {
+                    Plugin.Log.LogWarning($"[AP] Error closing socket during disconnect: {ex.Message}");
+                }
+            }
+        }
 
         if (_deathLinkService is not null)
         {
@@ -329,21 +636,25 @@ public static class APClient
 
         // Deactivate the save redirect before restoring the vanilla profile so
         // LoadCurrentProfileData reads from the original paths.
-        APSaveActive = false;
-        SaveManager.ConfigData.CurrentProfile = _previousProfile;
-        // Force the game to re-verify its save directories against the now-restored vanilla path
-        // on the next save, mirroring what we do on connect. Guards against the reverse of the
-        // AP-save-directory bug (solved via EnsureRedirectedSaveDirectories())
-        // for a session that connected before any vanilla save occurred.
-        ResetSaveDirectoryCheck();
-        SaveManager.LoadCurrentProfileData();
-        Plugin.Log.LogInfo("[AP] Save redirect deactivated; vanilla profile restored.");
+        if (APSaveActive)
+        {
+            APSaveActive = false;
+            SaveManager.ConfigData.CurrentProfile = _previousProfile;
+            // Force the game to re-verify its save directories against the now-restored vanilla path
+            // on the next save, mirroring what we do on connect. Guards against the reverse of the
+            // AP-save-directory bug (solved via EnsureRedirectedSaveDirectories())
+            // for a session that connected before any vanilla save occurred.
+            ResetSaveDirectoryCheck();
+            SaveManager.LoadCurrentProfileData();
+            Plugin.Log.LogInfo("[AP] Save redirect deactivated; vanilla profile restored.");
+        }
 
         APNotifications.Reset();
         _scoutedItems.Clear();
         RunState = null;
         IsInGame = false;
         Session = null;
+        _activeConnData = null;
 
         if (manual)
             OnSessionClosed?.Invoke();
@@ -440,12 +751,20 @@ public static class APClient
         var displayName = LocationRegistry.Names.TryGetValue(locationId, out var n) ? n : locationId.ToString();
 
         // Persist first, then send. If the send is dropped, Resync will retry it.
-        if (!RunState.CheckedLocations.Add(locationId))
+        // Lock guards the HashSet against the reconnect worker reading it in Resync.
+        bool added;
+        lock (_checkedLock)
+            added = RunState.CheckedLocations.Add(locationId);
+        if (!added)
         {
             Plugin.Log.LogDebug($"[AP] Location '{displayName}' already checked. skipping re-send.");
             return;
         }
         RunState.Save(APSaveDirectoryName);
+
+        // Show the "found/sent" toast from the scout cache regardless of connection so
+        // offline pickups still surface in the AP log (the cache survives a drop).
+        EnqueueSendNotification(locationId);
 
         if (!IsConnected)
         {
@@ -474,8 +793,6 @@ public static class APClient
             Plugin.Log.LogError(
                 $"[AP] Failed to send location check '{displayName}': {ex.Message}");
         }
-
-        EnqueueSendNotification(locationId);
     }
 
     /// <summary>
@@ -489,7 +806,7 @@ public static class APClient
             return;
 
         var itemName = scouted.ItemDisplayName ?? scouted.ItemName ?? "an item";
-        var ourSlot = Session.ConnectionInfo.Slot;
+        var ourSlot = _ourSlot;
         var isHeirloom = ItemRegistry.ToHeirloomType(scouted.ItemId).HasValue;
 
         if (scouted.Player.Slot == ourSlot)
@@ -571,8 +888,14 @@ public static class APClient
     {
         if (RunState == null || Session == null) return;
 
+        // Snapshot under lock: this may run on the reconnect worker thread while the
+        // main thread is adding checks via SendLocationCheck.
+        long[] localChecks;
+        lock (_checkedLock)
+            localChecks = RunState.CheckedLocations.ToArray();
+
         var serverKnown = Session.Locations.AllLocationsChecked;
-        var missing = RunState.CheckedLocations.Where(id => !serverKnown.Contains(id)).ToArray();
+        var missing = localChecks.Where(id => !serverKnown.Contains(id)).ToArray();
 
         if (missing.Length == 0)
         {
@@ -584,7 +907,7 @@ public static class APClient
             $"[AP] Resyncing {missing.Length} location(s) the server hadn't recorded yet.");
         try
         {
-            Session.Locations.CompleteLocationChecksAsync(missing);
+            ObserveFault(Session.Locations.CompleteLocationChecksAsync(missing), "Resync");
         }
         catch (Exception ex)
         {
@@ -598,6 +921,14 @@ public static class APClient
     /// </summary>
     public static void SendGoalAchieved()
     {
+        // Persist first so a goal reached while disconnected survives and is re-sent on
+        // reconnect (WirePostLogin), mirroring how location checks are queued.
+        if (RunState != null && !RunState.GoalAchieved)
+        {
+            RunState.GoalAchieved = true;
+            RunState.Save(APSaveDirectoryName);
+        }
+
         if (!IsConnected) return;
         try
         {
@@ -694,6 +1025,24 @@ public static class APClient
         Plugin.Log.LogInfo($"[AP] Starting class applied: {slot.ItemName}");
         RunState.StartingClassApplied = true;
         RunState.Save(APSaveDirectoryName);
+    }
+
+    /// <summary>
+    /// Main-thread drain for connection-lifecycle UI events the background reconnect
+    /// worker can't safely raise itself (Unity APIs are main-thread only). Call each
+    /// frame from the dispatch patch.
+    /// </summary>
+    public static void ProcessConnectionEvents()
+    {
+        if (_pendingReconnectedToast)
+        {
+            _pendingReconnectedToast = false;
+            APNotifications.Enqueue(
+                title: "Archipelago",
+                subtitle: "Reconnected",
+                description: "Connection restored.",
+                critical: true);
+        }
     }
 
     /// <summary>
@@ -969,12 +1318,26 @@ public static class APClient
 
     private static void APSession_ErrorReceived(Exception ex, string message)
     {
-        Plugin.Log.LogError($"[AP] Socket error: {message}");
-        if (ex != null)
+        // The polling loop can spam this on a forcible close. Log the full detail only
+        // for the first error of a live session; quiet the rest to avoid flooding the log.
+        if (ConnectionState == APConnectionState.Connected)
         {
-            Plugin.Log.LogError($"[AP] Exception: {ex}");
-            for (var inner = ex.InnerException; inner != null; inner = inner.InnerException)
-                Plugin.Log.LogError($"[AP] Inner exception: {inner}");
+            Plugin.Log.LogError($"[AP] Socket error: {message}");
+            if (ex != null)
+            {
+                Plugin.Log.LogError($"[AP] Exception: {ex}");
+                for (var inner = ex.InnerException; inner != null; inner = inner.InnerException)
+                    Plugin.Log.LogError($"[AP] Inner exception: {inner}");
+            }
         }
+        else
+        {
+            Plugin.Log.LogDebug($"[AP] Socket error (while {ConnectionState}): {message}");
+        }
+
+        // A socket error on a live session means the connection is going down. MultiClient.Net
+        // doesn't reliably raise SocketClosed for a forcible close (it loops on ErrorReceived
+        // instead), so drive the reconnect from here too. No-op unless currently Connected.
+        HandleConnectionDropped(message);
     }
 }

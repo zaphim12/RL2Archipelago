@@ -15,7 +15,7 @@ internal static class GoldChestPatch
     [HarmonyPatch(typeof(ChestObj), "GetSpecialItemTypeToDrop")]
     private static void GetSpecialItemTypeToDrop_Postfix(ChestObj __instance)
     {
-        if (!APClient.IsConnected || APClient.RunState == null) return;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return;
         if (__instance.ChestType != ChestType.Gold) return;
 
         var room = PlayerManager.GetCurrentPlayerRoom();

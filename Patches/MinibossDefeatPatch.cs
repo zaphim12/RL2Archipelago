@@ -27,7 +27,7 @@ internal static class MinibossDefeatPatch
     private static void SetFlag_Postfix(PlayerSaveFlag flag, bool value)
     {
         if (!value) return;
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
 
         var locationId = LocationRegistry.FromMinibossSaveFlag(flag);
         if (locationId is null)

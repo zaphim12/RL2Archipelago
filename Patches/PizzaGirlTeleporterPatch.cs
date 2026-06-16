@@ -86,7 +86,7 @@ internal static class PizzaGirlTeleporterPatch
     [HarmonyPatch(typeof(PizzaGirlPropController), "PlayUnlockTeleporterDialogue")]
     private static bool PlayUnlockTeleporterDialogue_Prefix(PizzaGirlPropController __instance)
     {
-        if (!APClient.IsConnected || APClient.RunState == null) return true;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return true;
 
         var locationId = LocationRegistry.FromBiomeTypeTeleporter(__instance.Room.BiomeType);
         if (locationId == null) return true;
@@ -162,7 +162,7 @@ internal static class PizzaGirlTeleporterPatch
     [HarmonyPatch(typeof(PizzaGirlPropController), "UnlockTeleporter")]
     private static bool UnlockTeleporter_Prefix(PizzaGirlPropController __instance)
     {
-        if (!APClient.IsConnected || APClient.RunState == null) return true;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return true;
 
         var locationId = LocationRegistry.FromBiomeTypeTeleporter(__instance.Room.BiomeType);
         if (locationId == null) return true;
@@ -233,7 +233,7 @@ internal static class PizzaGirlTeleporterPatch
     [HarmonyPatch(typeof(PizzaGirlPropController), "InitializePooledPropOnEnter")]
     private static void InitializePooledPropOnEnter_Postfix(PizzaGirlPropController __instance)
     {
-        if (!APClient.IsConnected || APClient.RunState == null) return;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return;
         if (__instance.Room?.RoomType != RoomType.Transition) return;
 
         var locationId = LocationRegistry.FromBiomeTypeTeleporter(__instance.Room.BiomeType);

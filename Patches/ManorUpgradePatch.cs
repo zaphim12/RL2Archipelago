@@ -29,7 +29,7 @@ internal static class ManorUpgradePatch
     [HarmonyPatch(typeof(SkillTreeObj), "get_MaxLevel")]
     private static void MaxLevel_Postfix(SkillTreeObj __instance, ref int __result)
     {
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
         if (LocationRegistry.FromSkillTreeType(__instance.SkillTreeType) == null) return;
         if (__result <= 0) __result = 1;
     }
@@ -49,7 +49,7 @@ internal static class ManorUpgradePatch
     [HarmonyPatch(typeof(SkillTreeWindowController), "Initialize")]
     private static void Initialize_Prefix()
     {
-        if (!APClient.IsConnected || APClient.RunState == null) return;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return;
 
         s_savedLevels.Clear();
         foreach (var skillType in ItemRegistry.s_skillTreeTypes)
@@ -97,7 +97,7 @@ internal static class ManorUpgradePatch
     private static void UpdateAnimatorParams_Prefix(SkillTreeSlot __instance)
     {
         s_animParamSavedLevel = -1;
-        if (!APClient.IsConnected || APClient.RunState == null) return;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return;
         var locationId = LocationRegistry.FromSkillTreeType(__instance.SkillTreeType);
         if (locationId == null) return;
 
@@ -149,7 +149,7 @@ internal static class ManorUpgradePatch
     [HarmonyPatch(typeof(SkillTreeSlot), nameof(SkillTreeSlot.PurchaseSkillUpgrade))]
     private static bool PurchaseSkillUpgrade_Prefix(SkillTreeSlot __instance)
     {
-        if (!APClient.IsConnected || APClient.RunState == null) return true;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return true;
         var locationId = LocationRegistry.FromSkillTreeType(__instance.SkillTreeType);
         if (locationId == null) return true; // non-AP slot: let vanilla run
 
@@ -212,7 +212,7 @@ internal static class ManorUpgradePatch
     [HarmonyPatch(typeof(SkillTreePopupLibrary), nameof(SkillTreePopupLibrary.GetPopupData))]
     private static bool GetPopupData_Prefix(SkillTreeType skillType, ref SkillTreePopupData __result)
     {
-        if (!APClient.IsConnected) return true;
+        if (!APClient.IsSessionActive) return true;
         if (LocationRegistry.FromSkillTreeType(skillType) == null) return true;
         __result = null;
         return false;
@@ -229,7 +229,7 @@ internal static class ManorUpgradePatch
     [HarmonyPatch(typeof(SkillTreeManager), nameof(SkillTreeManager.GetTotalSkillObjLevel))]
     private static void GetTotalSkillObjLevel_Postfix(ref int __result)
     {
-        if (!APClient.IsConnected || APClient.RunState == null) return;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return;
 
         int count = 0;
         foreach (var skillType in ItemRegistry.s_skillTreeTypes)
@@ -285,7 +285,7 @@ internal static class ManorUpgradePatch
     [HarmonyPatch(typeof(SkillTreeSlot), nameof(SkillTreeSlot.RefreshSlotState))]
     private static void RefreshSlotState_Postfix(SkillTreeSlot __instance)
     {
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
         var locationId = LocationRegistry.FromSkillTreeType(__instance.SkillTreeType);
         if (locationId == null) return;
 
@@ -352,7 +352,7 @@ internal static class ManorUpgradePatch
     [HarmonyPatch(typeof(SkillTreeSlot), nameof(SkillTreeSlot.UpdateSkillTreeType))]
     private static void UpdateSkillTreeType_Postfix(SkillTreeSlot __instance)
     {
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
         var locationId = LocationRegistry.FromSkillTreeType(__instance.SkillTreeType);
         if (locationId == null) return;
 
@@ -371,7 +371,7 @@ internal static class ManorUpgradePatch
 
     private static void OverrideInfoPlateIcon(SkillTreeWindowController instance, SkillTreeType skillTreeType)
     {
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
         var locationId = LocationRegistry.FromSkillTreeType(skillTreeType);
         if (locationId == null) return;
         var replacement = APSprites.GetSpriteForLocation(locationId.Value);
@@ -423,7 +423,7 @@ internal static class ManorUpgradePatch
     [HarmonyPatch(typeof(SkillTreeDescriptionUpdater), "UpdateText")]
     private static void UpdateText_Postfix(SkillTreeDescriptionUpdater __instance, SkillTreeType __0)
     {
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
         var locationId = LocationRegistry.FromSkillTreeType(__0);
         if (locationId == null) return;
 

@@ -10,7 +10,7 @@ internal static class ItemDescriptionPatch
     [HarmonyPatch(typeof(PlayerSaveData), nameof(PlayerSaveData.GetSpellSeenState))]
     private static void SpellSeenState_Postfix(ref bool __result)
     {
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
         __result = true;
     }
 
@@ -19,7 +19,7 @@ internal static class ItemDescriptionPatch
     [HarmonyPatch(typeof(TraitManager), nameof(TraitManager.GetTraitSeenState))]
     private static void TraitSeenState_Postfix(ref TraitSeenState __result)
     {
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
         if (__result < TraitSeenState.SeenOnce)
             __result = TraitSeenState.SeenOnce;
     }
@@ -29,7 +29,7 @@ internal static class ItemDescriptionPatch
     [HarmonyPatch(typeof(RelicObj), nameof(RelicObj.WasSeen), MethodType.Getter)]
     private static void RelicWasSeen_Postfix(ref bool __result)
     {
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
         __result = true;
     }
 }

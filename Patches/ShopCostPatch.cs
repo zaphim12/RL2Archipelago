@@ -29,21 +29,21 @@ internal static class ShopCostPatch
     [HarmonyPatch(typeof(EquipmentObj), "get_GoldCostToUpgrade")]
     private static void EquipmentGoldCost_Postfix(ref int __result)
     {
-        if (APClient.IsConnected) __result = 0;
+        if (APClient.IsSessionActive) __result = 0;
     }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(RuneObj), "get_GoldCostToUpgrade")]
     private static void RuneGoldCost_Postfix(ref int __result)
     {
-        if (APClient.IsConnected) __result = 0;
+        if (APClient.IsSessionActive) __result = 0;
     }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(PurchaseBoxDialogueController), "Awake")]
     private static void HideGoldDisplay_Postfix(PurchaseBoxDialogueController __instance)
     {
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
         var goldGO = Traverse.Create(__instance)
             .Field<GameObject>("m_purchaseBoxGoldGO").Value;
         if (goldGO != null)

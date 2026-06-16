@@ -39,7 +39,7 @@ internal static class BlueprintDropPatch
     [HarmonyPatch(typeof(ChestObj), "GetSpecialItemTypeToDrop")]
     private static void GetSpecialItemTypeToDrop_Postfix(ChestObj __instance, ref SpecialItemType __result)
     {
-        if (!APClient.IsConnected || APClient.RunState == null) return;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return;
         if (__instance.ChestType != ChestType.Bronze && __instance.ChestType != ChestType.Silver) return;
 
         var room = PlayerManager.GetCurrentPlayerRoom();
@@ -70,7 +70,7 @@ internal static class BlueprintDropPatch
     [HarmonyPatch(typeof(ChestObj), "CalculateSpecialItemDropObj")]
     private static void CalculateSpecialItemDropObj_Postfix(ref ISpecialItemDrop __result, SpecialItemType specialItemType)
     {
-        if (!APClient.IsConnected || APClient.RunState == null) return;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return;
 
         bool triedBlueprint = specialItemType == SpecialItemType.Blueprint;
         bool gotBlueprint   = __result is IBlueprintDrop;
@@ -96,7 +96,7 @@ internal static class BlueprintDropPatch
     [HarmonyPatch(typeof(ItemDropManager), nameof(ItemDropManager.DropSpecialItem))]
     private static bool DropSpecialItem_Prefix(ISpecialItemDrop specialItemDrop)
     {
-        if (!APClient.IsConnected || APClient.RunState == null) return true;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return true;
         if (specialItemDrop is not IBlueprintDrop) return true;
 
         var room = PlayerManager.GetCurrentPlayerRoom();

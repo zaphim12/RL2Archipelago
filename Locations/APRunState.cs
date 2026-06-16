@@ -47,6 +47,12 @@ public class APRunState
     /// </summary>
     public bool KnightClassReceived { get; set; } = false;
 
+    /// <summary>
+    /// True once the final boss has been defeated. Persisted so a goal achieved while
+    /// disconnected is re-sent to the server on the next reconnect.
+    /// </summary>
+    public bool GoalAchieved { get; set; } = false;
+
     // ── Persistence ──────────────────────────────────────────────────────────
 
     internal static readonly string RootDir = Path.Combine(Paths.ConfigPath, "RL2Archipelago", "ap-runs");

@@ -24,7 +24,7 @@ internal static class JournalReadPatch
         bool additive)
     {
         if (!additive) return;
-        if (!APClient.IsConnected || APClient.RunState == null) return;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return;
         if (journalType != JournalType.Journal && journalType != JournalType.MemoryFragment) return;
 
         var mode = APClient.JournalChecksMode;

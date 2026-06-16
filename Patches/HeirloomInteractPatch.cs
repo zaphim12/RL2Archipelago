@@ -38,7 +38,7 @@ internal static class HeirloomInteractPatch
     [HarmonyPatch(typeof(HeirloomStatuePropController), nameof(HeirloomStatuePropController.TriggerHeirloom))]
     private static bool TriggerHeirloom_Prefix(HeirloomStatuePropController __instance)
     {
-        if (!APClient.IsConnected) return true;
+        if (!APClient.IsSessionActive) return true;
 
         var heirloomRoom = Traverse.Create(__instance).Field<HeirloomRoomController>("m_heirloomRoom").Value;
         if (heirloomRoom == null) return true;
@@ -63,7 +63,7 @@ internal static class HeirloomInteractPatch
     [HarmonyPatch(typeof(HeirloomRoomController), nameof(HeirloomRoomController.RoomCompleted))]
     private static bool RoomCompleted_Prefix(HeirloomRoomController __instance)
     {
-        if (!APClient.IsConnected) return true;
+        if (!APClient.IsSessionActive) return true;
         if (APClient.RunState == null) return true;
         if (__instance.IsFinalRoom) return true; // Not sure this is actually needed, I think it may be for the golden apple interaction, which we don't touch
 
@@ -87,7 +87,7 @@ internal static class HeirloomInteractPatch
     [HarmonyPatch(typeof(HeirloomStatuePropController), "InitializePooledPropOnEnter")]
     private static void InitializePooledPropOnEnter_Postfix(HeirloomStatuePropController __instance)
     {
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
 
         var heirloomRoom = Traverse.Create(__instance).Field<HeirloomRoomController>("m_heirloomRoom").Value;
         if (heirloomRoom == null) return;
@@ -145,7 +145,7 @@ internal static class HeirloomInteractPatch
     [HarmonyPatch(typeof(HeirloomStatuePropController), "RunInsightDiscovered")]
     private static bool RunInsightDiscovered_Prefix(ref bool __result)
     {
-        if (!APClient.IsConnected) return true;
+        if (!APClient.IsSessionActive) return true;
         __result = false;
         return false;
     }
@@ -158,6 +158,6 @@ internal static class HeirloomInteractPatch
     [HarmonyPatch(typeof(HeirloomRoomController), "RunInsightResolved")]
     private static bool RunInsightResolved_Prefix()
     {
-        return !APClient.IsConnected;
+        return !APClient.IsSessionActive;
     }
 }

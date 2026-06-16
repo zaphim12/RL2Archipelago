@@ -16,7 +16,7 @@ internal static class RoomReplacementPatch
     [HarmonyPatch(typeof(ConditionFlag_RL), nameof(ConditionFlag_RL.IsConditionFulfilled))]
     private static bool IsConditionFulfilled_Prefix(ConditionFlag id, ref bool __result)
     {
-        if (!APClient.IsConnected) return true;
+        if (!APClient.IsSessionActive) return true;
         if (APClient.RunState == null) return true;
 
         long? locationId = id switch

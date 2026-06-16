@@ -28,7 +28,7 @@ internal static class JohanLanternPatch
     [HarmonyPatch(typeof(JohanPropController), "GiveHeirloomCoroutine")]
     private static bool GiveHeirloomCoroutine_Prefix(JohanPropController __instance, ref IEnumerator __result)
     {
-        if (!APClient.IsConnected) return true;
+        if (!APClient.IsSessionActive) return true;
         if (APClient.RunState == null) return true;
         if (APClient.RunState.CheckedLocations.Contains(LocationRegistry.HeirloomCaveLantern)) return true;
 
@@ -51,7 +51,7 @@ internal static class JohanLanternPatch
     {
         bool vanillaResult = __result;
 
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
         if (APClient.RunState == null) return;
         if (spawnCondition != JohanPropController.Johan_SpawnCondition.TowerBossBeatenAndNotCollectedLantern) return;
 

@@ -16,6 +16,12 @@ internal static class MainThreadDispatchPatch
     {
         APClient.ProcessPendingItems();
         APClient.ProcessPendingDeaths();
+        APClient.ProcessConnectionEvents();
         APNotifications.Tick();
+
+        // Lazily create the disconnect indicator on the main thread once a session
+        // is active. It self-shows while reconnecting and hides otherwise.
+        if (APClient.ConnectionState != APConnectionState.Disconnected)
+            APConnectionStatusOverlay.EnsureExists();
     }
 }

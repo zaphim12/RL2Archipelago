@@ -22,7 +22,7 @@ internal static class RuneDropPatch
     [HarmonyPatch(typeof(ChestObj), "CalculateSpecialItemDropObj")]
     private static void CalculateSpecialItemDropObj_Postfix(ref ISpecialItemDrop __result, SpecialItemType specialItemType)
     {
-        if (!APClient.IsConnected || APClient.RunState == null) return;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return;
 
         bool triedRune = specialItemType == SpecialItemType.Rune;
         bool gotRune   = __result is IRuneDrop;
@@ -49,7 +49,7 @@ internal static class RuneDropPatch
     [HarmonyPatch(typeof(ItemDropManager), nameof(ItemDropManager.DropSpecialItem))]
     private static bool DropSpecialItem_Prefix(ISpecialItemDrop specialItemDrop)
     {
-        if (!APClient.IsConnected || APClient.RunState == null) return true;
+        if (!APClient.IsSessionActive || APClient.RunState == null) return true;
         if (specialItemDrop is not IRuneDrop) return true;
 
         var room = PlayerManager.GetCurrentPlayerRoom();

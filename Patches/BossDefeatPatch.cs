@@ -31,7 +31,7 @@ internal static class BossDefeatPatch
     [HarmonyPatch(typeof(BossRoomController), "SetBossFlagDefeated")]
     private static void SetBossFlagDefeated_Postfix(BossRoomController __instance)
     {
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
 
         var flag = Traverse.Create(__instance).Field<PlayerSaveFlag>("m_bossSaveFlag").Value;
 

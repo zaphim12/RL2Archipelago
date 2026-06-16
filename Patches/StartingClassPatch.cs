@@ -27,7 +27,7 @@ internal static class StartingClassPatch
     [HarmonyPatch(typeof(LineageWindowController), "CreateRandomCharacters")]
     private static void CreateRandomCharacters_Prefix()
     {
-        if (!APClient.IsConnected || !APClient.RandomizeStartingClass) return;
+        if (!APClient.IsSessionActive || !APClient.RandomizeStartingClass) return;
         if (APClient.RunState == null || APClient.RunState.StartingClassApplied) return;
 
         APClient.ApplyStartingClass();
@@ -37,7 +37,7 @@ internal static class StartingClassPatch
     [HarmonyPatch(typeof(CharacterCreator), nameof(CharacterCreator.GetAvailableClasses))]
     private static void GetAvailableClasses_Postfix(ref List<ClassType> __result)
     {
-        if (!APClient.IsConnected) return;
+        if (!APClient.IsSessionActive) return;
         if (!APClient.RandomizeStartingClass) return;
         if (APClient.StartingClassIndex == 0) return; // Knight IS the starting class - keep it
         if (APClient.KnightClassReceived) return;     // Knight was received as an AP item - allow it
@@ -55,7 +55,7 @@ internal static class StartingClassPatch
     [HarmonyPatch(typeof(TutorialRoomController), "CreateStartingCharacter")]
     private static void CreateStartingCharacter_Postfix()
     {
-        if (!APClient.IsConnected || !APClient.RandomizeStartingClass) return;
+        if (!APClient.IsSessionActive || !APClient.RandomizeStartingClass) return;
         if (APClient.StartingClassIndex <= 0) return; // Knight is the starting class - no change needed
 
         var slot = GameConstants.ManorSlots[43 + APClient.StartingClassIndex];
