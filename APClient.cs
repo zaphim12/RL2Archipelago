@@ -852,6 +852,7 @@ public static class APClient
     {
         public bool? DeathLink   { get; set; }
         public bool? UseMinimalistAPLog  { get; set; }
+        public bool? DebugKeysEnabled { get; set; }
     }
 
     private static string PlayerSettingsPath(string saveDirectoryName) =>
@@ -866,7 +867,8 @@ public static class APClient
             var data = JsonConvert.DeserializeObject<PlayerSettingsData>(File.ReadAllText(path));
             APSettings.DeathLink   = data.DeathLink;
             APSettings.UseMinimalistAPLog  = data.UseMinimalistAPLog ?? false;
-            Plugin.Log.LogInfo($"[AP] Player settings loaded (DeathLink={APSettings.DeathLink}, UseMinimalistAPLog={APSettings.UseMinimalistAPLog}).");
+            APSettings.DebugKeysEnabled = data.DebugKeysEnabled ?? false;
+            Plugin.Log.LogInfo($"[AP] Player settings loaded (DeathLink={APSettings.DeathLink}, UseMinimalistAPLog={APSettings.UseMinimalistAPLog}, DebugKeysEnabled={APSettings.DebugKeysEnabled}).");
         }
         catch (Exception ex)
         {
@@ -880,9 +882,8 @@ public static class APClient
         var path = PlayerSettingsPath(APSaveDirectoryName);
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(path));
-            var data = new PlayerSettingsData { DeathLink = APSettings.DeathLink, UseMinimalistAPLog = APSettings.UseMinimalistAPLog };
-            File.WriteAllText(path, JsonConvert.SerializeObject(data, Formatting.Indented));
+            var data = new PlayerSettingsData { DeathLink = APSettings.DeathLink, UseMinimalistAPLog = APSettings.UseMinimalistAPLog, DebugKeysEnabled = APSettings.DebugKeysEnabled };
+            APRunState.WriteTextAtomic(path, JsonConvert.SerializeObject(data, Formatting.Indented));
             Plugin.Log.LogDebug("[AP] Player settings saved.");
         }
         catch (Exception ex)

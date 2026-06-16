@@ -88,12 +88,29 @@ public class APRunState
         var path = FilePathFor(saveDirectoryName);
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(path));
-            File.WriteAllText(path, JsonConvert.SerializeObject(this, Formatting.Indented));
+            WriteTextAtomic(path, JsonConvert.SerializeObject(this, Formatting.Indented));
         }
         catch (Exception ex)
         {
             Plugin.Log.LogError($"[APRunState] Failed to save run state: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Writes text to <paramref name="path"/> atomically: write to a temp file in the same
+    /// directory, then swap it into place in a single filesystem operation. If the process is
+    /// killed mid-write (force-close, power loss), the original file is left intact rather than
+    /// truncated; a truncated JSON file would fail to deserialize on next load and silently
+    /// reset state. Shared by run-state and player-settings persistence.
+    /// </summary>
+    internal static void WriteTextAtomic(string path, string contents)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path));
+        var tmp = path + ".tmp";
+        File.WriteAllText(tmp, contents);
+        if (File.Exists(path))
+            File.Replace(tmp, path, null);
+        else
+            File.Move(tmp, path);
     }
 }

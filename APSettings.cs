@@ -7,4 +7,7 @@ public static class APSettings
 /// <summary>When true, notifications are shown in the compact top-right text log
     /// instead of the full-screen overlay HUD.</summary>
     public static bool UseMinimalistAPLog { get; set; } = false;
+
+    /// <summary>When true, debug hotkeys (0-9) defined in DebugPatch are active.</summary>
+    public static bool DebugKeysEnabled { get; set; } = false;
 }

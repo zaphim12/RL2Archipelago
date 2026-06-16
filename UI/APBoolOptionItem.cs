@@ -11,8 +11,12 @@ public class APBoolOptionItem : SelectionListOptionItem
         { "LOC_ID_GENERAL_UI_ON_1", "LOC_ID_GENERAL_UI_OFF_1" };
 
     public string      SettingName { get; set; }
+    public string      Description { get; set; }
     public Func<bool>  Getter      { get; set; }
     public Action<bool> Setter     { get; set; }
+
+    // Exposed so the patch can read it without Traverse.
+    internal TMPro.TMP_Text TitleText => m_titleText;
 
     public override void Initialize()
     {

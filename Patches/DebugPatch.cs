@@ -12,6 +12,7 @@ internal static class DebugPatch
     [HarmonyPatch(typeof(WindowManager), "Update")]
     private static void WindowManager_Update_Postfix()
     {
+        if (!APSettings.DebugKeysEnabled) return;
         var keyboard = ReInput.controllers.Keyboard;
 
         if (keyboard.GetKeyDown(KeyCode.Alpha0))
