@@ -483,6 +483,23 @@ internal static class ManorUpgradePatch
                 ? scouted.Player.Alias
                 : (scouted.Player.Name ?? $"Player {scouted.Player.Slot}"));
 
+        var isProgression = (scouted.Flags & ItemFlags.Advancement) != 0;
+        var isUseful = (scouted.Flags & ItemFlags.NeverExclude) != 0;
+        var isTrap = (scouted.Flags & ItemFlags.Trap) != 0;
+        var descAddendum = "";
+        if (isProgression)
+        {
+            descAddendum = "\nIt looks like something they need";
+        }
+        if (isUseful)
+        {
+            descAddendum = "\nIt looks like something that could be of use";
+        }
+        if (isTrap)
+        {
+            descAddendum = "\nIt looks like something they need?";
+        }
+
         if (__instance.DescriptionType == SkillTreeDescriptionUpdater.SkillTreeDescriptionType.Title)
         {
             descText.text = itemName;
@@ -492,12 +509,14 @@ internal static class ManorUpgradePatch
             descText.text = playerName == null
                 ? $"[AP] {itemName}"
                 : $"[AP] {itemName}\nfor {playerName}";
+            descText.text += descAddendum;
         }
         else if (__instance.DescriptionType == SkillTreeDescriptionUpdater.SkillTreeDescriptionType.Stat)
         {
             descText.text = playerName == null
                 ? $"[AP] {itemName}"
                 : $"[AP] {itemName}\nfor {playerName}";
+            descText.text += descAddendum;
             if (__instance.CurrentValue is { } statCv)
                 statCv.text = "0 (+1)";
         }
