@@ -517,7 +517,6 @@ internal static class ManorUpgradePatch
             descText.text = playerName == null
                 ? $"[AP] {itemName}"
                 : $"[AP] {itemName}\nfor {playerName}";
-            descText.text += descAddendum;
             if (__instance.CurrentValue is { } statCv)
                 statCv.text = "0 (+1)";
         }
