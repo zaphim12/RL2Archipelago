@@ -129,20 +129,20 @@ _MANOR_SLOTS: list[ManorSlot] = [
     ManorSlot("Magic Crit Damage Up",        "The Lodge",                 10, 10, True),    # 17 Magic_Crit_Damage_Up
     ManorSlot("Magic Crit Chance Up",        "The Quantum Observatory",   20, 11, True),    # 18 Magic_Crit_Chance_Flat_Up  TODO: technically max is 0 without Infinite Knowledge
     # ── Equipment weight ─────────────────────────────────────────────────────
-    ManorSlot("Max Weight Up I",             "Fashion Chambers",           5,  4, False),   # 19 Equip_Up
-    ManorSlot("Max Weight Up II",            "Tailors",                   15,  6, False),   # 20 Equip_Up2
-    ManorSlot("Max Weight Up III",           "Artisan",                   25,  7, False),   # 21 Equip_Up3
+    ManorSlot("Max Weight Up I",             "Fashion Chambers",           5,  4, True),    # 19 Equip_Up
+    ManorSlot("Max Weight Up II",            "Tailors",                   15,  6, True),    # 20 Equip_Up2
+    ManorSlot("Max Weight Up III",           "Artisan",                   25,  7, True),    # 21 Equip_Up3
     # ── Rune weight ──────────────────────────────────────────────────────────
-    ManorSlot("Max Rune Weight Up I",        "Etching Chambers",           5,  4, False),   # 22 Rune_Equip_Up
-    ManorSlot("Max Rune Weight Up II",       "Pillow Mill",               15,  6, False),   # 23 Rune_Equip_Up2
-    ManorSlot("Max Rune Weight Up III",      "Bed Mill",                  15,  7, False),   # 24 Rune_Equip_Up3
+    ManorSlot("Max Rune Weight Up I",        "Etching Chambers",           5,  4, True),    # 22 Rune_Equip_Up
+    ManorSlot("Max Rune Weight Up II",       "Pillow Mill",               15,  6, True),    # 23 Rune_Equip_Up2
+    ManorSlot("Max Rune Weight Up III",      "Bed Mill",                  15,  7, True),    # 24 Rune_Equip_Up3
     # ── Armor ────────────────────────────────────────────────────────────────
     ManorSlot("Armor Up I",                  "Foundry",                   15,  6, True),    # 25 Armor_Up
     ManorSlot("Armor Up II",                 "Blast Furnace",             25,  8, True),    # 26 Armor_Up2
     ManorSlot("Armor Up III",                "Some Kind of Kiln",         35, 10, True),    # 27 Armor_Up3
     # ── Health restore ───────────────────────────────────────────────────────
-    ManorSlot("Health Drop Scaling",         "Institute of Gastronomy",   10,  8, False),   # 28 Potion_Up           TODO: technically max is 0 without Unbreakable Will
-    ManorSlot("Boss Health/Mana Restore",    "Meditation Studies",         5,  5, False),   # 29 Boss_Health_Restore
+    ManorSlot("Health Drop Scaling",         "Institute of Gastronomy",   10,  8, True),    # 28 Potion_Up           TODO: technically max is 0 without Unbreakable Will
+    ManorSlot("Boss Health/Mana Restore",    "Meditation Studies",         5,  5, True),    # 29 Boss_Health_Restore
     # ── Spin kicks ───────────────────────────────────────────────────────────
     ManorSlot("Spin Kick scales with INT",   "Bamboo Garden",              5,  8, True),    # 30 Down_Strike_Up
     # ── Gold & economy ───────────────────────────────────────────────────────
@@ -178,13 +178,13 @@ _MANOR_SLOTS: list[ManorSlot] = [
     ManorSlot("Astromancer Class",           "The Astral Gardens",         1,  9, False),   # 56 Astro_Class_Unlock
     ManorSlot("Dragon Lancer Class",         "The Aviary",                 1,  7, False),   # 57 Lancer_Class_Unlock
     # ── Relics ───────────────────────────────────────────────────────────────
-    ManorSlot("Relic Resolve Cost Down",     "Archaeology Camp",           5,  7, False),   # 58 Relic_Cost_Down
+    ManorSlot("Relic Resolve Cost Down",     "Archaeology Camp",           5,  7, True),    # 58 Relic_Cost_Down
     ManorSlot("Relic Reroll Up",             "Medieval Forgery",          10,  8, False),   # 59 Reroll_Relic
     ManorSlot("Reroll Relic Room Cap Up",    "The Bizarre Bazaar",         2,  9, False),   # 60 Reroll_Relic_Room_Cap  TODO: technically max is 0 without Master Smith
     # ── Progression & utility ────────────────────────────────────────────────
-    ManorSlot("Encumbrance Limit Up",        "Aerobics Classroom",        10,  5, False),   # 61 Weight_CD_Reduce
+    ManorSlot("Encumbrance Limit Up",        "Aerobics Classroom",        10,  5, True),    # 61 Weight_CD_Reduce
     ManorSlot("XP Up",                       "Trophy Room",               10,  5, False),   # 62 XP_Up
-    ManorSlot("Resolve Up",                  "Psychiatrist",              20,  6, False),   # 63 Resolve_Up
+    ManorSlot("Resolve Up",                  "Psychiatrist",              20,  6, True),    # 63 Resolve_Up
     ManorSlot("Training Dummy Unlock",       "Dummy",                      1,  4, False),   # 64 Unlock_Dummy
     ManorSlot("Mastery Rank Unlock",         "Sage Totem",                 1,  4, True),    # 65 Unlock_Totem
     ManorSlot("Potion Recharge Talent",      "Alchemy Lab",                1,  7, False),   # 66 Potion_Recharge_Talent

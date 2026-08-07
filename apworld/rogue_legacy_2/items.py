@@ -17,6 +17,7 @@ from .constants import (
     MANOR_MAX_LEVELS,
     NPC_MANOR_UPGRADES,
     RUNE_NAMES,
+    STAT_UPGRADE_MANOR_UPGRADES,
     TELEPORTER_NAMES,
 )
 
@@ -153,17 +154,22 @@ def create_items(world: "RogueLegacy2World") -> None:
     core_names = CORE_MANOR_UPGRADES
     npc_names  = NPC_MANOR_UPGRADES
 
-    # Manor upgrades are used in count-based stat-gate access rules. They must be
+    # Stat-relevant Manor upgrades are used to adhere to stat-gated access rules for 
+    # biomes/bosses to be considered in-logic. They must be marked as
     # progression_skip_balancing (not merely useful) so the fill algorithm places
     # them before the inaccessible_location_rules sweep; otherwise stat-gated
     # locations are locked to filler-only and can't be filled. When no stat gating
     # is configured, plain useful is fine and avoids unnecessary fill pressure.
-    manor_classification = (
-        ItemClassification.progression_skip_balancing
-        if world.options.stat_upgrades_per_biome_tier.value > 0
+    stat_gating_enabled = (
+        world.options.stat_upgrades_per_biome_tier.value > 0
         or world.options.stat_upgrades_per_boss.value > 0
-        else ItemClassification.useful
     )
+    stat_upgrade_names = frozenset(STAT_UPGRADE_MANOR_UPGRADES)
+
+    def manor_classification(name: str) -> ItemClassification:
+        if stat_gating_enabled and name in stat_upgrade_names:
+            return ItemClassification.progression_skip_balancing
+        return ItemClassification.useful
 
     # Determine the starting class item to exclude from the pool (if any).
     # starting_class_index: 0 = Knight (no change), 1–14 = one of CLASS_UNLOCK_ITEM_NAMES.
@@ -175,12 +181,11 @@ def create_items(world: "RogueLegacy2World") -> None:
     priority_items: list[RogueLegacy2Item] = []
     priority_items += [create_item(player, n) for n in HEIRLOOM_ITEM_NAMES]
     priority_items += [create_item(player, n) for n in TELEPORTER_ITEM_NAMES]
-    npc_classification = (
-        ItemClassification.progression
-        if world.options.early_npc_unlocks.value
-        else manor_classification
-    )
+    early_npcs = world.options.early_npc_unlocks.value
     for n in npc_names:
+        npc_classification = (
+            ItemClassification.progression if early_npcs else manor_classification(n)
+        )
         data = item_data_table[n]
         priority_items.append(RogueLegacy2Item(n, npc_classification, data.code, player))
     for name in core_names:
@@ -188,7 +193,7 @@ def create_items(world: "RogueLegacy2World") -> None:
             if name == excluded_class_name:
                 continue  # starting class - pre-unlocked at run start, not in pool
             data = item_data_table[name]
-            priority_items.append(RogueLegacy2Item(name, manor_classification, data.code, player))
+            priority_items.append(RogueLegacy2Item(name, manor_classification(name), data.code, player))
 
     # If the starting class is not Knight, add Knight Class as a randomizable item instead.
     if excluded_class_name is not None:
@@ -215,8 +220,9 @@ def create_items(world: "RogueLegacy2World") -> None:
             continue
         copies = max(1, math.ceil(max_level / bundle_size))
         data = item_data_table[name]
+        classification = manor_classification(name)
         for _ in range(copies):
-            manor_pool.append(RogueLegacy2Item(name, manor_classification, data.code, player))
+            manor_pool.append(RogueLegacy2Item(name, classification, data.code, player))
 
     # Traps are guaranteed slots; subtract them from remaining before the useful/filler split.
     remaining    = unfilled - len(priority_items) - len(trap_items)
@@ -235,6 +241,12 @@ def create_items(world: "RogueLegacy2World") -> None:
         world.random.shuffle(blueprint_pool)
         world.random.shuffle(rune_pool)
         world.random.shuffle(manor_pool)
+
+        # Truncation must not cut stat-upgrade copies below what the stat gates
+        # require, or generation fails outright. Float them to the front; the 
+        # stable sort keeps the shuffled order within each group.
+        if stat_gating_enabled:
+            manor_pool.sort(key=lambda item: item.name not in stat_upgrade_names)
 
         pool = (
             priority_items

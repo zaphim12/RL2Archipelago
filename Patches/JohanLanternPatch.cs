@@ -17,6 +17,15 @@ namespace RL2Archipelago.Patches;
 /// <c>TowerBossBeatenAndNotCollectedLantern</c> spawn condition so that Johan keeps
 /// appearing until the AP location is checked, regardless of whether the player already
 /// received the lantern item from the AP server (e.g. sent early by another player).</para>
+///
+/// <para><b>InitializePooledPropOnEnter prefix/finalizer</b> - vanilla despawns Johan
+/// outright (<c>gameObject.SetActive(false)</c>) at the top of that method once all six
+/// main bosses are beaten AND <c>GetHeirloomLevel(CaveLantern) &gt; 0</c>, returning
+/// before the spawn-condition block ever runs. In AP mode the lantern can arrive from
+/// the server long before the location is checked, which would permanently strand the
+/// check. The prefix temporarily reports the lantern as unowned for the duration of the
+/// call and the finalizer restores it, so vanilla takes its pre-lantern branch and the
+/// spawn-condition block above gets a chance to run.</para>
 /// </summary>
 [HarmonyPatch]
 internal static class JohanLanternPatch
@@ -63,6 +72,80 @@ internal static class JohanLanternPatch
             + $"vanilla={vanillaResult} -> ap={__result} "
             + $"(towerBeaten={BossID_RL.IsBossBeaten(BossID.Tower_Boss)}, "
             + $"locationChecked={APClient.RunState.CheckedLocations.Contains(LocationRegistry.HeirloomCaveLantern)})");
+    }
+
+    // Lantern level stashed for the duration of a single InitializePooledPropOnEnter call.
+    // -1 means "nothing stashed"; the call is synchronous and main-thread only, so a pair
+    // of static fields is sufficient and cannot interleave across prop instances.
+    private static int _stashedLanternLevel = -1;
+    private static bool _stashedTemporaryLantern;
+
+    /// <summary>
+    /// Hides the lantern from the vanilla "Johan is done with the overworld" early-out
+    /// (all six main bosses beaten + lantern owned) while the AP location is still
+    /// unchecked. Reads/writes <c>HeirloomLevelTable</c> directly rather than going
+    /// through <c>SetHeirloomLevel</c> so no <c>HeirloomLevelChanged</c> event fires and
+    /// the original value can be restored exactly.
+    /// </summary>
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(JohanPropController), "InitializePooledPropOnEnter")]
+    private static void InitializePooledPropOnEnter_Prefix()
+    {
+        _stashedLanternLevel = -1;
+        _stashedTemporaryLantern = false;
+
+        if (!APClient.IsSessionActive) return;
+        if (APClient.RunState == null) return;
+        if (APClient.RunState.CheckedLocations.Contains(LocationRegistry.HeirloomCaveLantern)) return;
+
+        var saveData = SaveManager.PlayerSaveData;
+        if (saveData?.HeirloomLevelTable == null) return;
+        if (!saveData.HeirloomLevelTable.TryGetValue(HeirloomType.CaveLantern, out var level)) return;
+
+        // GetHeirloomLevel also reports 1 for heirlooms held only in the temporary list,
+        // so that has to be suppressed too or the early-out still fires.
+        var temporaryList = saveData.TemporaryHeirloomList;
+        bool isTemporary = temporaryList != null && temporaryList.Contains(HeirloomType.CaveLantern);
+        if (level <= 0 && !isTemporary) return;
+
+        _stashedLanternLevel = level;
+        _stashedTemporaryLantern = isTemporary;
+
+        saveData.HeirloomLevelTable[HeirloomType.CaveLantern] = 0;
+        if (isTemporary) temporaryList.Remove(HeirloomType.CaveLantern);
+
+        Plugin.Log.LogDebug(
+            "[JohanLanternPatch] Temporarily hiding CaveLantern (level="
+            + $"{level}, temporary={isTemporary}) for Johan's spawn evaluation.");
+    }
+
+    /// <summary>
+    /// Restores whatever <see cref="InitializePooledPropOnEnter_Prefix"/> stashed. A
+    /// finalizer rather than a postfix so the lantern is never left zeroed if the
+    /// vanilla method throws.
+    /// </summary>
+    [HarmonyFinalizer]
+    [HarmonyPatch(typeof(JohanPropController), "InitializePooledPropOnEnter")]
+    private static void InitializePooledPropOnEnter_Finalizer()
+    {
+        if (_stashedLanternLevel < 0) return;
+
+        var saveData = SaveManager.PlayerSaveData;
+        if (saveData?.HeirloomLevelTable != null)
+        {
+            saveData.HeirloomLevelTable[HeirloomType.CaveLantern] = _stashedLanternLevel;
+
+            var temporaryList = saveData.TemporaryHeirloomList;
+            if (_stashedTemporaryLantern
+                && temporaryList != null
+                && !temporaryList.Contains(HeirloomType.CaveLantern))
+            {
+                temporaryList.Add(HeirloomType.CaveLantern);
+            }
+        }
+
+        _stashedLanternLevel = -1;
+        _stashedTemporaryLantern = false;
     }
 
     private static IEnumerator EmptyCoroutine() { yield break; }
