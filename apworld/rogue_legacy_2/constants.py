@@ -103,97 +103,97 @@ class ManorSlot(NamedTuple):
 
 _MANOR_SLOTS: list[ManorSlot] = [
     # ── Vitality ─────────────────────────────────────────────────────────────
-    ManorSlot("Vitality Up I",               "Mess Hall",                 10,  3, True),    # 0  Health_Up
-    ManorSlot("Vitality Up II",              "Fruit Juice Bar",           20,  5, True),    # 1  Health_Up2
-    ManorSlot("Vitality Up III",             "Meteora Gym",               30,  7, True),    # 2  Health_Up3
+    ManorSlot("Vitality Up I",               "Red Path Upgrade 3",        10,  3, True),    # 0  Health_Up
+    ManorSlot("Vitality Up II",              "Red Path Upgrade 5",        20,  5, True),    # 1  Health_Up2
+    ManorSlot("Vitality Up III",             "Red Path Upgrade 7",        30,  7, True),    # 2  Health_Up3
     # ── Strength ─────────────────────────────────────────────────────────────
-    ManorSlot("Strength Up I",               "Arsenal",                   10,  5, True),    # 3  Attack_Up
-    ManorSlot("Strength Up II",              "Sauna",                     20,  6, True),    # 4  Attack_Up2
-    ManorSlot("Strength Up III",             "Rock Climbing Wall",        30,  9, True),    # 5  Attack_Up3
+    ManorSlot("Strength Up I",               "Cyan Path Upgrade 2",       10,  5, True),    # 3  Attack_Up
+    ManorSlot("Strength Up II",              "Brown Path Upgrade 1",      20,  6, True),    # 4  Attack_Up2
+    ManorSlot("Strength Up III",             "Brown Path Upgrade 4",      30,  9, True),    # 5  Attack_Up3
     # ── Dexterity ────────────────────────────────────────────────────────────
-    ManorSlot("Dexterity Up I",              "Gym",                       10,  7, True),    # 6  Dexterity_Add1
-    ManorSlot("Dexterity Up II",             "Yoga Class",                25,  9, True),    # 7  Dexterity_Add2
-    ManorSlot("Dexterity Up III",            "Flower Shop",               35, 11, True),    # 8  Dexterity_Add3
+    ManorSlot("Dexterity Up I",              "Cyan Path Upgrade 4",       10,  7, True),    # 6  Dexterity_Add1
+    ManorSlot("Dexterity Up II",             "Cyan Path Upgrade 6",       25,  9, True),    # 7  Dexterity_Add2
+    ManorSlot("Dexterity Up III",            "Cyan Path Upgrade 8",       35, 11, True),    # 8  Dexterity_Add3
     # ── Weapon crit ──────────────────────────────────────────────────────────
-    ManorSlot("Weapon Crit Damage Up",       "The Laundromat",            10, 10, True),    # 9  Crit_Damage_Up
-    ManorSlot("Weapon Crit Chance Up",       "The Dicer's Den",           20, 10, True),    # 10 Crit_Chance_Flat_Up    TODO: technically max is 0 without Absolute Strength
+    ManorSlot("Weapon Crit Damage Up",       "Cyan Path Upgrade 7",       10, 10, True),    # 9  Crit_Damage_Up
+    ManorSlot("Weapon Crit Chance Up",       "Brown Path Upgrade 5",      20, 10, True),    # 10 Crit_Chance_Flat_Up    TODO: technically max is 0 without Absolute Strength
     # ── Intelligence ─────────────────────────────────────────────────────────
-    ManorSlot("Intelligence Up I",           "Study Hall",                10,  5, True),    # 11 Magic_Attack_Up
-    ManorSlot("Intelligence Up II",          "Math Club",                 20,  8, True),    # 12 Magic_Attack_Up2
-    ManorSlot("Intelligence Up III",         "University",                30, 10, True),    # 13 Magic_Attack_Up3
+    ManorSlot("Intelligence Up I",           "Purple Path Upgrade 2",     10,  5, True),    # 11 Magic_Attack_Up
+    ManorSlot("Intelligence Up II",          "Purple Path Upgrade 5",     20,  8, True),    # 12 Magic_Attack_Up2
+    ManorSlot("Intelligence Up III",         "Purple Path Upgrade 7",     30, 10, True),    # 13 Magic_Attack_Up3
     # ── Focus ────────────────────────────────────────────────────────────────
-    ManorSlot("Focus Up I",                  "Library",                   10,  7, True),    # 14 Focus_Up1
-    ManorSlot("Focus Up II",                 "Hall of Wisdom",            25,  9, True),    # 15 Focus_Up2
-    ManorSlot("Focus Up III",                "Court of the Wise",         25, 11, True),    # 16 Focus_Up3
+    ManorSlot("Focus Up I",                  "Purple Path Upgrade 4",     10,  7, True),    # 14 Focus_Up1
+    ManorSlot("Focus Up II",                 "White Path Upgrade 2",      25,  9, True),    # 15 Focus_Up2
+    ManorSlot("Focus Up III",                "White Path Upgrade 4",      25, 11, True),    # 16 Focus_Up3
     # ── Magic crit ───────────────────────────────────────────────────────────
-    ManorSlot("Magic Crit Damage Up",        "The Lodge",                 10, 10, True),    # 17 Magic_Crit_Damage_Up
-    ManorSlot("Magic Crit Chance Up",        "The Quantum Observatory",   20, 11, True),    # 18 Magic_Crit_Chance_Flat_Up  TODO: technically max is 0 without Infinite Knowledge
+    ManorSlot("Magic Crit Damage Up",        "White Path Upgrade 3",      10, 10, True),    # 17 Magic_Crit_Damage_Up
+    ManorSlot("Magic Crit Chance Up",        "Purple Path Upgrade 8",     20, 11, True),    # 18 Magic_Crit_Chance_Flat_Up  TODO: technically max is 0 without Infinite Knowledge
     # ── Equipment weight ─────────────────────────────────────────────────────
-    ManorSlot("Max Weight Up I",             "Fashion Chambers",           5,  4, True),    # 19 Equip_Up
-    ManorSlot("Max Weight Up II",            "Tailors",                   15,  6, True),    # 20 Equip_Up2
-    ManorSlot("Max Weight Up III",           "Artisan",                   25,  7, True),    # 21 Equip_Up3
+    ManorSlot("Max Weight Up I",             "Blue Path Upgrade 2",        5,  4, True),    # 19 Equip_Up
+    ManorSlot("Max Weight Up II",            "Blue Path Upgrade 4",       15,  6, True),    # 20 Equip_Up2
+    ManorSlot("Max Weight Up III",           "Blue Path Upgrade 5",       25,  7, True),    # 21 Equip_Up3
     # ── Rune weight ──────────────────────────────────────────────────────────
-    ManorSlot("Max Rune Weight Up I",        "Etching Chambers",           5,  4, True),    # 22 Rune_Equip_Up
-    ManorSlot("Max Rune Weight Up II",       "Pillow Mill",               15,  6, True),    # 23 Rune_Equip_Up2
-    ManorSlot("Max Rune Weight Up III",      "Bed Mill",                  15,  7, True),    # 24 Rune_Equip_Up3
+    ManorSlot("Max Rune Weight Up I",        "Pink Path Upgrade 2",        5,  4, True),    # 22 Rune_Equip_Up
+    ManorSlot("Max Rune Weight Up II",       "Pink Path Upgrade 4",       15,  6, True),    # 23 Rune_Equip_Up2
+    ManorSlot("Max Rune Weight Up III",      "Pink Path Upgrade 5",       15,  7, True),    # 24 Rune_Equip_Up3
     # ── Armor ────────────────────────────────────────────────────────────────
-    ManorSlot("Armor Up I",                  "Foundry",                   15,  6, True),    # 25 Armor_Up
-    ManorSlot("Armor Up II",                 "Blast Furnace",             25,  8, True),    # 26 Armor_Up2
-    ManorSlot("Armor Up III",                "Some Kind of Kiln",         35, 10, True),    # 27 Armor_Up3
+    ManorSlot("Armor Up I",                  "Orange Path Upgrade 2",     15,  6, True),    # 25 Armor_Up
+    ManorSlot("Armor Up II",                 "Orange Path Upgrade 4",     25,  8, True),    # 26 Armor_Up2
+    ManorSlot("Armor Up III",                "Orange Path Upgrade 6",     35, 10, True),    # 27 Armor_Up3
     # ── Health restore ───────────────────────────────────────────────────────
-    ManorSlot("Health Drop Scaling",         "Institute of Gastronomy",   10,  8, True),    # 28 Potion_Up           TODO: technically max is 0 without Unbreakable Will
-    ManorSlot("Boss Health/Mana Restore",    "Meditation Studies",         5,  5, True),    # 29 Boss_Health_Restore
+    ManorSlot("Health Drop Scaling",         "Red Path Upgrade 8",        10,  8, True),    # 28 Potion_Up           TODO: technically max is 0 without Unbreakable Will
+    ManorSlot("Boss Health/Mana Restore",    "Orange Path Upgrade 1",      5,  5, True),    # 29 Boss_Health_Restore
     # ── Spin kicks ───────────────────────────────────────────────────────────
-    ManorSlot("Spin Kick scales with INT",   "Bamboo Garden",              5,  8, True),    # 30 Down_Strike_Up
+    ManorSlot("Spin Kick scales with INT",   "Magenta Path Upgrade 4",     5,  8, True),    # 30 Down_Strike_Up
     # ── Gold & economy ───────────────────────────────────────────────────────
-    ManorSlot("Traits Give Gold",            "Universal Health Stair",     1,  1, False),   # 31 Traits_Give_Gold
-    ManorSlot("Traits Gold Gain Up",         "Repurposed Mining Shaft",   10,  3, False),   # 32 Traits_Give_Gold_Gain_Mod
-    ManorSlot("Ore Drop Chance Up",          "Geologist's Camp",           5,  6, False),   # 33 Equipment_Ore_Find_Up
-    ManorSlot("Red Aether Drop Chance Up",   "Dowsing Center",             5,  8, False),   # 34 Rune_Ore_Find_Up
-    ManorSlot("Gold Gain Up I",              "Massive Vault",             20, 10, False),   # 35 Gold_Gain_Up           TODO: technically max is 0 without Unbreakable Will
-    ManorSlot("Ore Gain Up",                 "Jeweler",                   20, 11, False),   # 36 Equipment_Ore_Gain_Up  TODO: technically max is 0 without Absolute Strength
-    ManorSlot("Red Aether Gain Up",          "Buried Tomb",               20,  9, False),   # 37 Rune_Ore_Gain_Up       TODO: technically max is 0 without Infinite Knowledge
+    ManorSlot("Traits Give Gold",            "Red Path Upgrade 1",         1,  1, False),   # 31 Traits_Give_Gold
+    ManorSlot("Traits Gold Gain Up",         "Green Path Upgrade 2a",     10,  3, False),   # 32 Traits_Give_Gold_Gain_Mod
+    ManorSlot("Ore Drop Chance Up",          "Blue Path Upgrade 4a",       5,  6, False),   # 33 Equipment_Ore_Find_Up
+    ManorSlot("Red Aether Drop Chance Up",   "Pink Path Upgrade 6",        5,  8, False),   # 34 Rune_Ore_Find_Up
+    ManorSlot("Gold Gain Up I",              "Orange Path Upgrade 6a",    20, 10, False),   # 35 Gold_Gain_Up           TODO: technically max is 0 without Unbreakable Will
+    ManorSlot("Ore Gain Up",                 "Orange Path Upgrade 7",     20, 11, False),   # 36 Equipment_Ore_Gain_Up  TODO: technically max is 0 without Absolute Strength
+    ManorSlot("Red Aether Gain Up",          "Magenta Path Upgrade 5",    20,  9, False),   # 37 Rune_Ore_Gain_Up       TODO: technically max is 0 without Infinite Knowledge
     # ── Heirs ────────────────────────────────────────────────────────────────
-    ManorSlot("Re-Roll Children",            "Career Center",              5,  5, False),   # 38 Randomize_Children
-    ManorSlot("More Heirs",                  "Adoption Center",            1, 10, False),   # 39 More_Children          TODO: technically max is 0 without Infinite Knowledge
+    ManorSlot("Re-Roll Children",            "Pink Path Upgrade 3",        5,  5, False),   # 38 Randomize_Children
+    ManorSlot("More Heirs",                  "Purple Path Upgrade 7a",     1, 10, False),   # 39 More_Children          TODO: technically max is 0 without Infinite Knowledge
     # ── Living safe ──────────────────────────────────────────────────────────
-    ManorSlot("Living Safe Max Gold Up",     "Courthouse",                20,  4, False),   # 40 Gold_Saved_Cap_Up
-    ManorSlot("Living Safe Conversion Up",   "Scribe's Office",           10,  5, False),   # 41 Gold_Saved_Amount_Saved
+    ManorSlot("Living Safe Max Gold Up",     "Green Path Upgrade 3",      20,  4, False),   # 40 Gold_Saved_Cap_Up
+    ManorSlot("Living Safe Conversion Up",   "Green Path Upgrade 4",      10,  5, False),   # 41 Gold_Saved_Amount_Saved
     # ── Architect ────────────────────────────────────────────────────────────
-    ManorSlot("Architect Unlock",            "Screw Distillery",           1,  5, True),    # 42 Architect
-    ManorSlot("Architect Cost Reduction",    "Drill Store",                5,  6, False),   # 43 Architect_Cost_Down
+    ManorSlot("Architect Unlock",            "Magenta Path Upgrade 1",     1,  5, True),    # 42 Architect
+    ManorSlot("Architect Cost Reduction",    "Magenta Path Upgrade 2",     5,  6, False),   # 43 Architect_Cost_Down
     # ── Class unlocks ────────────────────────────────────────────────────────
-    ManorSlot("Boxer Class",                 "Fighting Ring",              1,  6, False),   # 44 BoxingGlove_Class_Unlock
-    ManorSlot("Duelist Class",               "Dance Hall",                 1,  6, False),   # 45 Saber_Class_Unlock
-    ManorSlot("Assassin Class",              "Guild of Dark Arts",         1,  8, False),   # 46 DualBlades_Class_Unlock
-    ManorSlot("Chef Class",                  "The Kitchen",                1,  6, False),   # 47 Ladle_Class_Unlock
-    ManorSlot("Barbarian Class",             "Butcher's Shoppe",           1,  4, False),   # 48 Axe_Class_Unlock
-    ManorSlot("Mage Class",                  "Academy",                    1,  4, False),   # 49 Wand_Class_Unlock
-    ManorSlot("Ranger Class",                "Archery Range",              1,  2, False),   # 50 Bow_Class_Unlock
-    ManorSlot("Valkyrie Class",              "Sand Pits",                  1,  4, False),   # 51 Spear_Class_Unlock
-    ManorSlot("Gunslinger Class",            "Saltpeter Mines",            1,  8, False),   # 52 Gun_Class_Unlock
-    ManorSlot("Ronin Class",                 "Ryokan",                     1,  8, False),   # 53 Samurai_Class_Unlock
-    ManorSlot("Bard Class",                  "The Tavern",                 1,  7, False),   # 54 Music_Class_Unlock
-    ManorSlot("Pirate Class",                "The Flying Docks",           1,  9, False),   # 55 Pirate_Class_Unlock
-    ManorSlot("Astromancer Class",           "The Astral Gardens",         1,  9, False),   # 56 Astro_Class_Unlock
-    ManorSlot("Dragon Lancer Class",         "The Aviary",                 1,  7, False),   # 57 Lancer_Class_Unlock
+    ManorSlot("Boxer Class",                 "Red Path Upgrade 6",         1,  6, False),   # 44 BoxingGlove_Class_Unlock
+    ManorSlot("Duelist Class",               "Cyan Path Upgrade 3",        1,  6, False),   # 45 Saber_Class_Unlock
+    ManorSlot("Assassin Class",              "Cyan Path Upgrade 5",        1,  8, False),   # 46 DualBlades_Class_Unlock
+    ManorSlot("Chef Class",                  "Purple Path Upgrade 3",      1,  6, False),   # 47 Ladle_Class_Unlock
+    ManorSlot("Barbarian Class",             "Red Path Upgrade 4",         1,  4, False),   # 48 Axe_Class_Unlock
+    ManorSlot("Mage Class",                  "Purple Path Upgrade 1",      1,  4, False),   # 49 Wand_Class_Unlock
+    ManorSlot("Ranger Class",                "Red Path Upgrade 2",         1,  2, False),   # 50 Bow_Class_Unlock
+    ManorSlot("Valkyrie Class",              "Cyan Path Upgrade 1",        1,  4, False),   # 51 Spear_Class_Unlock
+    ManorSlot("Gunslinger Class",            "White Path Upgrade 1",       1,  8, False),   # 52 Gun_Class_Unlock
+    ManorSlot("Ronin Class",                 "Brown Path Upgrade 3",       1,  8, False),   # 53 Samurai_Class_Unlock
+    ManorSlot("Bard Class",                  "Magenta Path Upgrade 3",     1,  7, False),   # 54 Music_Class_Unlock
+    ManorSlot("Pirate Class",                "Orange Path Upgrade 5",      1,  9, False),   # 55 Pirate_Class_Unlock
+    ManorSlot("Astromancer Class",           "Purple Path Upgrade 6",      1,  9, False),   # 56 Astro_Class_Unlock
+    ManorSlot("Dragon Lancer Class",         "Orange Path Upgrade 3",      1,  7, False),   # 57 Lancer_Class_Unlock
     # ── Relics ───────────────────────────────────────────────────────────────
-    ManorSlot("Relic Resolve Cost Down",     "Archaeology Camp",           5,  7, True),    # 58 Relic_Cost_Down
-    ManorSlot("Relic Reroll Up",             "Medieval Forgery",          10,  8, False),   # 59 Reroll_Relic
-    ManorSlot("Reroll Relic Room Cap Up",    "The Bizarre Bazaar",         2,  9, False),   # 60 Reroll_Relic_Room_Cap  TODO: technically max is 0 without Master Smith
+    ManorSlot("Relic Resolve Cost Down",     "Yellow Path Upgrade 2",      5,  7, True),    # 58 Relic_Cost_Down
+    ManorSlot("Relic Reroll Up",             "Yellow Path Upgrade 3",     10,  8, False),   # 59 Reroll_Relic
+    ManorSlot("Reroll Relic Room Cap Up",    "Yellow Path Upgrade 4",      2,  9, False),   # 60 Reroll_Relic_Room_Cap  TODO: technically max is 0 without Master Smith
     # ── Progression & utility ────────────────────────────────────────────────
-    ManorSlot("Encumbrance Limit Up",        "Aerobics Classroom",        10,  5, True),    # 61 Weight_CD_Reduce
-    ManorSlot("XP Up",                       "Trophy Room",               10,  5, False),   # 62 XP_Up
-    ManorSlot("Resolve Up",                  "Psychiatrist",              20,  6, True),    # 63 Resolve_Up
-    ManorSlot("Training Dummy Unlock",       "Dummy",                      1,  4, False),   # 64 Unlock_Dummy
-    ManorSlot("Mastery Rank Unlock",         "Sage Totem",                 1,  4, True),    # 65 Unlock_Totem
-    ManorSlot("Potion Recharge Talent",      "Alchemy Lab",                1,  7, False),   # 66 Potion_Recharge_Talent
-    ManorSlot("Dash Damage Reduction",       "Jousting Studies",           5,  7, True),    # 67 Dash_Strike_Up
-    ManorSlot("Charon Donation Bonus Unlock","Charity Dungeon",            1,  3, False),   # 68 Charon_Gold_Stat_Bonus
+    ManorSlot("Encumbrance Limit Up",        "Blue Path Upgrade 3",       10,  5, True),    # 61 Weight_CD_Reduce
+    ManorSlot("XP Up",                       "Yellow Path Upgrade 3",     10,  5, False),   # 62 XP_Up
+    ManorSlot("Resolve Up",                  "Orange Path Upgrade 1",     20,  6, True),    # 63 Resolve_Up
+    ManorSlot("Training Dummy Unlock",       "Blue Path Upgrade 2a",       1,  4, False),   # 64 Unlock_Dummy
+    ManorSlot("Mastery Rank Unlock",         "Yellow Path Upgrade 2",      1,  4, True),    # 65 Unlock_Totem
+    ManorSlot("Potion Recharge Talent",      "Purple Path Upgrade 4a",     1,  7, False),   # 66 Potion_Recharge_Talent
+    ManorSlot("Dash Damage Reduction",       "Brown Path Upgrade 2",       5,  7, True),    # 67 Dash_Strike_Up
+    ManorSlot("Charon Donation Bonus Unlock","Green Path Upgrade 2",       1,  3, False),   # 68 Charon_Gold_Stat_Bonus
     # ── NPC unlocks ──────────────────────────────────────────────────────────
-    ManorSlot("Living Safe Unlock",          "Offshore Bank Account",      1,  2, True),   # 69 Gold_Saved_Unlock
-    ManorSlot("Blacksmith Unlock",           "Foundation",                 1,  3, True),   # 70 Blacksmith
-    ManorSlot("Enchantress Unlock",          "Enchantress' Quarters",      1,  3, True),   # 71 Enchantress
+    ManorSlot("Living Safe Unlock",          "Green Path Upgrade 1",        1,  2, True),   # 69 Gold_Saved_Unlock
+    ManorSlot("Blacksmith Unlock",           "Blue Path Upgrade 1",         1,  3, True),   # 70 Blacksmith
+    ManorSlot("Enchantress Unlock",          "Yellow Path Upgrade 1",       1,  3, True),   # 71 Enchantress
 ]
 
 _CORE_COUNT = 69
