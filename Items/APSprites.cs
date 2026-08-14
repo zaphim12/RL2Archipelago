@@ -31,7 +31,10 @@ internal static class APSprites
     /// </summary>
     public static Sprite GetSpriteForLocation(long locationId)
     {
-        var scouted = APClient.GetScoutedItem(locationId);
+        // GetItemView, not GetScoutedItem: for a concealed trap this carries the disguise's
+        // item ID, so the icon matches the name the player is shown. A foreign disguise fails
+        // every lookup below and falls through to the AP logo, exactly as a real foreign item does.
+        var scouted = APClient.GetItemView(locationId);
         if (scouted == null) return GetAPLogoSprite();
 
         // Items belonging to this slot ("Rogue Legacy 2") may have a native sprite.

@@ -122,24 +122,13 @@ internal static class PizzaGirlTeleporterPatch
             LocalizationManager.GetString(locKey, SaveManager.PlayerSaveData.CurrentCharacter.IsFemale),
             cost);
 
-        var scouted = APClient.GetScoutedItem(locationId.Value);
+        var scouted = APClient.GetItemView(locationId.Value);
         if (scouted != null)
         {
-            string itemName = !string.IsNullOrEmpty(scouted.ItemDisplayName)
-                ? scouted.ItemDisplayName
-                : (scouted.ItemName ?? "Unknown Item");
-            int ourSlot = APClient.Session?.ConnectionInfo?.Slot ?? -1;
-            if (scouted.Player.Slot == ourSlot)
-            {
-                text += $"\nContains: {itemName}";
-            }
-            else
-            {
-                string playerName = !string.IsNullOrEmpty(scouted.Player.Alias)
-                    ? scouted.Player.Alias
-                    : (scouted.Player.Name ?? $"Player {scouted.Player.Slot}");
-                text += $"\nContains: {itemName} (for {playerName})";
-            }
+            text += scouted.PlayerName == null
+                ? $"\nContains: {scouted.DisplayName}"
+                : $"\nContains: {scouted.DisplayName} (for {scouted.PlayerName})";
+            text += scouted.FlavorText;
         }
 
         string speaker = LocalizationManager.GetString("LOC_ID_NAME_PIZZA_GIRL_1", isFemale: false);

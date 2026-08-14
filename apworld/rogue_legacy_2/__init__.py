@@ -85,6 +85,7 @@ class RogueLegacy2World(World):
             "rune_checks_per_biome",
             "manor_upgrade_bundle_size",
             "journal_checks",
+            "trap_appearance",
             "manor_cost_base",
             "manor_cost_min_subtractive_factor",
             "manor_cost_max_additive_factor",

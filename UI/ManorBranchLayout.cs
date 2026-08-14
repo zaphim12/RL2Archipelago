@@ -62,7 +62,7 @@ internal static class ManorBranchLayout
     // resolved from the live Spin-Kick binding by the game's own TextGlyphConverter.
 
     /// <summary>Text shown after the Spin-Kick glyph.</summary>
-    public const string PromptLabel = "TOGGLE COLOR TREE VIEW";
+    public const string PromptLabel = "TOGGLE COLOR TREE";
 
     /// <summary>Where the prompt's bottom-right corner sits relative to the bottom-right corner of
     /// the manor canvas, in canvas units. X is negative (leftward, away from the right edge) and Y
@@ -72,7 +72,7 @@ internal static class ManorBranchLayout
     /// positioned against that rect. The label is allowed to overflow, so a longer
     /// <see cref="PromptLabel"/> spreads out from wherever the vanilla one was centred rather than
     /// resizing anything.</para></summary>
-    public static readonly Vector2 PromptOffset = new(-170f, 125f);
+    public static readonly Vector2 PromptOffset = new(-170f, 165f);
 
     // ── Tree root ────────────────────────────────────────────────────────────
     //

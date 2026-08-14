@@ -1,4 +1,3 @@
-using Archipelago.MultiClient.Net.Enums;
 using HarmonyLib;
 using RL2Archipelago.Items;
 using RL2Archipelago.Locations;
@@ -216,6 +215,55 @@ internal static class ManorUpgradePatch
         if (!APClient.IsSessionActive) return true;
         if (LocationRegistry.FromSkillTreeType(skillType) == null) return true;
         __result = null;
+        return false;
+    }
+
+    // ── Suppress the "labour costs" pop-up ───────────────────────────────────
+    //
+    // After every purchase the window runs UnlockLabourCostAnimCoroutine, which
+    // fires a one-time SkillTreePopUp (SkillTreeType.LabourCosts_Unlocked) once the
+    // total manor level passes 30, explaining vanilla's escalating upgrade surcharge.
+    // AP slots use costs precomputed by the apworld (APClient.ManorUpgradeCosts), so
+    // that surcharge never applies and the pop-up is just misinformation.
+    //
+    // All three call sites (OnSkillLevelChanged, AnimateBGImageCoroutine,
+    // DisplaySkillTreePopUp) route through this one kickoff method, so replacing its
+    // enumerator with an empty one covers them all. PlayerSaveFlag.LabourCostsUnlocked
+    // is left unset since it doesn't affect AP gameplay. The tail call to UpdateLabourCosts
+    // is dropped because that method is itself neutered below.
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(SkillTreeWindowController), "UnlockLabourCostAnimCoroutine")]
+    private static bool UnlockLabourCostAnimCoroutine_Prefix(ref System.Collections.IEnumerator __result)
+    {
+        if (!APClient.IsSessionActive) return true;
+        __result = NoOpCoroutine();
+        return false;
+    }
+
+    private static System.Collections.IEnumerator NoOpCoroutine()
+    {
+        yield break;
+    }
+
+    // ── Suppress the "labour costs" surcharge readout ────────────────────────
+    //
+    // The same vanilla surcharge drives a persistent readout in the manor UI, showing
+    // floor((totalLevel - 30) * 14 / 5) * 5 as a percentage. AP costs come precomputed
+    // from the apworld, so the surcharge is never applied and the number is meaningless.
+    // Hide the element outright. Patching the method rather than the pop-up coroutine
+    // also covers the OnOpen and OnSkillLevelChanged call sites.
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(SkillTreeWindowController), "UpdateLabourCosts")]
+    private static bool UpdateLabourCosts_Prefix(SkillTreeWindowController __instance)
+    {
+        if (!APClient.IsSessionActive) return true;
+
+        var labourCostGO = Traverse.Create(__instance).Field<GameObject>("m_labourCostGO").Value;
+        if (labourCostGO != null && labourCostGO.activeSelf)
+            labourCostGO.SetActive(false);
+
         return false;
     }
 
@@ -470,36 +518,18 @@ internal static class ManorUpgradePatch
             return;
         }
 
-        var scouted = APClient.GetScoutedItem(locationId.Value);
+        // Null while the scout cache is empty (notably during auto-reconnect). Every AP slot
+        // then falls back to vanilla RL2 text uniformly, so no slot stands out. This guard must
+        // stay identity-agnostic: a trap-specific fallback here would introduce a tell on any 
+        // locations that contain a trap
+        var scouted = APClient.GetItemView(locationId.Value);
         if (scouted == null) return;
 
         var descText = __instance.DescriptionLocItem?.TextObj;
         if (descText == null) return;
 
-        var itemName = scouted.ItemDisplayName ?? scouted.ItemName ?? "Unknown Item";
-        var ourSlot = APClient.Session?.ConnectionInfo?.Slot ?? -1;
-        var playerName = scouted.Player.Slot == ourSlot
-            ? null
-            : (!string.IsNullOrEmpty(scouted.Player.Alias)
-                ? scouted.Player.Alias
-                : (scouted.Player.Name ?? $"Player {scouted.Player.Slot}"));
-
-        var isProgression = (scouted.Flags & ItemFlags.Advancement) != 0;
-        var isUseful = (scouted.Flags & ItemFlags.NeverExclude) != 0;
-        var isTrap = (scouted.Flags & ItemFlags.Trap) != 0;
-        var descAddendum = "";
-        if (isProgression)
-        {
-            descAddendum = "\nIt looks like something they need";
-        }
-        if (isUseful)
-        {
-            descAddendum = "\nIt looks like something that could be of use";
-        }
-        if (isTrap)
-        {
-            descAddendum = "\nIt looks like something they need?";
-        }
+        var itemName = scouted.DisplayName;
+        var playerName = scouted.PlayerName;
 
         if (__instance.DescriptionType == SkillTreeDescriptionUpdater.SkillTreeDescriptionType.Title)
         {
@@ -510,7 +540,7 @@ internal static class ManorUpgradePatch
             descText.text = playerName == null
                 ? $"[AP] {itemName}"
                 : $"[AP] {itemName}\nfor {playerName}";
-            descText.text += descAddendum;
+            descText.text += scouted.FlavorText;
         }
         else if (__instance.DescriptionType == SkillTreeDescriptionUpdater.SkillTreeDescriptionType.Stat)
         {

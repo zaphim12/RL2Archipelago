@@ -133,9 +133,9 @@ _MANOR_SLOTS: list[ManorSlot] = [
     ManorSlot("Max Weight Up II",            "Blue Path Upgrade 4",       15,  6, True),    # 20 Equip_Up2
     ManorSlot("Max Weight Up III",           "Blue Path Upgrade 5",       25,  7, True),    # 21 Equip_Up3
     # ── Rune weight ──────────────────────────────────────────────────────────
-    ManorSlot("Max Rune Weight Up I",        "Pink Path Upgrade 2",        5,  4, True),    # 22 Rune_Equip_Up
-    ManorSlot("Max Rune Weight Up II",       "Pink Path Upgrade 4",       15,  6, True),    # 23 Rune_Equip_Up2
-    ManorSlot("Max Rune Weight Up III",      "Pink Path Upgrade 5",       15,  7, True),    # 24 Rune_Equip_Up3
+    ManorSlot("Max Rune Weight Up I",        "Pink Path Upgrade 1",        5,  4, True),    # 22 Rune_Equip_Up
+    ManorSlot("Max Rune Weight Up II",       "Pink Path Upgrade 3",       15,  6, True),    # 23 Rune_Equip_Up2
+    ManorSlot("Max Rune Weight Up III",      "Pink Path Upgrade 4",       15,  7, True),    # 24 Rune_Equip_Up3
     # ── Armor ────────────────────────────────────────────────────────────────
     ManorSlot("Armor Up I",                  "Orange Path Upgrade 2",     15,  6, True),    # 25 Armor_Up
     ManorSlot("Armor Up II",                 "Orange Path Upgrade 4",     25,  8, True),    # 26 Armor_Up2
@@ -149,12 +149,12 @@ _MANOR_SLOTS: list[ManorSlot] = [
     ManorSlot("Traits Give Gold",            "Red Path Upgrade 1",         1,  1, False),   # 31 Traits_Give_Gold
     ManorSlot("Traits Gold Gain Up",         "Green Path Upgrade 2a",     10,  3, False),   # 32 Traits_Give_Gold_Gain_Mod
     ManorSlot("Ore Drop Chance Up",          "Blue Path Upgrade 4a",       5,  6, False),   # 33 Equipment_Ore_Find_Up
-    ManorSlot("Red Aether Drop Chance Up",   "Pink Path Upgrade 6",        5,  8, False),   # 34 Rune_Ore_Find_Up
+    ManorSlot("Red Aether Drop Chance Up",   "Pink Path Upgrade 5",        5,  8, False),   # 34 Rune_Ore_Find_Up
     ManorSlot("Gold Gain Up I",              "Orange Path Upgrade 6a",    20, 10, False),   # 35 Gold_Gain_Up           TODO: technically max is 0 without Unbreakable Will
     ManorSlot("Ore Gain Up",                 "Orange Path Upgrade 7",     20, 11, False),   # 36 Equipment_Ore_Gain_Up  TODO: technically max is 0 without Absolute Strength
     ManorSlot("Red Aether Gain Up",          "Magenta Path Upgrade 5",    20,  9, False),   # 37 Rune_Ore_Gain_Up       TODO: technically max is 0 without Infinite Knowledge
     # ── Heirs ────────────────────────────────────────────────────────────────
-    ManorSlot("Re-Roll Children",            "Pink Path Upgrade 3",        5,  5, False),   # 38 Randomize_Children
+    ManorSlot("Re-Roll Children",            "Pink Path Upgrade 2",        5,  5, False),   # 38 Randomize_Children
     ManorSlot("More Heirs",                  "Purple Path Upgrade 7a",     1, 10, False),   # 39 More_Children          TODO: technically max is 0 without Infinite Knowledge
     # ── Living safe ──────────────────────────────────────────────────────────
     ManorSlot("Living Safe Max Gold Up",     "Green Path Upgrade 3",      20,  4, False),   # 40 Gold_Saved_Cap_Up
@@ -178,13 +178,13 @@ _MANOR_SLOTS: list[ManorSlot] = [
     ManorSlot("Astromancer Class",           "Purple Path Upgrade 6",      1,  9, False),   # 56 Astro_Class_Unlock
     ManorSlot("Dragon Lancer Class",         "Orange Path Upgrade 3",      1,  7, False),   # 57 Lancer_Class_Unlock
     # ── Relics ───────────────────────────────────────────────────────────────
-    ManorSlot("Relic Resolve Cost Down",     "Yellow Path Upgrade 2",      5,  7, True),    # 58 Relic_Cost_Down
-    ManorSlot("Relic Reroll Up",             "Yellow Path Upgrade 3",     10,  8, False),   # 59 Reroll_Relic
-    ManorSlot("Reroll Relic Room Cap Up",    "Yellow Path Upgrade 4",      2,  9, False),   # 60 Reroll_Relic_Room_Cap  TODO: technically max is 0 without Master Smith
+    ManorSlot("Relic Resolve Cost Down",     "Lime Path Upgrade 2",        5,  7, True),    # 58 Relic_Cost_Down
+    ManorSlot("Relic Reroll Up",             "Lime Path Upgrade 3",       10,  8, False),   # 59 Reroll_Relic
+    ManorSlot("Reroll Relic Room Cap Up",    "Lime Path Upgrade 4",        2,  9, False),   # 60 Reroll_Relic_Room_Cap  TODO: technically max is 0 without Master Smith
     # ── Progression & utility ────────────────────────────────────────────────
     ManorSlot("Encumbrance Limit Up",        "Blue Path Upgrade 3",       10,  5, True),    # 61 Weight_CD_Reduce
     ManorSlot("XP Up",                       "Yellow Path Upgrade 3",     10,  5, False),   # 62 XP_Up
-    ManorSlot("Resolve Up",                  "Orange Path Upgrade 1",     20,  6, True),    # 63 Resolve_Up
+    ManorSlot("Resolve Up",                  "Lime Path Upgrade 1",       20,  6, True),    # 63 Resolve_Up
     ManorSlot("Training Dummy Unlock",       "Blue Path Upgrade 2a",       1,  4, False),   # 64 Unlock_Dummy
     ManorSlot("Mastery Rank Unlock",         "Yellow Path Upgrade 2",      1,  4, True),    # 65 Unlock_Totem
     ManorSlot("Potion Recharge Talent",      "Purple Path Upgrade 4a",     1,  7, False),   # 66 Potion_Recharge_Talent

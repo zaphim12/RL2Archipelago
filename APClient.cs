@@ -78,6 +78,13 @@ public static class APClient
     /// <summary>Percent chance (1–100) a fairy chest triggers an AP check. Read from slot data on connect.</summary>
     public static int FairyChestApChance { get; private set; } = 100;
 
+    /// <summary>
+    /// When true, traps show their real identity wherever a scouted item is displayed.
+    /// When false (the default) they are concealed behind a real item's identity by
+    /// <see cref="TrapDisguise"/> until purchased. Read from slot data on connect.
+    /// </summary>
+    public static bool TrapAppearanceVisible { get; private set; } = false;
+
     /// <summary>True once the player has left the main menu and entered an active run. Item processing is gated on this flag.</summary>
     public static bool IsInGame { get; internal set; } = false;
 
@@ -262,6 +269,10 @@ public static class APClient
 
             JournalChecksMode = SlotData.TryGetValue("journal_checks", out var jObj)
                 ? (JournalChecksMode)Convert.ToInt32(jObj) : JournalChecksMode.Grouped;
+
+            // Default to concealed when the key is absent (older apworld / older seed).
+            TrapAppearanceVisible = SlotData.TryGetValue("trap_appearance", out var taObj)
+                && Convert.ToInt32(taObj) != 0;
 
             _slotName = connData.SlotName;
             bool serverDeathLink = SlotData.TryGetValue("death_link", out var dlObj) && Convert.ToInt32(dlObj) != 0;
@@ -651,6 +662,7 @@ public static class APClient
 
         APNotifications.Reset();
         _scoutedItems.Clear();
+        TrapDisguise.Clear();
         RunState = null;
         IsInGame = false;
         Session = null;
@@ -833,12 +845,36 @@ public static class APClient
     }
 
     /// <summary>
-    /// Returns the item that will drop at <paramref name="locationId"/>, or
-    /// <c>null</c> if the scout hasn't come back yet or the location isn't tracked.
-    /// Scouts are requested asynchronously right after a successful connect.
+    /// Returns the <em>true</em> item at <paramref name="locationId"/>, or <c>null</c> if the
+    /// scout hasn't come back yet or the location isn't tracked. Scouts are requested
+    /// asynchronously right after a successful connect.
+    ///
+    /// <para>
+    /// Do not use this to display an unclaimed location to the player: it reports traps by their
+    /// real name and would defeat <see cref="TrapDisguise"/>. Use <see cref="GetItemView"/> for
+    /// anything the player can see before purchase. This accessor is for ground truth only,
+    /// e.g. reporting an item the player has already claimed.
+    /// </para>
     /// </summary>
     public static ScoutedItemInfo GetScoutedItem(long locationId) =>
         _scoutedItems.TryGetValue(locationId, out var info) ? info : null;
+
+    /// <summary>
+    /// Returns the item identity that should be <em>shown</em> to the player for
+    /// <paramref name="locationId"/>, or <c>null</c> if the scout hasn't come back yet.
+    ///
+    /// <para>
+    /// Every display surface must go through here rather than <see cref="GetScoutedItem"/>:
+    /// this is the single point at which a trap is swapped for its disguise, so anything
+    /// reading the scout cache directly would leak it. <see cref="GetScoutedItem"/> remains
+    /// for consumers that legitimately need ground truth (e.g. the post-purchase toast).
+    /// </para>
+    /// </summary>
+    internal static APItemView GetItemView(long locationId)
+    {
+        if (!_scoutedItems.TryGetValue(locationId, out var scouted)) return null;
+        return TrapDisguise.ViewFor(locationId, scouted, _ourSlot, Session?.ConnectionInfo?.Game);
+    }
 
     /// <summary>
     /// Asynchronously scouts every location in <see cref="LocationRegistry.Names"/>
@@ -872,6 +908,15 @@ public static class APClient
                     foreach (var kv in t.Result)
                         _scoutedItems[kv.Key] = kv.Value;
                     Plugin.Log.LogInfo($"[AP] Scouted {t.Result.Count} tracked location(s).");
+
+                    // Disguise candidates are drawn from the scout reply itself, so the pool
+                    // can only be built once the cache is populated. Rebuilding after a
+                    // reconnect is harmless: selection is a pure function of seed + location.
+                    TrapDisguise.BuildPool(
+                        _scoutedItems,
+                        Session?.RoomState?.Seed,
+                        _ourSlot,
+                        Session?.ConnectionInfo?.Game);
                 });
         }
         catch (Exception ex)

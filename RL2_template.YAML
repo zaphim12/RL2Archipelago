@@ -130,6 +130,19 @@ Rogue Legacy 2:
   # Valid range: 0–25  (default: 3)
   trap_count: 3
 
+  # Whether traps can be identified before you obtain them.
+  #
+  # If traps display their true name, they could just be trivially avoided
+  # in some locations like the manor and teleporter purchases. This setting
+  # allows you to have traps disguised as another item so a player can't 
+  # identify them until after obtaining them.
+  #
+  #   hidden  - traps are disguised as a real item taken from elsewhere in the
+  #             multiworld, and are only revealed once purchased. 
+  #   visible - traps show their true name and icon before purchase.
+  # Valid values: hidden, visible  (default: hidden)
+  trap_appearance: hidden
+
   # ── Manor Upgrade Costs ──────────────────────────────────────────────────
 
   # Base gold multiplier for manor upgrade costs.

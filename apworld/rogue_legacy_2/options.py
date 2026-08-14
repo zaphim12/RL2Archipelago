@@ -142,6 +142,24 @@ class TrapCount(Range):
     default = 3
 
 
+class TrapAppearance(Choice):
+    """Controls whether traps can be identified before you pay for them.
+
+    Anywhere the game shows you what an unclaimed location holds (the manor upgrade
+    tree, the teleporter NPC, heirloom pedestals), a trap would otherwise announce
+    itself by name and could trivially be avoided. Disguising traps allows them to
+    masquerade as another item so it's harder to avoid them.
+
+    hidden (0): Traps are disguised as a real item taken from elsewhere in this
+                multiworld, and are only revealed once purchased.
+    visible (1): Traps show their true name and icon before purchase.
+    """
+    display_name = "Trap Appearance"
+    option_hidden  = 0
+    option_visible = 1
+    default = 0
+
+
 class ManorCostBase(Range):
     """Base gold multiplier for manor upgrade costs.
 
@@ -290,6 +308,7 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     manor_upgrade_bundle_size: ManorUpgradeBundleSize
     journal_checks: JournalChecks
     trap_count: TrapCount
+    trap_appearance: TrapAppearance
     manor_cost_base: ManorCostBase
     manor_cost_min_subtractive_factor: ManorCostMinSubtractiveFactor
     manor_cost_max_additive_factor: ManorCostMaxAdditiveFactor
