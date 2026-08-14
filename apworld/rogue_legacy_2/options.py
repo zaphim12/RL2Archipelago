@@ -297,6 +297,16 @@ class RandomizeStartingClass(Toggle):
     default = 1
 
 
+class RevealManorUpgrades(Toggle):
+    """Show every manor upgrade node from the start instead of only the ones adjacent to a purchase.
+
+    Purchase rules are unchanged: a node still cannot be bought until the previous
+    node has been purchased. Revealed-but-locked nodes show a padlock.
+    """
+    display_name = "Reveal Manor Upgrades"
+    default = 0
+
+
 @dataclass
 class RogueLegacy2GameOptions(PerGameCommonOptions):
     death_link: RL2DeathLink
@@ -318,3 +328,4 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     stat_upgrades_per_biome_tier: StatUpgradesPerBiomeTier
     early_npc_unlocks: EarlyNPCUnlocks
     randomize_starting_class: RandomizeStartingClass
+    reveal_manor_upgrades: RevealManorUpgrades

@@ -1,5 +1,6 @@
 using HarmonyLib;
 using Rewired;
+using RL2Archipelago.Patches;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -197,12 +198,18 @@ internal class ManorBranchOverlay : MonoBehaviour
             // the slot itself, so activeSelf is precisely "has this node been revealed". Using
             // activeInHierarchy would also report false whenever an ancestor is temporarily
             // inactive (the garden transition hides the whole icon group), dimming everything.
-            bool revealed = _nodes[i] != null && _nodes[i].gameObject.activeSelf;
+            //
+            // IsSlotUnlocked keeps that meaning intact under reveal_manor_upgrades, where every
+            // node is active and activeSelf alone would light the whole tree up uniformly. It
+            // returns true whenever the option is off, so this is a no-op by default.
+            bool revealed = _nodes[i] != null
+                         && _nodes[i].gameObject.activeSelf
+                         && ManorUpgradePatch.IsSlotUnlocked(_nodes[i].SkillTreeType);
 
             // Alpha is per node rather than per line now, because the mesh blends each line
-            // between its two endpoints. A line therefore dims as it approaches an unrevealed
-            // node instead of switching wholesale, and since the manor is only ever unlocked
-            // outwards from the root, a revealed node never hangs off an unrevealed parent.
+            // between its two endpoints. A line therefore dims as it approaches a node that is
+            // not yet reachable instead of switching wholesale, and since the manor is only ever
+            // unlocked outwards from the root, a reachable node never hangs off an unreachable one.
             var color = _colors[i];
             color.a = revealed ? ManorBranchLayout.FullAlpha : ManorBranchLayout.DimAlpha;
             _tinted.Add(color);

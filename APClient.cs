@@ -85,6 +85,13 @@ public static class APClient
     /// </summary>
     public static bool TrapAppearanceVisible { get; private set; } = false;
 
+    /// <summary>
+    /// When true, every manor slot is shown from the start rather than only the ones that
+    /// are purchase-able. Purchase rules are unaffected: a slot still cannot be
+    /// bought until its parent has been (see <see cref="ManorUpgradePatch.IsSlotUnlocked"/>).
+    /// Read from slot data on connect. </summary>
+    public static bool RevealManorUpgrades { get; private set; } = false;
+
     /// <summary>True once the player has left the main menu and entered an active run. Item processing is gated on this flag.</summary>
     public static bool IsInGame { get; internal set; } = false;
 
@@ -273,6 +280,11 @@ public static class APClient
             // Default to concealed when the key is absent (older apworld / older seed).
             TrapAppearanceVisible = SlotData.TryGetValue("trap_appearance", out var taObj)
                 && Convert.ToInt32(taObj) != 0;
+
+            // Default to the base game's reveal-as-you-buy behavior when the key is absent
+            // (older apworld / older seed).
+            RevealManorUpgrades = SlotData.TryGetValue("reveal_manor_upgrades", out var rmObj)
+                && Convert.ToInt32(rmObj) != 0;
 
             _slotName = connData.SlotName;
             bool serverDeathLink = SlotData.TryGetValue("death_link", out var dlObj) && Convert.ToInt32(dlObj) != 0;
@@ -644,6 +656,7 @@ public static class APClient
         RandomizeStartingClass = false;
         StartingClassIndex = 0;
         KnightClassReceived = false;
+        RevealManorUpgrades = false;
 
         // Deactivate the save redirect before restoring the vanilla profile so
         // LoadCurrentProfileData reads from the original paths.

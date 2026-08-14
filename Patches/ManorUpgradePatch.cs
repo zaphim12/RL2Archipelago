@@ -45,6 +45,15 @@ internal static class ManorUpgradePatch
 
     private static readonly Dictionary<SkillTreeType, int> s_savedLevels = new();
 
+    /// <summary>A slot the base game never reveals under any circumstance. Written as an
+    /// explicit null test rather than <c>?.</c> because SkillTreeData is a UnityEngine.Object,
+    /// whose overloaded <c>==</c> is the only thing that reports a destroyed asset as null.</summary>
+    private static bool IsHiddenSlot(SkillTreeType type)
+    {
+        var data = SkillTreeLibrary.GetSkillTreeData(type);
+        return data != null && data.SkillUnlockState == SkillUnlockState.Hidden;
+    }
+
     [HarmonyPrefix]
     [HarmonyPatch(typeof(SkillTreeWindowController), "Initialize")]
     private static void Initialize_Prefix()
@@ -59,6 +68,25 @@ internal static class ManorUpgradePatch
 
             int currentLevel = SkillTreeManager.GetSkillObjLevel(skillType);
             bool isChecked = APClient.RunState.CheckedLocations.Contains(locationId.Value);
+
+            // ── reveal_manor_upgrades ────────────────────────────────────────
+            // Show the whole tree by giving every tracked slot a non-zero level, which is
+            // the only thing vanilla Initialize consults. Purchasability is decided
+            // separately by IsSlotUnlocked, so this is presentation only.
+            if (APClient.RevealManorUpgrades)
+            {
+                // Vanilla never reveals a Hidden slot even at level > 0; respect that.
+                if (IsHiddenSlot(skillType)) continue;
+
+                if (currentLevel == 0)
+                {
+                    s_savedLevels[skillType] = 0;
+                    SkillTreeManager.SetSkillObjLevel(skillType, 1, additive: false, runEvents: false);
+                }
+                // currentLevel > 0 already activates the slot, whether or not it was
+                // purchased, and under this option there is nothing left to hide.
+                continue;
+            }
 
             if (isChecked && currentLevel == 0)
             {
@@ -77,12 +105,112 @@ internal static class ManorUpgradePatch
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(SkillTreeWindowController), "Initialize")]
-    private static void Initialize_Postfix()
+    private static void Initialize_Postfix(SkillTreeWindowController __instance)
     {
-        if (s_savedLevels.Count == 0) return;
         foreach (var kv in s_savedLevels)
             SkillTreeManager.SetSkillObjLevel(kv.Key, kv.Value, additive: false, runEvents: false);
         s_savedLevels.Clear();
+
+        BuildUnlockGraph(__instance);
+    }
+
+    // ── Unlock graph ─────────────────────────────────────────────────────────
+    //
+    // Without reveal_manor_upgrades, visibility *is* the purchase gate: an unreachable slot
+    // is an inactive GameObject and simply cannot be clicked, so PurchaseSkillUpgrade_Prefix
+    // never had to check the tree. When enabled, every slot is on screen so that no longer holds,
+    // so the rule vanilla enforced implicitly is reconstructed here and enforced explicitly.
+    //
+    // The rule being mirrored is SkillTreeSlot.UnlockConnectedSkillSlots: purchasing a slot
+    // activates every non-disabled entry of its UnlockSlotList that is not Hidden. Inverting
+    // that gives, for each slot, the slots whose purchase would have revealed it.
+    //
+    // Direction matters here and is deliberately kept, unlike ManorTree (UI/ManorTree.cs)
+    // which flattens the same data into an undirected graph for drawing branch lines. Some
+    // slots list the node above them as well, and honouring only the authored direction is
+    // what reproduces vanilla's reveal order exactly.
+
+    private static readonly Dictionary<SkillTreeType, List<SkillTreeType>> s_revealedBy = new();
+
+    /// <summary>The slot vanilla force-activates in OnOpen regardless of level, and therefore
+    /// the one slot that is purchasable with nothing bought yet.</summary>
+    private static SkillTreeType s_rootSlot = SkillTreeType.None;
+
+    private static void BuildUnlockGraph(SkillTreeWindowController controller)
+    {
+        s_revealedBy.Clear();
+        s_rootSlot = SkillTreeType.None;
+
+        if (!APClient.IsSessionActive || !APClient.RevealManorUpgrades) return;
+
+        try
+        {
+            var root = Traverse.Create(controller).Field<SkillTreeSlot>("m_startingHighlightedButton").Value;
+            if (root != null && root.HasData) s_rootSlot = root.SkillTreeType;
+
+            // includeInactive: true because at this point most of the tree is still off.
+            foreach (var slot in controller.GetComponentsInChildren<SkillTreeSlot>(includeInactive: true))
+            {
+                if (slot == null || !slot.HasData) continue;
+
+                var connected = slot.UnlockSlotList;
+                if (connected == null) continue;
+                var disabled = slot.UnlockSlotDisableList;
+
+                for (int i = 0; i < connected.Count; i++)
+                {
+                    var other = connected[i];
+                    if (other == null || other == slot || !other.HasData) continue;
+                    // Entries flagged in the parallel disable list are authored-but-inactive links.
+                    if (disabled != null && i < disabled.Count && disabled[i]) continue;
+                    if (IsHiddenSlot(other.SkillTreeType)) continue;
+
+                    if (!s_revealedBy.TryGetValue(other.SkillTreeType, out var sources))
+                        s_revealedBy[other.SkillTreeType] = sources = new();
+                    if (!sources.Contains(slot.SkillTreeType)) sources.Add(slot.SkillTreeType);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // IsSlotUnlocked treats an empty graph as "everything unlocked", so a failure here
+            // degrades to the pre-option purchase behavior rather than soft-locking the manor.
+            s_revealedBy.Clear();
+            Plugin.Log.LogError($"[AP] Failed to build the manor unlock graph; all revealed slots stay purchasable.\n{ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Whether <paramref name="type"/> would have been revealed by the base game given the
+    /// current AP purchase state, i.e. whether it is purchasable now.
+    /// <para>
+    /// Always true when <see cref="APClient.RevealManorUpgrades"/> is off, so every caller is
+    /// a no-op in the default configuration and the vanilla-visibility gate stays in charge.
+    /// </para>
+    /// </summary>
+    internal static bool IsSlotUnlocked(SkillTreeType type)
+    {
+        if (!APClient.RevealManorUpgrades) return true;
+        // Graph not built yet (or it failed to build): never gate on incomplete data.
+        if (s_revealedBy.Count == 0) return true;
+        if (type == s_rootSlot) return true;
+        if (IsSlotPurchased(type)) return true;
+
+        if (s_revealedBy.TryGetValue(type, out var sources))
+            foreach (var source in sources)
+                if (IsSlotPurchased(source)) return true;
+
+        return false;
+    }
+
+    /// <summary>Purchase state of a slot: for AP-tracked slots that is whether its location has
+    /// been checked, never its skill level, so an item arriving early never unlocks a neighbour.
+    /// Untracked slots fall back to the vanilla level test.</summary>
+    private static bool IsSlotPurchased(SkillTreeType type)
+    {
+        var locationId = LocationRegistry.FromSkillTreeType(type);
+        if (locationId == null) return SkillTreeManager.GetSkillObjLevel(type) > 0;
+        return APClient.RunState?.CheckedLocations?.Contains(locationId.Value) ?? false;
     }
 
     // UpdateAnimatorParams runs inside OnOpen → RefreshAllButtons(true) and sets
@@ -156,6 +284,16 @@ internal static class ManorUpgradePatch
         var skillTreeObj = SkillTreeManager.GetSkillTreeObj(__instance.SkillTreeType);
 
         if (skillTreeObj == null || skillTreeObj.IsLocked || skillTreeObj.IsSoulLocked)
+        {
+            PlayFailAnim(__instance);
+            return false;
+        }
+
+        // With reveal_manor_upgrades on, being on screen no longer implies being reachable,
+        // so the tree rule vanilla used to enforce through visibility is checked here instead.
+        // Gated on the option rather than on IsSlotUnlocked alone so that a seed without it
+        // keeps exactly the old code path.
+        if (APClient.RevealManorUpgrades && !IsSlotUnlocked(__instance.SkillTreeType))
         {
             PlayFailAnim(__instance);
             return false;
@@ -350,10 +488,20 @@ internal static class ManorUpgradePatch
         var newIndicator    = t.Field<Image>("m_newIndicator").Value;
         var levelLockGO     = t.Field<GameObject>("m_levelLockGO").Value;
 
-        // Manor-level gating (padlock) is suppressed in AP mode for all tracked
-        // slots. locations become purchasable as soon as they are visible.
-        if (levelLockGO != null && levelLockGO.activeSelf)
-            levelLockGO.SetActive(false);
+        // Vanilla's manor-level gating (the padlock) is suppressed in AP mode for all tracked
+        // slots. When reveal_manor_upgrades is enabled, the padlock is instead used to indicate
+        // which slots are not purchase-able given the current manor state. i.e. the slot is shown
+        // on screen for planning, but its parent has not been purchased yet.
+        //
+        // The number vanilla prints on the padlock is SkillTreeObj.UnlockLevel, the total manor
+        // level the slot would otherwise need. That threshold is not enforced in AP mode and the
+        // reused padlock has nothing numeric to say, so the label is blanked and only the lock
+        // sprite remains.
+        bool unlocked = IsSlotUnlocked(__instance.SkillTreeType);
+        if (levelLockGO != null && levelLockGO.activeSelf != !unlocked)
+            levelLockGO.SetActive(!unlocked);
+        if (t.Field<TMP_Text>("m_levelLockText").Value is { } levelLockText && levelLockText.text.Length > 0)
+            levelLockText.text = string.Empty;
 
         if (isChecked)
         {
@@ -383,7 +531,8 @@ internal static class ManorUpgradePatch
                 int slotCost = APClient.ManorUpgradeCosts.TryGetValue(__instance.SkillTreeType, out var precomputed)
                     ? precomputed
                     : skillTreeObj.GoldCostWithLevelAppreciation;
-                bool canAfford = skillTreeObj != null
+                bool canAfford = unlocked
+                    && skillTreeObj != null
                     && !skillTreeObj.IsLocked
                     && !skillTreeObj.IsSoulLocked
                     && SaveManager.PlayerSaveData.GoldCollectedIncludingBank >= slotCost;
@@ -489,8 +638,10 @@ internal static class ManorUpgradePatch
         // disappear entirely; for unchecked slots it should always say "Upgrade x1".
         if (__instance.DescriptionType == SkillTreeDescriptionUpdater.SkillTreeDescriptionType.Purchase)
         {
+            // Hidden for a locked slot too: under reveal_manor_upgrades it is only on screen
+            // for planning, so advertising a purchase that would just shake and fail is wrong.
             bool isChecked = APClient.RunState?.CheckedLocations?.Contains(locationId.Value) ?? false;
-            if (isChecked)
+            if (isChecked || !IsSlotUnlocked(__0))
             {
                 if (__instance.gameObject.activeSelf)
                     __instance.gameObject.SetActive(false);

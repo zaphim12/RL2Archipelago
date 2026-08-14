@@ -143,6 +143,21 @@ Rogue Legacy 2:
   # Valid values: hidden, visible  (default: hidden)
   trap_appearance: hidden
 
+  # ── Manor Visibility ─────────────────────────────────────────────────────
+
+  # Whether the whole manor upgrade tree is shown from the start.
+  #
+  # By default the manor reveals itself the way the base game does: a node only
+  # appears once the previous node has been purchased, so you cannot see
+  # what lies further out. Turning this on shows every node immediately, which
+  # lets you plan a purchase route in advance.
+  #
+  # This does not change what you may buy. A node still cannot be purchased
+  # until its parent has been.
+  #
+  # true \ false  (default: false)
+  reveal_manor_upgrades: false
+
   # ── Manor Upgrade Costs ──────────────────────────────────────────────────
 
   # Base gold multiplier for manor upgrade costs.

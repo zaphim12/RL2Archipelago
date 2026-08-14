@@ -97,6 +97,7 @@ class RogueLegacy2World(World):
             "stat_upgrades_per_boss",
             "stat_upgrades_per_biome_tier",
             "early_npc_unlocks",
+            "reveal_manor_upgrades",
         )
         data["manor_upgrade_costs"] = self._compute_manor_upgrade_costs()
         data["randomize_starting_class"] = int(self.options.randomize_starting_class.value)
