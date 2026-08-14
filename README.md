@@ -15,6 +15,19 @@ The run is completed as normal by defeating Cain. All biome bosses must be defea
   - Pizza girl purchases
   - Heirloom statues (and Johann's conversation in Pishon Dry Lake after defeating Irad)
 
+### Manor Upgrade Location Names
+
+The manor upgrade tree doesn't have intuitive in-game names for its individual slots, so the location associated with each one is named after a given colored path it sits on and its position along that path, for example, `Cyan Path Upgrade 4` or `Red Path Upgrade 7`. The mod draws these colored paths directly onto the manor screen in-game so a location name can be traced to the slot it refers to.
+
+If you have trouble distinguishing the path colors, the chart below labels each one with its name in text.
+
+<details>
+<summary>Expand to see the labeled manor path chart</summary>
+
+![Manor path color chart](Assets/manor_color_chart.png)
+
+</details>
+
 ## Configurable options (i.e. The player YAML)
 
 There are several things that can be customized for each run using the Archipelago YAML file
@@ -36,7 +49,7 @@ Kills your character when another player with deathlink enabled dies. Triggers d
 
 **Range:** 0–16 | **Default:** 11 *(11 checks × 6 biomes = 66 checks, approximately matching the 65 total blueprints in the base game)*
 
-Normal and silver chests have a random chance to roll into an AP item (same probability as the base game: 15% for a normal chest, 99% for a silver chest). This setting controls how many AP checks you can get from opening chests in each biome. Once all checks have been completed in a biome, all chests will only give gold, like the base game.
+Normal and silver chests have a random chance to roll into an AP item (by default the same probability as the base game: 15% for a normal chest, 99% for a silver chest - see `bronze_chest_ap_chance` and `silver_chest_ap_chance` below). This setting controls how many AP checks you can get from opening chests in each biome. Once all checks have been completed in a biome, all chests will only give gold, like the base game.
 
 ---
 
@@ -44,13 +57,27 @@ Normal and silver chests have a random chance to roll into an AP item (same prob
 
 **Range:** 0–16 | **Default:** 4 *(4 checks × 6 biomes = 24 checks, matching the 24 total runes in the base game)*
 
-When a fairy chest is opened, an AP item will be given every time until the pool is exhausted. Then chests will just drop red aether as normal.
+When a fairy chest is opened, an AP item will be given every time until the pool is exhausted (see `fairy_chest_ap_chance` below to make this a percentage chance instead). Then chests will just drop red aether as normal.
+
+---
+
+### Chest AP Chances (`bronze_chest_ap_chance`, `silver_chest_ap_chance`, `fairy_chest_ap_chance`)
+
+| Setting | Range | Default |
+|---|---|---|
+| `bronze_chest_ap_chance` | 1–100 | 15 |
+| `silver_chest_ap_chance` | 1–100 | 99 |
+| `fairy_chest_ap_chance` | 1–100 | 100 |
+
+The percent chance that opening a chest of the given type triggers an AP location check rather than dropping normal loot. The defaults for bronze and silver chests match the base game's blueprint drop rates, and fairy chests always give a check by default.
+
+Each chest type can be tuned independently. Raising a value means fewer chests need to be opened to clear a biome's pool; lowering it means more. Once a biome's pool of checks is exhausted (see the two settings above), chests fall back to normal loot: gold for bronze/silver, red aether for fairy chests, regardless of these settings.
 
 ---
 
 ### Manor Upgrade Bundle Size (`manor_upgrade_bundle_size`)
 
-**Range:** 0–35 | **Default:** 5
+**Range:** 1–35 | **Default:** 5
 
 Many manor upgrades have multiple levels available. In the randomizer, granting only one level at a time would make progression feel too slow for most players. So instead, these multi-level upgrades are granted in bundles; checking one AP location can grant a bundle which gives *n* levels to a manor upgrade (e.g. +5 dexterity instead of +1).
 
@@ -87,6 +114,19 @@ There are 5 available traps:
 - Automaton Swarm *(Burden of Pishon's Uprising)*
 - Giant Snowflakes *(Burden of Kerguelen's Frost)*
 - Void Waves *(Burden of the High Scholar's Metamorphosis)*
+
+Traps are distributed as evenly as possible across the five types. Set to 0 to disable traps entirely.
+
+---
+
+### Trap Appearance (`trap_appearance`)
+
+**Values:** `hidden` / `visible` | **Default:** `hidden`
+
+Controls whether traps can be identified before you pay for them. Anywhere the game shows what an unclaimed location holds (the manor upgrade tree, the teleporter NPC, heirloom pedestals), a trap would otherwise announce itself and be trivially avoidable.
+
+- **hidden** - traps are disguised as a real item taken from elsewhere in the multiworld, and are only revealed once purchased
+- **visible** - traps show their true name and icon before purchase
 
 ---
 
@@ -167,6 +207,16 @@ When enabled, soft logic rules push the three NPC unlock items (Living Safe, Bla
 **Values:** enabled / disabled | **Default:** enabled
 
 When enabled, the default unlocked class is randomized instead of always being a knight. The chosen class is pre-unlocked at run start and removed from the item pool. If the starting class is not Knight, the Knight class becomes a randomizable item in the multiworld and must be found before Knight heirs can appear.
+
+---
+
+### Reveal Manor Upgrades (`reveal_manor_upgrades`)
+
+**Values:** true / false | **Default:** false
+
+When enabled, every manor upgrade node is shown from the start instead of only the ones adjacent to a purchase. This makes it easier to see the whole tree and plan a route through it.
+
+Purchase rules are unchanged: a node still cannot be bought until the node before it has been purchased. Revealed-but-locked nodes show a padlock.
 
 </details>
 
