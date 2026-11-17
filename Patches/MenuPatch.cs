@@ -183,7 +183,7 @@ internal static class MenuPatch
         // Unconditional: the redirect can also be live without a connection, during save recovery.
         ApplyProfileButtonVisibility();
 
-        Plugin.Log.LogInfo("[MenuPatch] Archipelago button injected into main menu.");
+        Plugin.Log.LogDebug("[MenuPatch] Archipelago button injected into main menu.");
     }
 
     /// <summary>
@@ -236,7 +236,6 @@ internal static class MenuPatch
 
     private static void OnArchipelagoButtonClicked(MainMenuWindowController controller)
     {
-        Plugin.Log.LogDebug("[MenuPatch] Archipelago button clicked.");
         Traverse.Create(controller).Field("m_lockInput").SetValue(true);
 
         UI.ConnectionDialog.Show(
@@ -253,7 +252,6 @@ internal static class MenuPatch
             connData,
             onSuccess: () =>
             {
-                Plugin.Log.LogInfo("Successfully connected to Archipelago server!");
                 // Run the transition animation that typically takes place upon changing profiles
                 SceneLoader_RL.RunTransitionWithLogic(
                     () =>

@@ -31,7 +31,7 @@ internal static class GoldCoinsPatch
     {
         if (SaveManager.PlayerSaveData == null)
         {
-            Plugin.Log.LogWarning("[AP] Cannot grant gold coins yet: PlayerSaveData is not available.");
+            Plugin.Log.LogInfo("[AP] Cannot grant gold coins yet: PlayerSaveData is not available.");
             return false;
         }
 

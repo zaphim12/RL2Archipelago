@@ -127,7 +127,7 @@ internal static class SuboptionsPatch
 
         dict[APSuboptionType] = parentGO;
 
-        Plugin.Log.LogInfo("[SuboptionsPatch] AP suboption entry injected.");
+        Plugin.Log.LogDebug("[SuboptionsPatch] AP suboption entry injected.");
     }
 
     // Searches all suboption panels (including inactive ones) for any option item

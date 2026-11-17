@@ -67,13 +67,13 @@ internal static class APNotifications
         // Critical notifications stay queued so they surface once gameplay resumes.
         if (GetHudController() == null && !critical)
         {
-            Plugin.Log.LogDebug($"[AP] No HUD available; dropping notification: {title} / {subtitle}");
+            Plugin.Log.LogWarning($"[AP] No HUD available; dropping notification: {title} / {subtitle}");
             return;
         }
 
         if (_queue.Count >= MaxQueueSize && !critical)
         {
-            Plugin.Log.LogDebug(
+            Plugin.Log.LogInfo(
                 $"[AP] Notification queue full (max {MaxQueueSize}); dropping: {title} / {subtitle}");
             return;
         }

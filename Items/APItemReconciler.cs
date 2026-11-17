@@ -183,7 +183,7 @@ internal static class APItemReconciler
         if (itemId == ItemRegistry.GoldCoins) return 0;
         if (ItemRegistry.ToTrapBurdenType(itemId).HasValue) return 0;
 
-        Plugin.Log.LogWarning($"[APSync] No handler for item '{DisplayName(itemId)}' (ID {itemId}).");
+        Plugin.Log.LogError($"[APSync] No handler for item '{DisplayName(itemId)}' (ID {itemId}).");
         return 0;
     }
 
@@ -193,7 +193,7 @@ internal static class APItemReconciler
 
         SaveManager.PlayerSaveData.SetHeirloomLevel(heirloom, 1, additive: false, broadcast: false);
         refreshAbilities = true;
-        Plugin.Log.LogInfo($"[APSync] Restored heirloom: {DisplayName(itemId)}");
+        Plugin.Log.LogDebug($"[APSync] Restored heirloom: {DisplayName(itemId)}");
         return 1;
     }
 
@@ -230,7 +230,7 @@ internal static class APItemReconciler
         }
 
         if (corrections > 0)
-            Plugin.Log.LogInfo($"[APSync] Restored blueprint: {DisplayName(itemId)} (x{count})");
+            Plugin.Log.LogDebug($"[APSync] Restored blueprint: {DisplayName(itemId)} (x{count})");
 
         return corrections;
     }
@@ -264,7 +264,7 @@ internal static class APItemReconciler
         }
 
         if (corrections > 0)
-            Plugin.Log.LogInfo($"[APSync] Restored rune blueprint: {DisplayName(itemId)} (x{count})");
+            Plugin.Log.LogDebug($"[APSync] Restored rune blueprint: {DisplayName(itemId)} (x{count})");
 
         return corrections;
     }
@@ -285,7 +285,7 @@ internal static class APItemReconciler
         }
 
         APClient.KnightClassReceived = true;
-        Plugin.Log.LogInfo("[APSync] Restored Knight Class unlock.");
+        Plugin.Log.LogDebug("[APSync] Restored Knight Class unlock.");
         return 0;
     }
 
@@ -310,7 +310,7 @@ internal static class APItemReconciler
         // runEvents: false keeps UnlockConnectedSkillSlots from revealing adjacent manor slots, which
         // should only happen when the player physically buys the prerequisite.
         SkillTreeManager.SetSkillObjLevel(skill, target, additive: false, runEvents: false);
-        Plugin.Log.LogInfo($"[APSync] Restored manor upgrade: {DisplayName(itemId)} (level {target})");
+        Plugin.Log.LogDebug($"[APSync] Restored manor upgrade: {DisplayName(itemId)} (level {target})");
         return 1;
     }
 
@@ -319,7 +319,7 @@ internal static class APItemReconciler
         if (SaveManager.PlayerSaveData.GetTeleporterIsUnlocked(biome)) return 0;
 
         SaveManager.PlayerSaveData.SetTeleporterIsUnlocked(biome, state: true);
-        Plugin.Log.LogInfo($"[APSync] Restored teleporter unlock: {DisplayName(itemId)}");
+        Plugin.Log.LogDebug($"[APSync] Restored teleporter unlock: {DisplayName(itemId)}");
         return 1;
     }
 
@@ -343,7 +343,7 @@ internal static class APItemReconciler
         if (SkillTreeManager.GetSkillObjLevel(slot.Value) >= target) return 0;
 
         SkillTreeManager.SetSkillObjLevel(slot.Value, target, additive: false, runEvents: false);
-        Plugin.Log.LogInfo($"[APSync] Restored starting class slot '{slot.Value}' (level {target})");
+        Plugin.Log.LogDebug($"[APSync] Restored starting class slot '{slot.Value}' (level {target})");
         return 1;
     }
 
@@ -364,7 +364,7 @@ internal static class APItemReconciler
             {
                 if (TrapManager.IsTrapActive(trap)) continue;
                 TrapManager.ActivateTrap(trap);
-                Plugin.Log.LogInfo($"[APSync] Re-armed active trap for this life: {trap}");
+                Plugin.Log.LogDebug($"[APSync] Re-armed active trap for this life: {trap}");
             }
             catch (Exception ex)
             {

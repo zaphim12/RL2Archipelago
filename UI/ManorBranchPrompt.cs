@@ -205,7 +205,7 @@ internal static class ManorBranchPrompt
         var sb = new StringBuilder();
         sb.AppendLine($"[ManorBranchPrompt] Navigation row under \"{root.name}\":");
         AppendNode(sb, root, 1);
-        Plugin.Log.LogInfo(sb.ToString());
+        Plugin.Log.LogDebug(sb.ToString());
     }
 
     private static void AppendNode(StringBuilder sb, Transform node, int depth)

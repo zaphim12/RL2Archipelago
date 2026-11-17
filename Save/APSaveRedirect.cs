@@ -429,8 +429,5 @@ internal static class APSaveRedirect
         if (SaveFileSystem.IsSaving)
             Plugin.Log.LogWarning(
                 $"[APSave] A game save was still in flight after {SaveIdleTimeoutMs}ms; continuing anyway.");
-        else
-            Plugin.Log.LogDebug(
-                $"[APSave] Waited {watch.ElapsedMilliseconds}ms for an in-flight game save to finish.");
     }
 }

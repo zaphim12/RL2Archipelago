@@ -361,7 +361,7 @@ internal sealed class ManorTree
 
         if (_cycles.Count > 0) sb.AppendLine($"  LOOPS: {_cycles.Count} connection(s) close a cycle.");
 
-        Plugin.Log.LogInfo(sb.ToString());
+        Plugin.Log.LogDebug(sb.ToString());
     }
 
     private void AppendNode(StringBuilder sb, RectTransform space, SkillTreeType type, int depth, HashSet<SkillTreeType> visited)

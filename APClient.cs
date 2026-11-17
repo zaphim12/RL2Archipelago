@@ -432,8 +432,6 @@ public static class APClient
         Session.Socket.ErrorReceived += APSession_ErrorReceived;
         Session.Socket.SocketClosed  += APSession_SocketClosed;
 
-        Plugin.Log.LogDebug("[AP] Calling TryConnectAndLogin...");
-
         // Run the blocking login on a worker task with a client-side timeout: TryConnectAndLogin
         // can block forever when the TCP socket connects but the AP handshake never finishes,
         // which would hang the single reconnect worker and stall every later attempt. Aborting
@@ -452,7 +450,7 @@ public static class APClient
             if (!loginTask.Wait(ConnectTimeoutMs))
             {
                 error = $"Connect attempt timed out after {ConnectTimeoutMs}ms.";
-                Plugin.Log.LogDebug($"[AP] {error} Abandoning attempt.");
+                Plugin.Log.LogInfo($"[AP] {error} Abandoning attempt.");
                 ObserveFault(loginTask, "Abandoned login");  // don't let the orphan task fault unobserved
                 DetachAndAbort(Session);
                 Session = null;
@@ -470,8 +468,6 @@ public static class APClient
         }
 
         Session.Socket.SocketOpened -= APSession_SocketOpened;
-
-        Plugin.Log.LogDebug($"[AP] TryConnectAndLogin returned. Successful={loginResult.Successful}");
 
         if (!loginResult.Successful)
         {
@@ -575,7 +571,7 @@ public static class APClient
     /// surfacing later as an unobserved TaskScheduler exception at GC time.</summary>
     private static void ObserveFault(Task task, string what) =>
         task?.ContinueWith(
-            t => Plugin.Log.LogWarning($"[AP] {what} failed: {t.Exception?.Flatten().Message}"),
+            t => Plugin.Log.LogError($"[AP] {what} failed: {t.Exception?.Flatten().Message}"),
             TaskContinuationOptions.OnlyOnFaulted);
 
     /// <summary>Detaches our handlers from a dead/abandoned session and aborts its socket so
@@ -829,7 +825,7 @@ public static class APClient
         }
 
         if (!Session.Locations.AllLocations.Contains(locationId))
-            Plugin.Log.LogWarning(
+            Plugin.Log.LogError(
                 $"[AP] Location '{displayName}' (ID {locationId}) is not in this slot's location list. ensure the apworld defines it.");
 
         try
@@ -1399,7 +1395,6 @@ public static class APClient
         {
             var data = new PlayerSettingsData { DeathLink = APSettings.DeathLink, UseMinimalistAPLog = APSettings.UseMinimalistAPLog, DebugKeysEnabled = APSettings.DebugKeysEnabled };
             APRunState.WriteTextAtomic(path, JsonConvert.SerializeObject(data, Formatting.Indented));
-            Plugin.Log.LogDebug("[AP] Player settings saved.");
         }
         catch (Exception ex)
         {
@@ -1438,7 +1433,8 @@ public static class APClient
         // Fires synchronously inside StartPolling(), which is called after the
         // WebSocket handshake completes.  Reaching here means the PollingLoop
         // and SendLoop tasks have been started.
-        Plugin.Log.LogInfo("[AP] Socket opened. PollingLoop started.");
+        
+        // Currently a No Op. This could trigger a notification or log message if desired.
     }
 
     private static void APSession_ItemReceived(IReceivedItemsHelper helper)
@@ -1470,7 +1466,7 @@ public static class APClient
 
     private static void APSession_OnMessageReceived(LogMessage message)
     {
-        Plugin.Log.LogInfo($"[AP] {message}");
+        Plugin.Log.LogMessage($"[AP] {message}");
         // TODO: Surface this in an in-game console / chat overlay.
     }
 

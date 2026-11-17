@@ -44,6 +44,5 @@ public class APBoolOptionItem : SelectionListOptionItem
     {
         bool value = m_selectedIndex == 0;
         Setter?.Invoke(value);
-        Plugin.Log.LogDebug($"[APSettings] {SettingName} = {value}");
     }
 }

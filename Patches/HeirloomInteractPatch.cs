@@ -70,7 +70,7 @@ internal static class HeirloomInteractPatch
         var locationId = LocationRegistry.FromHeirloomType(__instance.HeirloomType);
         if (locationId is null) return true;
 
-        Plugin.Log.LogInfo($"Checking if heirloom room {__instance.HeirloomType} is complete for location ID {locationId.Value}. Room complete = {APClient.RunState.CheckedLocations.Contains(locationId.Value)}");
+        Plugin.Log.LogDebug($"Checking if heirloom room {__instance.HeirloomType} is complete for location ID {locationId.Value}. Room complete = {APClient.RunState.CheckedLocations.Contains(locationId.Value)}");
         return APClient.RunState.CheckedLocations.Contains(locationId.Value);
     }
 

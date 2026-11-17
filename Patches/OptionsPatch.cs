@@ -135,7 +135,7 @@ internal static class OptionsPatch
         itemList.Insert(0, apItem);
         itemListTraverse.Value = itemList;
 
-        Plugin.Log.LogInfo("[OptionsPatch] Archipelago Settings button injected into options menu.");
+        Plugin.Log.LogDebug("[OptionsPatch] Archipelago Settings button injected into options menu.");
     }
 
     // Wires the controller's private UpdateSelectedOptionItem and PlaySelectedSFX
