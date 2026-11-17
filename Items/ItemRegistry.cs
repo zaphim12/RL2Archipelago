@@ -14,7 +14,10 @@ namespace RL2Archipelago.Items;
 /// </summary>
 public static class ItemRegistry
 {
-    public const long BASE_ID = 0xBEEF0000L;
+    /// <summary>
+    /// Shared base offset with <c>apworld/rogue_legacy_2/items.py</c>.
+    /// </summary>
+    public const long BASE_ID = 0x0BEEF000L;
 
     private const long HEIRLOOM_OFFSET   = 0x300;
     private const long BLUEPRINT_OFFSET  = 0x400;

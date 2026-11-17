@@ -17,7 +17,7 @@ public static class LocationRegistry
     /// <c>BASE_ID + category offset + index</c>, which keeps IDs readable in
     /// logs and leaves room to grow each category without renumbering.
     /// </summary>
-    public const long BASE_ID = 0xBEEF0000L;
+    public const long BASE_ID = 0x0BEEF000L;
 
     private const long BOSS_KILL_OFFSET     = 0x100;
     private const long MINIBOSS_KILL_OFFSET = 0x200;

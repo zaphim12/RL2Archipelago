@@ -21,9 +21,8 @@ from .constants import (
     TELEPORTER_NAMES,
 )
 
-# All item IDs are offset from this base.
-# TODO: Register an official base ID with the Archipelago project before publishing.
-BASE_ID = 0xBEEF0000
+# All item and location IDs are offset from this base.
+BASE_ID = 0x0BEEF000
 
 HEIRLOOM_OFFSET   = 0x300
 BLUEPRINT_OFFSET  = 0x400
