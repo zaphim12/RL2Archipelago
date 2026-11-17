@@ -31,6 +31,20 @@ internal static class TrapManager
 
     // ── Public API ──────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Whether <paramref name="burdenType"/> is currently active. Lets callers skip a redundant
+    /// <see cref="ActivateTrap"/> (which is idempotent, but re-pools projectiles on every call).
+    /// </summary>
+    internal static bool IsTrapActive(BurdenType burdenType) => burdenType switch
+    {
+        BurdenType.BridgeBiomeUp => CannonballRainActive,
+        BurdenType.TowerBiomeUp  => DragonLancersActive,
+        BurdenType.ForestBiomeUp => GiantSnowflakesActive,
+        BurdenType.CaveBiomeUp   => AutomatonSwarmActive,
+        BurdenType.StudyBiomeUp  => VoidWavesActive,
+        _ => false,
+    };
+
     internal static void ActivateTrap(BurdenType burdenType)
     {
         switch (burdenType)

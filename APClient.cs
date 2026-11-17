@@ -4,12 +4,12 @@ using Archipelago.MultiClient.Net.Enums;
 using Archipelago.MultiClient.Net.Helpers;
 using Archipelago.MultiClient.Net.MessageLog.Messages;
 using Archipelago.MultiClient.Net.Models;
-using HarmonyLib;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RL2Archipelago.Items;
 using RL2Archipelago.Locations;
 using RL2Archipelago.Patches;
+using RL2Archipelago.Save;
 using RL2Archipelago.Traps;
 using RL2Archipelago.UI;
 using System;
@@ -55,10 +55,10 @@ public static class APClient
     public static bool IsSessionActive => ConnectionState != APConnectionState.Disconnected;
 
     /// <summary>True while an AP session's save directory is active; controls the SaveFileSystem path redirect.</summary>
-    public static bool APSaveActive { get; private set; }
+    public static bool APSaveActive => APSaveRedirect.APSaveActive;
 
     /// <summary>Sanitized "{RoomId}_{SlotName}" used as the save subdirectory name.</summary>
-    public static string APSaveDirectoryName { get; private set; }
+    public static string APSaveDirectoryName => APSaveRedirect.APSaveDirectoryName;
 
     /// <summary>Persistent state for the active run: checked locations, received items, etc.</summary>
     public static APRunState RunState { get; private set; }
@@ -110,8 +110,9 @@ public static class APClient
     /// <summary>
     /// True once the Knight Class item has been received from the multiworld.
     /// When false (and RandomizeStartingClass is on), Knight is excluded from available heirs.
+    /// Written by <see cref="APItemReconciler"/>, which owns applying received items.
     /// </summary>
-    public static bool KnightClassReceived { get; private set; } = false;
+    public static bool KnightClassReceived { get; internal set; } = false;
 
     /// <summary>
     /// Pre-computed gold costs for each manor upgrade slot, keyed by <see cref="SkillTreeType"/>.
@@ -136,9 +137,6 @@ public static class APClient
     private static string _pendingDeathSource;
     private static string _pendingDeathCause;
 
-    // Profile slot that was active before AP mode was entered; restored on disconnect.
-    private static byte _previousProfile;
-
     /// <summary>Fired on the main thread after a successful login.</summary>
     public static event Action<ArchipelagoSession> OnSessionOpened;
 
@@ -151,6 +149,7 @@ public static class APClient
     // the ItemInfo we dequeue, which lives on the websocket thread.
     private struct PendingItem
     {
+        public int Generation;
         public int Index;
         public long ItemId;
         public string ItemDisplayName;
@@ -164,17 +163,47 @@ public static class APClient
     // given location. Cleared on disconnect.
     private static readonly ConcurrentDictionary<long, ScoutedItemInfo> _scoutedItems = new();
 
-    // Tracks the next item index to assign. Reset to 0 on each connect because
-    // AllItems causes the server to replay from index 0 on every reconnect.
-    // Tracked locally because the server's index stores the total number of items,
-    // not the index of the item's being received. So when receiving items after a reconnect,
-    // the server's index will be higher than the index of the item being received until we catch up.
+    // Sequence number stamped on queued items, for log ordering only. Reset on every (re)connect
+    // because AllItems makes the server replay from the start each time.
     private static int _nextItemIndex = 0;
 
-    // Trap state lives only in memory, so it's lost on game restart. This flag
-    // gates a one-time restore of RunState.ActiveTraps on the first ProcessPendingItems
-    // tick after entering a game; reset on each Connect so a fresh session restores correctly.
-    private static bool _trapsRestored = false;
+    // How many copies of each item ID the current connection has seen. The server replays everything
+    // on every connect, so this is what distinguishes "a replay of an item we already know about"
+    // from "a genuinely new item": anything at or below RunState.ReceivedItemCounts is a replay.
+    //
+    // Only ever touched on the main thread, in DrainReceivedItems.
+    private static readonly Dictionary<long, int> _replayCounts = new();
+
+    // Bumped once per (re)connect, and stamped on every queued item. The main thread uses it to tell
+    // the current replay apart from items left over from a previous session, and to know when to
+    // reset _replayCounts.
+    //
+    // This exists instead of having the connect path clear _replayCounts and the queue directly:
+    // WirePostLogin also runs on the background reconnect worker, so doing that would race the
+    // main-thread drain on a plain Dictionary. A stamp is written by one thread and only read by the
+    // other, so there is nothing to race.
+    private static volatile int _connectionGeneration;
+
+    // Generation whose replay the main thread is currently counting.
+    private static int _drainedGeneration = -1;
+
+    // Set when the ledger gains an entry (or the starting class is recorded), so the next tick runs a
+    // reconcile pass. Keeps the steady-state cost of ProcessPendingItems to a couple of bool checks.
+    // Volatile because WirePostLogin may set it from the reconnect worker.
+    private static volatile bool _ledgerDirty;
+
+    // Last observed value of APItemReconciler.CanApplyWorldEffects, so the transition into a built
+    // world can trigger the pass that applies effects needing live objects (traps, gold, heirlooms).
+    private static bool _worldEffectsReady;
+
+    // Debounce for the forced profile save issued after item effects are applied.
+    private static float _lastForcedSaveTime = float.NegativeInfinity;
+    private const float ForcedSaveDebounceSeconds = 2f;
+
+    // Budget for re-running a reconcile pass that reported a failure, so a permanently broken item
+    // cannot re-run (and re-log) the pass every frame. Refilled on any clean pass.
+    private const int MaxReconcileRetries = 10;
+    private static int _reconcileRetriesLeft = MaxReconcileRetries;
 
     // ── Connection lifecycle / auto-reconnect ───────────────────────────────────
 
@@ -306,18 +335,18 @@ public static class APClient
                 $"Connected! Room: {Session.RoomState.Seed}  " +
                 $"Slot data keys: {string.Join(", ", SlotData.Keys)}");
 
-            // Redirect all save I/O to a directory scoped to this room + slot.
-            _previousProfile = SaveManager.ConfigData.CurrentProfile;
-            APSaveDirectoryName = SanitizeDirectoryName($"{connData.RoomId}_{connData.SlotName}");
-            APSaveActive = true;
-            SaveManager.ConfigData.CurrentProfile = 0;
-            EnsureRedirectedSaveDirectories();
-            SaveManager.LoadCurrentProfileData();
-            Plugin.Log.LogInfo($"[AP] Save redirected to AP_Saves/{APSaveDirectoryName}");
-
-            // Load any prior run state (checked locations, etc.) for this seed+slot.
-            RunState = APRunState.Load(APSaveDirectoryName);
-            _trapsRestored = false;
+            // Redirect all save I/O to a directory scoped to this room + slot, load this seed's run
+            // state, and verify the redirected profile actually loaded. A refusal here means the save
+            // is corrupt or has gone missing: the redirect is already rolled back (or handed to the
+            // game's backup prompt), and continuing would quietly overwrite whatever is left of it.
+            if (!APSaveRedirect.TryActivate(connData, out var runState, out var saveError))
+            {
+                Plugin.Log.LogError($"[AP] Refusing to connect: {saveError}");
+                TearDownSession();
+                onFailure?.Invoke(saveError);
+                return;
+            }
+            RunState = runState;
 
             RandomizeStartingClass = SlotData.TryGetValue("randomize_starting_class", out var rscObj)
                 && Convert.ToInt32(rscObj) != 0;
@@ -335,6 +364,13 @@ public static class APClient
             //    same helper after re-establishing a session. ──
             WirePostLogin();
 
+            // Reconcile before the player can press Start. WirePostLogin has just queued the
+            // server's full item replay, so this is where a save that lost ground gets repaired:
+            // every manor level, blueprint, rune, heirloom and teleporter is set back to the
+            // absolute state the multiworld says this slot is owed, and the result is forced to disk.
+            _ledgerDirty = true;
+            ProcessPendingItems();
+
             // Fire the session-opened event and the caller's success callback on
             // the main thread.  We're already on the main thread here (called from UI),
             // so invoke directly.
@@ -344,9 +380,37 @@ public static class APClient
         catch (Exception ex)
         {
             Plugin.Log.LogError($"AP connection threw an exception:\n{ex.Message}\n{ex.StackTrace}");
-            Session = null;
+
+            // The redirect may already be live (TryActivate succeeded and something later threw).
+            // Leaving it active with no session would send every subsequent vanilla save into this
+            // seed's folder, silently.
+            APSaveRedirect.Rollback(restoreSnapshot: true);
+            RunState = null;
+            TearDownSession();
             onFailure?.Invoke(ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Drops a half-established session without touching the save redirect or run state. Used on the
+    /// connect failure paths, where <see cref="APSaveRedirect"/> has already decided what happens to
+    /// the save side.
+    /// </summary>
+    private static void TearDownSession()
+    {
+        ConnectionState = APConnectionState.Disconnected;
+        DetachAndAbort(Session);
+        Session = null;
+
+        // No session means the reconnect worker has nothing to reconnect to.
+        _activeConnData = null;
+
+        DrainPendingItemQueue();
+        _replayCounts.Clear();
+        _nextItemIndex = 0;
+        _ledgerDirty = false;
+        _worldEffectsReady = false;
+        _reconcileRetriesLeft = MaxReconcileRetries;
     }
 
     /// <summary>
@@ -435,9 +499,17 @@ public static class APClient
     /// </summary>
     private static void WirePostLogin()
     {
-        // Reset the index BEFORE wiring/draining so concurrently-arriving items get
-        // correct indices. AllItems replays from index 0 on every (re)connect; the
-        // GrantedItemCount guard in ProcessPendingItems skips already-applied items.
+        // Each item in _pendingItems is stamped with a connectionGeneration number, representing
+        // how many times the client has established a connection to an AP world in the current game
+        // session. This way, if a previous session's items are still in the queue when we reconnect, 
+        // the main thread can tell them apart and discard the old ones. 
+        //
+        // Disconnect() and TearDownSession() already empty the queue, so this is not the primary
+        // defence against a previous session's items being applied to this one. What it catches is
+        // the case a drain cannot: the outgoing session's socket thread can be partway through
+        // APSession_ItemReceived when we detach it, and enqueue after the drain has run. Those items
+        // carry the old stamp and are discarded.
+        Interlocked.Increment(ref _connectionGeneration);
         _nextItemIndex = 0;
 
         Session.Items.ItemReceived += APSession_ItemReceived;
@@ -482,7 +554,19 @@ public static class APClient
         // pedestals) can show the item that will drop there.
         ScoutTrackedLocations();
 
+        // The replay queued above has to be reconciled; the next tick picks it up.
+        _ledgerDirty = true;
+
         ConnectionState = APConnectionState.Connected;
+    }
+
+    /// <summary>
+    /// Empties the pending-item queue. <c>ConcurrentQueue&lt;T&gt;.Clear()</c> does not exist on the
+    /// .NET Framework target, hence the dequeue loop.
+    /// </summary>
+    private static void DrainPendingItemQueue()
+    {
+        while (_pendingItems.TryDequeue(out _)) { }
     }
 
     private static void APSession_SocketClosed(string reason) => HandleConnectionDropped(reason);
@@ -623,6 +707,18 @@ public static class APClient
         if (Session == null && RunState == null && ConnectionState == APConnectionState.Disconnected)
             return;
 
+        // Rolling back the save redirect swaps the in-memory profile out from under a live run: the
+        // vanilla profile would be loaded over it and every later save would write to the wrong tree,
+        // damaging both profiles. No UI reaches this today (the Archipelago button is main-menu only),
+        // so refusing is safe and cannot strand anyone.
+        if (manual && IsInGame)
+        {
+            Plugin.Log.LogError(
+                "[AP] Refusing to disconnect during an active run - that would swap the save profile " +
+                "mid-game. Return to the main menu first.");
+            return;
+        }
+
         // Latch this first so the reconnect worker / SocketClosed handler stand down.
         _intentionalDisconnect = true;
         ConnectionState = APConnectionState.Disconnected;
@@ -658,20 +754,23 @@ public static class APClient
         KnightClassReceived = false;
         RevealManorUpgrades = false;
 
-        // Deactivate the save redirect before restoring the vanilla profile so
-        // LoadCurrentProfileData reads from the original paths.
-        if (APSaveActive)
-        {
-            APSaveActive = false;
-            SaveManager.ConfigData.CurrentProfile = _previousProfile;
-            // Force the game to re-verify its save directories against the now-restored vanilla path
-            // on the next save, mirroring what we do on connect. Guards against the reverse of the
-            // AP-save-directory bug (solved via EnsureRedirectedSaveDirectories())
-            // for a session that connected before any vanilla save occurred.
-            ResetSaveDirectoryCheck();
-            SaveManager.LoadCurrentProfileData();
-            Plugin.Log.LogInfo("[AP] Save redirect deactivated; vanilla profile restored.");
-        }
+        // Put the vanilla save path, profile and backup cache back. Skipped while save recovery is
+        // underway: that flow deliberately keeps the redirect live so the game's own backup window
+        // operates on this seed's folder, and tears it down itself when the player is finished.
+        if (!APSaveRecovery.InProgress)
+            APSaveRedirect.Rollback(restoreSnapshot: false);
+
+        DrainPendingItemQueue();
+        _replayCounts.Clear();
+        _nextItemIndex = 0;
+        _ledgerDirty = false;
+        _worldEffectsReady = false;
+        _reconcileRetriesLeft = MaxReconcileRetries;
+        _lastForcedSaveTime = float.NegativeInfinity;
+
+        // Trap state lives in static flags, so without this an AP trap would keep firing in a
+        // subsequent vanilla session.
+        TrapManager.ClearAllTraps();
 
         APNotifications.Reset();
         _scoutedItems.Clear();
@@ -687,75 +786,6 @@ public static class APClient
         Plugin.Log.LogInfo("Disconnected from AP server.");
     }
 
-    /// <summary>
-    /// Replaces invalid filename chars in the given name with underscores. TODO: Determine if this is necessary
-    /// </summary>
-    /// <param name="name">Directory name which will be sanitized</param>
-    /// <returns>The sanitized directory name</returns>
-    private static string SanitizeDirectoryName(string name)
-    {
-        foreach (char c in Path.GetInvalidFileNameChars())
-            name = name.Replace(c, '_');
-        return name;
-    }
-
-    /// <summary>
-    /// Ensures the game's save directory tree exists under the active AP save redirect.
-    ///
-    /// RL2 builds its save directories only once per session, guarded by SaveManager's private
-    /// <c>m_checkedForSaveDirectories</c> flag. If anything triggered a save before the player
-    /// connected (an autosave, or changing a config option), that flag is consumed against the
-    /// vanilla save path. Once we redirect <see cref="SaveFileSystem.PersistentDataPath"/> to
-    /// <c>AP_Saves/{dir}</c>, the game then never creates that redirected tree:
-    ///   - game saves (<c>SaveGameData</c>) fail silently, because <c>CreateSaveFile</c> swallows
-    ///     the IO exception, so the player's run progress quietly never reaches disk; and
-    ///   - <c>SaveConfigFile</c> re-throws on menu close, and that exception propagates out of
-    ///     <c>SuboptionsWindowController.OnClose</c> before the window is removed, leaving the
-    ///     options submenu permanently unclosable (force-close is the only escape, losing the
-    ///     unsaved run).
-    ///
-    /// We fix both by (1) creating the config directory immediately so the very next config save
-    /// can't throw, and (2) clearing the one-time flag so the game rebuilds its full profile and
-    /// backup tree under the redirected path on the next save.
-    /// </summary>
-    private static void EnsureRedirectedSaveDirectories()
-    {
-        try
-        {
-            // (1) Immediately create the directory GameConfig.ini lives in so that backing out of
-            //     a settings submenu (which calls SaveConfigFile) can't throw before any other
-            //     save has had a chance to create it.
-            var configDir = Path.GetDirectoryName(SaveManager.GetConfigPath());
-            if (!string.IsNullOrEmpty(configDir))
-                Directory.CreateDirectory(configDir);
-
-            // (2) Clear SaveManager's one-time directory-check flag so its own
-            //     CreateSaveDirectoriesIfNeeded() rebuilds the full profile/backup tree under the
-            //     redirected path on the next save. This also restores reliable run saves.
-            ResetSaveDirectoryCheck();
-
-            Plugin.Log.LogInfo("[AP] Ensured redirected save directories exist.");
-        }
-        catch (Exception ex)
-        {
-            Plugin.Log.LogError($"[AP] Failed to ensure redirected save directories: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Clears SaveManager's private <c>m_checkedForSaveDirectories</c> flag so the game rebuilds
-    /// its save directory tree against the current <see cref="SaveFileSystem.PersistentDataPath"/>
-    /// on the next save. Called whenever the save path changes (connect and disconnect) so neither
-    /// the redirected AP tree nor the vanilla tree can be left uncreated for the active path.
-    /// </summary>
-    private static void ResetSaveDirectoryCheck()
-    {
-        var instance = Traverse.Create(typeof(SaveManager)).Field("m_instance").GetValue();
-        if (instance != null)
-            Traverse.Create(instance).Field("m_checkedForSaveDirectories").SetValue(false);
-        else
-            Plugin.Log.LogWarning("[AP] Could not access SaveManager instance to reset the save-directory flag.");
-    }
 
     /// <summary>
     /// Reports a completed location check to the Archipelago server.
@@ -1079,10 +1109,13 @@ public static class APClient
 
         // ManorSlots[44] = index 1 (Boxer), …, ManorSlots[57] = index 14 (Dragon Lancer).
         var slot = GameConstants.ManorSlots[43 + StartingClassIndex];
-        SkillTreeManager.SetSkillObjLevel(slot.SkillTree, ManorUpgradeBundleSize, additive: false, runEvents: false);
-        Plugin.Log.LogInfo($"[AP] Starting class applied: {slot.ItemName}");
+
+        RunState.StartingClassSkill = slot.SkillTree.ToString();
         RunState.StartingClassApplied = true;
         RunState.Save(APSaveDirectoryName);
+        _ledgerDirty = true;
+
+        Plugin.Log.LogInfo($"[AP] Starting class recorded: {slot.ItemName}");
     }
 
     /// <summary>
@@ -1104,47 +1137,201 @@ public static class APClient
     }
 
     /// <summary>
-    /// Called from <see cref="Plugin.Update"/> each frame to drain any item IDs
-    /// received on the AP websocket thread and apply them to game state.
+    /// Main-thread item pump, called every frame from the dispatch patch and once directly from
+    /// <see cref="Connect"/>. Two separate jobs:
+    ///
+    /// <list type="number">
+    /// <item><b>Record</b> what the server has sent into <see cref="APRunState.ReceivedItemCounts"/>.
+    /// Deliberately ungated by <see cref="IsInGame"/>: the connect-time reconcile needs the ledger
+    /// populated before the player can press Start, which is where a damaged save gets repaired.</item>
+    /// <item><b>Apply</b> it, by asking <see cref="APItemReconciler"/> to raise anything in the save
+    /// that falls short of what the ledger says is owed.</item>
+    /// </list>
+    ///
+    /// <para>Splitting the two is the whole point. Recording is never conditional on an apply
+    /// succeeding, and applying is an idempotent absolute set that is retried on the next pass - so
+    /// an item can no longer be lost by failing to apply once, which is what the old
+    /// grant-once-then-advance-the-watermark design did on any exception.</para>
     /// </summary>
     public static void ProcessPendingItems()
     {
-        if (!IsInGame) return;
+        var runState = RunState;
+        if (runState == null) return;
 
-        if (!_trapsRestored && RunState != null)
+        DrainReceivedItems(runState);
+
+        if (!APItemReconciler.CanApplySaveData) return;
+
+        if (RandomizeStartingClass && !runState.StartingClassApplied)
+            ApplyStartingClass();
+
+        bool worldReady = APItemReconciler.CanApplyWorldEffects;
+        bool worldJustBecameReady = worldReady && !_worldEffectsReady;
+        _worldEffectsReady = worldReady;
+
+        bool changed = false;
+
+        // Reconcile when the ledger moved, or when the world has just finished building and effects
+        // that need live objects (traps, ability refresh) can finally be applied.
+        if (_ledgerDirty || worldJustBecameReady)
         {
-            foreach (var trap in RunState.ActiveTraps)
-                TrapManager.ActivateTrap(trap);
-            _trapsRestored = true;
+            _ledgerDirty = false;
+            changed = RunReconcilePass();
         }
 
-        if (RandomizeStartingClass && RunState != null && !RunState.StartingClassApplied)
-            ApplyStartingClass();
+        if (worldReady)
+            changed |= ApplyPendingGold(runState);
+
+        if (changed)
+            RequestProfileSave();
+    }
+
+    /// <summary>
+    /// Runs one reconcile pass and decides whether to try again next tick.
+    ///
+    /// <para>A pass that reports a failure is re-armed, because the usual cause is transient state
+    /// that will be fine a frame later. The retry budget stops a genuinely broken item from re-running
+    /// (and re-logging) the pass every frame forever; a new item or a world transition re-arms it
+    /// regardless, so nothing is permanently abandoned.</para>
+    /// </summary>
+    private static bool RunReconcilePass()
+    {
+        ReconcileResult result;
+        try
+        {
+            result = APItemReconciler.Reconcile();
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.LogError($"[APSync] Reconcile pass threw: {ex}");
+            RearmAfterFailure();
+            return false;
+        }
+
+        if (result.AnyFailure)
+            RearmAfterFailure();
+        else
+            _reconcileRetriesLeft = MaxReconcileRetries;
+
+        // Some effects live only in the run state (the Knight Class unlock). Without this they would
+        // be set in memory, never written, and re-applied on every single connect.
+        if (result.RunStateChanged && RunState != null)
+            RunState.Save(APSaveDirectoryName);
+
+        return result.ChangedSaveData;
+    }
+
+    private static void RearmAfterFailure()
+    {
+        if (_reconcileRetriesLeft <= 0)
+        {
+            Plugin.Log.LogWarning(
+                "[APSync] Giving up on retrying the reconcile pass for now; it will run again when a " +
+                "new item arrives or the world reloads.");
+            return;
+        }
+
+        _reconcileRetriesLeft--;
+        _ledgerDirty = true;
+    }
+
+    /// <summary>
+    /// Moves everything the websocket thread queued into the run state's ledger. The server replays
+    /// every item on each connect, so a dequeued item only counts as new when this connection has now
+    /// seen more copies of that ID than the ledger already records.
+    /// </summary>
+    private static void DrainReceivedItems(APRunState runState)
+    {
+        bool dirty = false;
+        int generation = _connectionGeneration;
 
         while (_pendingItems.TryDequeue(out var pending))
         {
-            if (RunState != null && pending.Index < RunState.GrantedItemCount)
+            // Left over from an earlier session (possibly a different seed entirely).
+            if (pending.Generation != generation) continue;
+
+            // First item of a new connection: start counting this replay from scratch.
+            if (_drainedGeneration != generation)
             {
-                var skippedName = ItemRegistry.Names.TryGetValue(pending.ItemId, out var sn) ? sn : pending.ItemId.ToString();
-                Plugin.Log.LogDebug($"[AP] Skipping already-granted item '{skippedName}' at index {pending.Index}");
-                continue;
+                _drainedGeneration = generation;
+                _replayCounts.Clear();
             }
 
-            try
-            {
-                GrantItem(pending.ItemId);
-                EnqueueReceiveNotification(pending);
-            }
-            catch (Exception ex)
-            {
-                Plugin.Log.LogError($"[AP] Exception granting item {pending.ItemId}: {ex.Message}\n{ex.StackTrace}");
-            }
+            _replayCounts.TryGetValue(pending.ItemId, out int seen);
+            _replayCounts[pending.ItemId] = ++seen;
 
-            if (RunState != null)
-            {
-                RunState.GrantedItemCount = Math.Max(RunState.GrantedItemCount, pending.Index + 1);
-                RunState.Save(APSaveDirectoryName);
-            }
+            if (seen <= runState.ReceivedCount(pending.ItemId))
+                continue; // replay of an item already on record
+
+            runState.ReceivedItemCounts[pending.ItemId] = seen;
+            dirty = true;
+
+            // Traps are per-life rather than cumulative (PlayerDeathPatch clears them on death), so a
+            // newly received one is latched here instead of being derived from the received ledger -
+            // reconciling against that would resurrect every trap the player had ever been sent.
+            var trap = ItemRegistry.ToTrapBurdenType(pending.ItemId);
+            if (trap.HasValue)
+                runState.ActiveTraps.Add(trap.Value);
+
+            EnqueueReceiveNotification(pending);
+        }
+
+        if (!dirty) return;
+
+        runState.Save(APSaveDirectoryName);
+        _ledgerDirty = true;
+    }
+
+    /// <summary>
+    /// Grants any gold the ledger says has arrived but that has not been applied yet, one ordinal at
+    /// a time. Gold is the only consumable the mod hands out, so it cannot be reconciled by reading
+    /// the save back - a spent coin is indistinguishable from a lost one. An ordinal is promoted only
+    /// once its grant actually succeeds, so a grant attempted too early is retried rather than lost.
+    /// </summary>
+    private static bool ApplyPendingGold(APRunState runState)
+    {
+        int received = runState.ReceivedCount(ItemRegistry.GoldCoins);
+        int applied = runState.AppliedCount(ItemRegistry.GoldCoins);
+        if (applied >= received) return false;
+
+        bool granted = false;
+        for (int ordinal = applied; ordinal < received; ordinal++)
+        {
+            if (!GoldCoinsPatch.TryGrant(APSaveDirectoryName, ordinal))
+                break; // not ready; leave the ordinal unapplied and retry on a later tick
+
+            runState.AppliedItemCounts[ItemRegistry.GoldCoins] = ordinal + 1;
+            granted = true;
+        }
+
+        if (granted)
+            runState.Save(APSaveDirectoryName);
+
+        return granted;
+    }
+
+    /// <summary>
+    /// Forces the profile to disk after item effects were applied, so the window in which the ledger
+    /// is ahead of the game save stays small. Debounced, because a reconcile pass can correct many
+    /// items at once.
+    ///
+    /// <para><c>saveStageData: false</c> is deliberate: <c>SaveGameData</c> refuses to write Stage
+    /// data outside the World scene and would only log about it.</para>
+    /// </summary>
+    private static void RequestProfileSave()
+    {
+        if (UnityEngine.Time.unscaledTime < _lastForcedSaveTime + ForcedSaveDebounceSeconds) return;
+        _lastForcedSaveTime = UnityEngine.Time.unscaledTime;
+
+        try
+        {
+            SaveManager.SaveAllCurrentProfileGameData(
+                SavingType.FileOnly, saveStageData: false, ignoreTimeRestriction: true);
+            Plugin.Log.LogDebug("[APSync] Forced a profile save after applying item effects.");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.LogError($"[APSync] Forced profile save failed: {ex.Message}");
         }
     }
 
@@ -1173,85 +1360,6 @@ public static class APClient
             critical: isTrap || ItemRegistry.ToHeirloomType(pending.ItemId).HasValue);
     }
 
-    private static void GrantItem(long itemId)
-    {
-        var displayName = ItemRegistry.Names.TryGetValue(itemId, out var n) ? n : itemId.ToString();
-
-        var heirloomType = ItemRegistry.ToHeirloomType(itemId);
-        if (heirloomType.HasValue)
-        {
-            SaveManager.PlayerSaveData.SetHeirloomLevel(heirloomType.Value, 1, additive: false, broadcast: false);
-            PlayerManager.GetPlayerController()?.InitializeAbilities();
-            Plugin.Log.LogInfo($"[AP] Granted heirloom: {displayName}");
-            return;
-        }
-
-        var equipBlueprint = ItemRegistry.ToEquipmentBlueprint(itemId);
-        if (equipBlueprint.HasValue)
-        {
-            var (cat, equip) = equipBlueprint.Value;
-            if (EquipmentManager.GetFoundState(cat, equip) == FoundState.NotFound)
-                EquipmentManager.SetFoundState(cat, equip, FoundState.FoundButNotViewed, overrideValues: false);
-            else
-                EquipmentManager.SetUpgradeBlueprintsFound(cat, equip, 1, additive: true);
-            Plugin.Log.LogInfo($"[AP] Granted blueprint: {displayName}");
-            return;
-        }
-
-        var runeType = ItemRegistry.ToRuneType(itemId);
-        if (runeType.HasValue)
-        {
-            RuneManager.SetUpgradeBlueprintsFound(runeType.Value, 1, additive: true);
-            Plugin.Log.LogInfo($"[AP] Granted rune blueprint: {displayName}");
-            return;
-        }
-
-        if (itemId == ItemRegistry.KnightClassItem)
-        {
-            RunState.KnightClassReceived = true;
-            KnightClassReceived = true;
-            RunState.Save(APSaveDirectoryName);
-            Plugin.Log.LogInfo($"[AP] Knight Class unlocked.");
-            return;
-        }
-
-        var skillTreeType = ItemRegistry.ToSkillTreeType(itemId);
-        if (skillTreeType.HasValue)
-        {
-            // 'runEvents: false' prevents UnlockConnectedSkillSlots from revealing adjacent
-            // manor slots prematurely. Adjacent slots should only become visible when the
-            // player physically purchases the prerequisite slot in the manor (location check),
-            // not when the corresponding AP item arrives from the multiworld.
-            SkillTreeManager.SetSkillObjLevel(skillTreeType.Value, ManorUpgradeBundleSize, additive: true, runEvents: false);
-            Plugin.Log.LogInfo($"[AP] Granted manor upgrade: {displayName} (+{ManorUpgradeBundleSize} levels)");
-            return;
-        }
-
-        var teleporterBiome = ItemRegistry.ToTeleporterBiomeType(itemId);
-        if (teleporterBiome.HasValue)
-        {
-            SaveManager.PlayerSaveData.SetTeleporterIsUnlocked(teleporterBiome.Value, state: true);
-            Plugin.Log.LogInfo($"[AP] Granted teleporter unlock: {displayName}");
-            return;
-        }
-
-        if (itemId == ItemRegistry.GoldCoins)
-        {
-            GoldCoinsPatch.Grant();
-            return;
-        }
-
-        var trapBurden = ItemRegistry.ToTrapBurdenType(itemId);
-        if (trapBurden.HasValue)
-        {
-            TrapManager.ActivateTrap(trapBurden.Value);
-            RunState?.ActiveTraps.Add(trapBurden.Value);
-            Plugin.Log.LogInfo($"[AP] Activated trap: {displayName}");
-            return;
-        }
-
-        Plugin.Log.LogWarning($"[AP] No handler for item '{displayName}' (ID {itemId}). ignoring.");
-    }
 
     // ── Player settings (per-seed persistence) ───────────────────────────────
 
@@ -1350,6 +1458,7 @@ public static class APClient
 
             _pendingItems.Enqueue(new PendingItem
             {
+                Generation = _connectionGeneration,
                 Index = itemIndex,
                 ItemId = item.ItemId,
                 ItemDisplayName = item.ItemDisplayName ?? item.ItemName,

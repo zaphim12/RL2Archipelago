@@ -45,6 +45,19 @@ internal static class ManorUpgradePatch
 
     private static readonly Dictionary<SkillTreeType, int> s_savedLevels = new();
 
+    /// <summary>
+    /// True while a remap is in flight, i.e. while some slots hold a fake level for presentation.
+    /// <see cref="Items.APItemReconciler"/> gates on this: it derives absolute manor levels from the
+    /// item ledger, and reading a fake level would make it "correct" the real one.
+    ///
+    /// <para>In practice the prefix/finalizer pairs below are synchronous within a single vanilla
+    /// call, so the mod's per-frame tick cannot land in the middle. This is structural insurance, as
+    /// is the use of finalizers rather than postfixes - if the vanilla body throws, a postfix would
+    /// not run, the fake levels would be left in place, and the next prefix's
+    /// <c>s_savedLevels.Clear()</c> would make them permanent.</para>
+    /// </summary>
+    internal static bool IsRemappingLevels => s_savedLevels.Count > 0 || s_animParamSavedLevel != -1;
+
     /// <summary>A slot the base game never reveals under any circumstance. Written as an
     /// explicit null test rather than <c>?.</c> because SkillTreeData is a UnityEngine.Object,
     /// whose overloaded <c>==</c> is the only thing that reports a destroyed asset as null.</summary>
@@ -103,13 +116,23 @@ internal static class ManorUpgradePatch
         }
     }
 
-    [HarmonyPostfix]
+    /// <summary>
+    /// A finalizer, not a postfix: it must put the real levels back even if the vanilla body threw.
+    /// Returning void leaves any original exception to propagate untouched.
+    /// </summary>
+    [HarmonyFinalizer]
     [HarmonyPatch(typeof(SkillTreeWindowController), "Initialize")]
-    private static void Initialize_Postfix(SkillTreeWindowController __instance)
+    private static void Initialize_Finalizer(SkillTreeWindowController __instance)
     {
-        foreach (var kv in s_savedLevels)
-            SkillTreeManager.SetSkillObjLevel(kv.Key, kv.Value, additive: false, runEvents: false);
-        s_savedLevels.Clear();
+        try
+        {
+            foreach (var kv in s_savedLevels)
+                SkillTreeManager.SetSkillObjLevel(kv.Key, kv.Value, additive: false, runEvents: false);
+        }
+        finally
+        {
+            s_savedLevels.Clear();
+        }
 
         BuildUnlockGraph(__instance);
     }
@@ -246,13 +269,20 @@ internal static class ManorUpgradePatch
         }
     }
 
-    [HarmonyPostfix]
+    /// <summary>Finalizer rather than postfix, for the reason given on <see cref="IsRemappingLevels"/>.</summary>
+    [HarmonyFinalizer]
     [HarmonyPatch(typeof(SkillTreeSlot), nameof(SkillTreeSlot.UpdateAnimatorParams))]
-    private static void UpdateAnimatorParams_Postfix()
+    private static void UpdateAnimatorParams_Finalizer()
     {
         if (s_animParamSavedLevel == -1) return;
-        SkillTreeManager.SetSkillObjLevel(s_animParamSkillType, s_animParamSavedLevel, additive: false, runEvents: false);
-        s_animParamSavedLevel = -1;
+        try
+        {
+            SkillTreeManager.SetSkillObjLevel(s_animParamSkillType, s_animParamSavedLevel, additive: false, runEvents: false);
+        }
+        finally
+        {
+            s_animParamSavedLevel = -1;
+        }
     }
 
     // ── Purchase replacement ──────────────────────────────────────────────────

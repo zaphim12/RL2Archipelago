@@ -61,7 +61,20 @@ internal static class MenuPatch
         APClient.IsInGame = false;
         if (APClient.IsConnected)
             ApplyConnectedMenuState();
+
+        ApplyProfileButtonVisibility();
     }
+
+    /// <summary>
+    /// Profile switching has to be unavailable for as long as save I/O is redirected - the
+    /// profile-select screen would otherwise be listing (and letting the player create) profiles
+    /// inside the seed folder while presenting them as their real save slots.
+    ///
+    /// <para>Gated on the redirect rather than on the connection, because it also has to hold during
+    /// corrupt-save recovery, which deliberately keeps the redirect live without a session.</para>
+    /// </summary>
+    private static void ApplyProfileButtonVisibility() =>
+        _saveSlotButton?.gameObject.SetActive(!APClient.APSaveActive);
 
     // ── Implementation ─────────────────────────────────────────────────────────
 
@@ -151,13 +164,24 @@ internal static class MenuPatch
         _saveSlotButton = buttonList.Find(b => b.SelectorType == MainMenuButton.MainMenuSelectionType.SelectProfile);
 
         // When the player clicks the start button, they are committing to entering a run.
-        // Flip IsInGame so ProcessPendingItems begins draining the item queue.
+        // Flip IsInGame so item effects that need a live world start being applied.
+        //
+        // Suppressed during save recovery: the redirect is still pointed at a seed folder whose save
+        // could not be loaded, and letting the player into a run would write over the backups that
+        // are the only good copy left.
         if (_startLegacyButton != null)
-            _startLegacyButton.MenuButtonActivated += _ => APClient.IsInGame = true;
+            _startLegacyButton.MenuButtonActivated += _ =>
+            {
+                if (Save.APSaveRecovery.InProgress) return;
+                APClient.IsInGame = true;
+            };
 
         // If already connected (e.g. menu was closed and reopened), apply visuals now.
         if (APClient.IsConnected)
             ApplyConnectedMenuState();
+
+        // Unconditional: the redirect can also be live without a connection, during save recovery.
+        ApplyProfileButtonVisibility();
 
         Plugin.Log.LogInfo("[MenuPatch] Archipelago button injected into main menu.");
     }
@@ -201,8 +225,11 @@ internal static class MenuPatch
         if (_startLegacyButton?.Text != null)
             _startLegacyButton.Text.text = "Play Randomizer";
 
-        // remove the profile select button because we don't want players changing profiles mid-session and causing desyncs; the AP save system will automatically load the correct profile slot on game start
-        _saveSlotButton?.gameObject.SetActive(false);
+        // Hide the profile-select button: players changing profiles mid-session would cause desyncs,
+        // and the AP save system loads the correct profile slot on game start anyway. Driven by
+        // ApplyProfileButtonVisibility so it also covers corrupt-save recovery, where the redirect is
+        // live but there is no connection.
+        ApplyProfileButtonVisibility();
     }
 
     // ── Button click handler ───────────────────────────────────────────────────
@@ -246,6 +273,16 @@ internal static class MenuPatch
             onFailure: errorMsg =>
             {
                 Plugin.Log.LogError($"AP connection failed: {errorMsg}");
+
+                // During save recovery the game raises its own "Save File Error" prompt, which offers
+                // to restore a backup. Re-opening our dialog on top of it (it renders above every
+                // WindowManager window) would hide the only thing that can fix the run.
+                if (Save.APSaveRecovery.InProgress)
+                {
+                    Traverse.Create(controller).Field("m_lockInput").SetValue(false);
+                    return;
+                }
+
                 UI.ConnectionDialog.Show(
                     initialData: connData,
                     onComplete: retry => OnConnectWithData(controller, retry),

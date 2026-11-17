@@ -1,4 +1,5 @@
 using HarmonyLib;
+using RL2Archipelago.Save;
 using System;
 using System.IO;
 
@@ -7,12 +8,17 @@ namespace RL2Archipelago.Patches;
 [HarmonyPatch]
 internal static class APSavePatch
 {
+    /// <summary>
+    /// Scopes every save path to the active seed's folder. This is a blanket redirect on the property
+    /// itself, so it cannot distinguish callers - individual ones are exempted by stripping the
+    /// segment back off their result (see <see cref="APSaveGuardPatches"/>).
+    /// </summary>
     [HarmonyPostfix]
     [HarmonyPatch(typeof(SaveFileSystem), nameof(SaveFileSystem.PersistentDataPath), MethodType.Getter)]
     private static void PersistentDataPath_Postfix(ref string __result)
     {
-        if (APClient.APSaveActive)
-            __result = Path.Combine(__result, "AP_Saves", APClient.APSaveDirectoryName);
+        if (APSaveRedirect.APSaveActive)
+            __result = Path.Combine(__result, APSaveRedirect.RootFolderName, APSaveRedirect.APSaveDirectoryName);
     }
 
     /// <summary>

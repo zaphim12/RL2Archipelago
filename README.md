@@ -247,6 +247,41 @@ Rogue Legacy 2 must already be installed. All files needed can be downloaded fro
      - Use the Archipelago launcher: first install the APWorld via "Install APWorld", then use the "Options Creator" to generate a player YAML.
    - Whoever generates the Archipelago will need to add the `.apworld` to their Archipelago launcher installation.
 
+## Troubleshooting
+
+### "Progress is NOT being saved"
+
+If a red banner reading **`[!] Progress is NOT being saved`** appears in the top-right corner, the game has stopped writing save files. It will keep letting you play, but nothing you do will be saved.
+
+**Stop playing as soon as you see it.** Finishing the run won't help, because your progression will not be saved.
+
+**What you keep:** your Archipelago progress is safe. Checks you've sent and items you've received are tracked by the mod separately from the game's save, and your items are restored automatically the next time you connect.
+
+**What you lose:** anything that lives only in the game's save (gold, your heir lineage, map exploration, equipment upgrades) since the last successful save.
+
+**What to do:**
+
+1. **Quit to desktop.** If you have backups available (one should be created at the start of each heir's run), restarting the game may allow you to recover most or all of your game's progress.
+2. **Re-open the game and connect to the Archipelago world.** The mod re-checks for your save whenever it connects.
+   - **If it connects normally,** the warning can be ignored. Your items are restored automatically, so just carry on.
+   - **If it refuses to connect,** the vanilla game's own **Save File Error** prompt will appear. The dialog will explain how to go about loading a backup or it will inform you that none are available. If you have a backup, choose **Load Backup** and pick the most recent entry, then connect again. Rogue Legacy 2 writes a backup every time you enter the castle, so you will lose at most the run you were on.
+3. **Don't delete anything,** Unless you know what you are doing, manually manipulating save files may lose a run that is potentially recoverable. Feel free to send a message in the discord to ask for help if you need it.
+
+### My items disappeared
+
+Connect to the slot again. On every connect the mod compares what the multiworld says you have been sent against what is actually in your save, and puts back anything missing before you press Start. This should appear as `[APSync] Restored ...` lines in the BepInEx log.
+
+If your items come back but your gold, heirs or map progress are gone, your save was rolled back (usually by a crash). Follow the backup steps above to recover the rest.
+
+### Reporting a problem
+
+Either send a message in the Discord or create an issue on Github.
+Please include:
+
+- `...\Rogue Legacy 2\BepInEx\LogOutput.log` (This is the Rogue Legacy 2 install location, you can Google how to find this for your operating system)
+- A directory listing of your seed's save folder:
+  `...\Cellar Door Games\Rogue Legacy 2\AP_Saves\<RoomId>_<SlotName>\` (This is the location where Rogue Legacy 2 stores your saves, this is different from the above directory. You can Google where to find this for your operating system, as well)
+
 ## Disclaimers
 
 - This mod requires a legitimate copy of Rogue Legacy 2.

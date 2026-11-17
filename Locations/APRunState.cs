@@ -22,11 +22,41 @@ public class APRunState
     public HashSet<long> CheckedLocations { get; set; } = new();
 
     /// <summary>
-    /// Number of AP items that have been successfully granted. Used to skip
-    /// items that were already applied in a previous session. The AP server
-    /// replays all items from index 0 on every reconnect when using AllItems.
+    /// How many copies of each Archipelago item ID this slot has been sent, keyed by item ID.
+    /// This is the run's source of truth for received items and the input to
+    /// <see cref="Items.APItemReconciler"/>, which derives an absolute target state from it.
+    ///
+    /// <para>It replaced an index high-water mark that counted "items already applied". That design
+    /// made this file silently authoritative over the game save: if the <c>.rc2dat</c> files ever lost
+    /// ground (a crash mid-write, a save tree that was never created), every item below the mark was
+    /// skipped forever and the player had no way to get them back. Counts plus absolute targets are
+    /// self-healing instead - the server replays everything on each connect, and the reconciler
+    /// re-derives what the save should contain.</para>
     /// </summary>
-    public int GrantedItemCount { get; set; } = 0;
+    public Dictionary<long, int> ReceivedItemCounts { get; set; } = new();
+
+    /// <summary>
+    /// How many copies of each <em>consumable</em> item have actually been applied. Only gold uses
+    /// this: it is spendable, so a granted amount cannot be read back out of the save and compared
+    /// the way a manor level or a blueprint count can. Everything else is reconciled against the
+    /// game's own state and needs no bookkeeping here.
+    /// </summary>
+    public Dictionary<long, int> AppliedItemCounts { get; set; } = new();
+
+    /// <summary>
+    /// <see cref="SkillTreeType"/> name of the randomized starting class slot, or null. Recorded so
+    /// the reconciler can fold the free starting level into that slot's absolute target; otherwise the
+    /// first manor item for that slot would compute a target that omits it and regress the class.
+    /// </summary>
+    public string StartingClassSkill { get; set; }
+
+    /// <summary>
+    /// Latched true the first time this seed's profile is seen to have started a game. Lets the
+    /// connect-time health gate tell "brand-new seed" apart from "this run's save files have
+    /// vanished" - the game cannot, because it probes only <c>Player.rc2dat</c> and treats a missing
+    /// set as a fresh profile without reporting anything.
+    /// </summary>
+    public bool HasStartedGameObserved { get; set; } = false;
 
     /// <summary>
     /// Trap burdens that are currently active for this run. Persisted so traps
@@ -53,6 +83,16 @@ public class APRunState
     /// </summary>
     public bool GoalAchieved { get; set; } = false;
 
+    // ── Ledger accessors ─────────────────────────────────────────────────────
+
+    /// <summary>Copies of <paramref name="itemId"/> the multiworld has sent this slot.</summary>
+    public int ReceivedCount(long itemId) =>
+        ReceivedItemCounts.TryGetValue(itemId, out var count) ? count : 0;
+
+    /// <summary>Copies of a consumable <paramref name="itemId"/> already applied to the save.</summary>
+    public int AppliedCount(long itemId) =>
+        AppliedItemCounts.TryGetValue(itemId, out var count) ? count : 0;
+
     // ── Persistence ──────────────────────────────────────────────────────────
 
     internal static readonly string RootDir = Path.Combine(Paths.ConfigPath, "RL2Archipelago", "ap-runs");
@@ -75,8 +115,11 @@ public class APRunState
                 var state = JsonConvert.DeserializeObject<APRunState>(json);
                 if (state != null)
                 {
+                    // Log the ledger alongside the checks: when a player reports missing items, the
+                    // first question is whether the run state knows about them at all.
                     Plugin.Log.LogInfo(
-                        $"[APRunState] Loaded {state.CheckedLocations.Count} checked locations from {path}");
+                        $"[APRunState] Loaded {state.CheckedLocations.Count} checked location(s) and " +
+                        $"{state.ReceivedItemCounts.Count} received item type(s) from {path}");
                     return state;
                 }
             }

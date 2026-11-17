@@ -1,5 +1,6 @@
 using HarmonyLib;
 using RL_Windows;
+using RL2Archipelago.Save;
 using RL2Archipelago.UI;
 
 namespace RL2Archipelago.Patches;
@@ -14,6 +15,10 @@ internal static class MainThreadDispatchPatch
     [HarmonyPatch(typeof(WindowManager), "Update")]
     private static void WindowManager_Update_Postfix()
     {
+        // First: drives corrupt-save recovery, and asserts that the save redirect never outlives its
+        // session. Runs before the item pump so a recovery rollback is seen by it in the same frame.
+        APSaveRecovery.Tick();
+
         APClient.ProcessPendingItems();
         APClient.ProcessPendingDeaths();
         APClient.ProcessConnectionEvents();

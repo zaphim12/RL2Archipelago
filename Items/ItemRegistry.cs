@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -224,6 +225,16 @@ public static class ItemRegistry
         long offset = itemId - BASE_ID - MANOR_OFFSET;
         if (offset < 0 || offset >= s_skillTreeTypes.Length) return null;
         return s_skillTreeTypes[(int)offset];
+    }
+
+    /// <summary>
+    /// Inverse of <see cref="ToSkillTreeType"/>: the manor upgrade item ID for a given slot, or
+    /// <c>null</c> if that slot has no Archipelago item.
+    /// </summary>
+    public static long? FromSkillTreeType(SkillTreeType type)
+    {
+        int index = Array.IndexOf(s_skillTreeTypes, type);
+        return index < 0 ? null : BASE_ID + MANOR_OFFSET + index;
     }
 
     /// <summary>
