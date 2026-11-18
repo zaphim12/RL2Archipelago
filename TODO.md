@@ -16,6 +16,7 @@
   [x] If there aren't enough slots remaining to fill all useful items, then do some math to allocate items. 25% of remaining slots to blueprints, 25% to runes, and 50% to manor upgrades. Which items are allocated should be random
   [x] When filling in manor upgrades, we should only allocate 'x' number of bundles per upgrade, but randomize among remaining slots. So for example, if 'x' is 2 then you may end up with 2 strength, 1 focus, and 0 dexterity depending on how it is randomized
 [x] Deathlink
+[x] Burden selection
 [ ] Traps
   [ ] Spawn spike balls around the player
   [x] NG+ burdens can activate for the remainder of the run or maybe just a certain duration
@@ -25,6 +26,7 @@
     [x] Cannonball rain
     [x] Void waves
       [ ] These should only spawn after Pallas' Void Bell is found, if possible
+  [ ] Give the player a harmful trait without the gold reward
 
 ## Receiving Items:
 [x] Heirlooms

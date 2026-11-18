@@ -63,6 +63,18 @@ internal static class MenuPatch
             ApplyConnectedMenuState();
 
         ApplyProfileButtonVisibility();
+
+        // On first connect to a seed, show the burden picker. Deferred to here rather than run from the
+        // connect callback because OnConnectWithData closes and reopens this window inside a
+        // transition, which would take a window opened earlier down with it.
+        //
+        // Skipped during save recovery for the same reason the failure path below is: the game has
+        // its own "Save File Error" prompt up, and that is the only thing that can fix the run.
+        if (UI.BurdenSelection.PendingOpen && !Save.APSaveRecovery.InProgress)
+        {
+            UI.BurdenSelection.PendingOpen = false;
+            UI.BurdenSelection.Open(UI.BurdenPickerMode.FirstRun);
+        }
     }
 
     /// <summary>

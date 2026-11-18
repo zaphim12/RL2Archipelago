@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using HarmonyLib;
+using Rewired;
 using RL_Windows;
 using TMPro;
 using UnityEngine;
@@ -68,6 +69,18 @@ public class ConnectionDialog : MonoBehaviour
     private TMP_Text                    _descText;
     private bool                        _uiBuilt;
 
+    // ── Gamepad navigation ─────────────────────────────────────────────────────
+    //
+    // This dialog is a clone that WindowManager does not know about, so it gets none of the input
+    // routing a real window would: no OnConfirmButtonJustPressed, no selection handling. Without the
+    // block below the two buttons are reachable only by mouse.
+
+    // [0] = Confirm, [1] = Cancel. Stacked vertically, in that order.
+    private ConfirmMenu_Button[] _buttons;
+
+    // Index of the gamepad-highlighted button, or -1 when the gamepad is not the active device.
+    private int _gamepadIndex = -1;
+
     // ── Unity lifecycle ────────────────────────────────────────────────────────
 
     private IEnumerator Start()
@@ -86,6 +99,84 @@ public class ConnectionDialog : MonoBehaviour
         // deactivate its own focus on it; we want to cancel the whole dialog.
         if (Input.GetKeyDown(KeyCode.Escape))
             OnCancel();
+
+        UpdateGamepadInput();
+    }
+
+    /// <summary>
+    /// Drives the Confirm / Cancel buttons from a gamepad.
+    ///
+    /// <para>Everything here is gated on the gamepad being the <em>active</em> device. That gate is
+    /// what keeps typing working: Rewired maps <c>Window_Confirm</c> and <c>Window_Cancel</c> to keys
+    /// as well as pads, so reading those actions unconditionally would make the space bar submit the
+    /// dialog mid-word. The moment a key is pressed the active device flips back to Keyboard and this
+    /// stops reading input entirely; picking the pad back up re-arms it.</para>
+    ///
+    /// <para>Keyboard users are already served without any of this. Enter submits through
+    /// <c>TMP_InputField.onSubmit</c> and Escape cancels above.</para>
+    /// </summary>
+    private void UpdateGamepadInput()
+    {
+        if (_buttons == null || !ReInput.isReady) return;
+
+        if (RewiredOnStartupController.CurrentActiveControllerType != ControllerType.Joystick)
+        {
+            // Went back to keyboard or mouse: drop the highlight so it cannot sit there stale
+            // alongside the mouse's own hover highlight.
+            if (_gamepadIndex >= 0) SetGamepadIndex(-1);
+            return;
+        }
+
+        var player = ReInput.players.GetPlayer(0);
+        if (player == null) return;
+
+        // First gamepad input of the session lands on Confirm rather than nothing.
+        if (_gamepadIndex < 0)
+        {
+            SetGamepadIndex(0);
+            return;
+        }
+
+        // Only two buttons, so either direction simply toggles - which also means a flipped axis
+        // polarity cannot produce wrong behavior here.
+        if (player.GetButtonDown(Rewired_RL.Window_Vertical) ||
+            player.GetNegativeButtonDown(Rewired_RL.Window_Vertical))
+        {
+            SetGamepadIndex((_gamepadIndex + 1) % _buttons.Length);
+        }
+
+        if (player.GetButtonDown(Rewired_RL.Window_Confirm))
+        {
+            // ButtonPressed runs the press animation and fires the same action a mouse click would,
+            // so Confirm and Cancel keep their single wiring from BuildFromConfirmMenu.
+            _buttons[_gamepadIndex]?.ButtonPressed();
+        }
+        else if (player.GetButtonDown(Rewired_RL.Window_Cancel))
+        {
+            OnCancel();
+        }
+    }
+
+    /// <summary>
+    /// Moves the gamepad highlight. Pass -1 to clear it.
+    ///
+    /// <para>Deliberately does not touch <c>EventSystem.currentSelectedGameObject</c>:
+    /// <see cref="ConfirmMenu_Button.OnSelect"/> is only a visual, so the text field keeps focus and
+    /// stays typeable while a button is highlighted.</para>
+    /// </summary>
+    private void SetGamepadIndex(int index)
+    {
+        if (_buttons == null) return;
+
+        for (int i = 0; i < _buttons.Length; i++)
+        {
+            if (_buttons[i] == null) continue;
+
+            if (i == index) _buttons[i].OnSelect(null);
+            else            _buttons[i].OnDeselect(null);
+        }
+
+        _gamepadIndex = index;
     }
 
     // ── Step navigation ────────────────────────────────────────────────────────
@@ -128,6 +219,10 @@ public class ConnectionDialog : MonoBehaviour
         _errorLabel.gameObject.SetActive(!string.IsNullOrEmpty(errorText));
 
         ApplyFieldForStep();
+
+        // ButtonPressed deselects on the way out, so a gamepad user advancing a step would lose the
+        // highlight until they nudged the stick. Put it back where it was.
+        if (_gamepadIndex >= 0) SetGamepadIndex(_gamepadIndex);
     }
 
     // ── Input helpers ──────────────────────────────────────────────────────────
@@ -357,6 +452,9 @@ public class ConnectionDialog : MonoBehaviour
 
             confirmRT.anchoredPosition = new Vector2(descCenterX, confirmCenterY);
             cancelRT .anchoredPosition = new Vector2(descCenterX, cancelCenterY);
+
+            // Kept for gamepad navigation; order matches their vertical layout.
+            _buttons = new[] { confirmBtn, cancelBtn };
         }
 
         // Error label: 20 px gap below cancel button, 60 px tall.

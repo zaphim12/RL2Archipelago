@@ -83,6 +83,12 @@ public class APRunState
     /// </summary>
     public bool GoalAchieved { get; set; } = false;
 
+    /// <summary>
+    /// True once the player has been shown the burden picker for this seed and confirmed their choices. 
+    /// Gates the one automatic open, so reconnecting never re-prompts.
+    /// </summary>
+    public bool BurdensChosen { get; set; } = false;
+
     // ── Ledger accessors ─────────────────────────────────────────────────────
 
     /// <summary>Copies of <paramref name="itemId"/> the multiworld has sent this slot.</summary>

@@ -354,6 +354,12 @@ public static class APClient
                 ? Convert.ToInt32(sciObj) : 0;
             KnightClassReceived = RunState.KnightClassReceived;
 
+            // On first connect to this seed: queue the burden picker. MenuPatch opens it once the main
+            // menu has focus again, because the success path below runs a transition that closes and
+            // rebuilds the menu and would tear down a window opened from here.
+            if (!RunState.BurdensChosen)
+                BurdenSelection.PendingOpen = true;
+
             // Load per-seed player settings; user override wins over server value.
             APSettings.DeathLink = null;
             LoadPlayerSettings(APSaveDirectoryName);
@@ -1314,9 +1320,13 @@ public static class APClient
     /// <para><c>saveStageData: false</c> is deliberate: <c>SaveGameData</c> refuses to write Stage
     /// data outside the World scene and would only log about it.</para>
     /// </summary>
-    private static void RequestProfileSave()
+    /// <param name="force">
+    /// Bypasses the debounce. For one-off writes that represent a deliberate player action rather
+    /// than one of many item grants, where silently coalescing the save could lose the change.
+    /// </param>
+    internal static void RequestProfileSave(bool force = false)
     {
-        if (UnityEngine.Time.unscaledTime < _lastForcedSaveTime + ForcedSaveDebounceSeconds) return;
+        if (!force && UnityEngine.Time.unscaledTime < _lastForcedSaveTime + ForcedSaveDebounceSeconds) return;
         _lastForcedSaveTime = UnityEngine.Time.unscaledTime;
 
         try

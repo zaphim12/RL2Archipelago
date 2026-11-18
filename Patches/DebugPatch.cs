@@ -57,6 +57,21 @@ internal static class DebugPatch
             }
         }
 
+        if (keyboard.GetKeyDown(KeyCode.Alpha6))
+        {
+            // The only way back into the burden picker after the one automatic prompt on first
+            // connect. Requires no window to be up, since it opens one of its own.
+            if (SaveManager.PlayerSaveData != null && !WindowManager.IsAnyWindowOpen)
+            {
+                UI.BurdenSelection.Open(UI.BurdenPickerMode.Revisit);
+                Plugin.Log.LogDebug("[Debug] Opening the burden selection window.");
+            }
+            else
+            {
+                Plugin.Log.LogInfo("[Debug] Key 6 pressed but no save is loaded, or a window is already open.");
+            }
+        }
+
         if (keyboard.GetKeyDown(KeyCode.Alpha7))
         {
             if (SaveManager.PlayerSaveData != null)

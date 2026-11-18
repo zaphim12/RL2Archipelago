@@ -28,6 +28,14 @@ If you have trouble distinguishing the path colors, the chart below labels each 
 
 </details>
 
+### Activating Burdens
+
+Players can choose their preferred burdens the first time they connect to the Archipelago server. These burdens will persist for that entire Archipelago seed. All burdens can be enabled during a randomized run. 
+
+Burdens are not required and they don't affect any other player's worlds. They are provided solely for experienced players who prefer to add more difficulty to their own run. All items and locations remain unnaffected. Killing the prime version of a boss is equivalent to killing the non-prime version. In addition, burdens do not provide any gold bonus like they would in vanilla gameplay.
+
+These burdens are intended to be set once and then locked in for the run. However, if you need to alter them, it can be done by enabling Debug Keys within the Archipelago Settings menu. Pressing '6' on your keyboard will re-open the dialog box and allow you to change the burdens which are applied. Please note that burdens only take affect the next time you select an heir. Changing burdens while in the castle will not take affect until you die.
+
 ## Configurable options (i.e. The player YAML)
 
 There are several things that can be customized for each run using the Archipelago YAML file

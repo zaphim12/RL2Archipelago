@@ -23,6 +23,7 @@ internal static class MainThreadDispatchPatch
         APClient.ProcessPendingDeaths();
         APClient.ProcessConnectionEvents();
         APNotifications.Tick();
+        BurdenSelection.Tick();
 
         // Lazily create the disconnect indicator on the main thread once a session
         // is active. It self-shows while reconnecting and hides otherwise.

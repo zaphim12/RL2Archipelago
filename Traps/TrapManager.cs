@@ -121,17 +121,47 @@ internal static class TrapManager
         // the projectiles are always present when the coroutine tries to fire them.
         EnsureActiveTrapsPooled();
 
-        if (CannonballRainActive)
+        if (CannonballRainActive  && !VanillaRuleCoversRoom(BurdenType.BridgeBiomeUp, room))
             TryStartTrap<BridgeBiomeUp_BiomeRule>(room, "m_attackCoroutine",      "Attack_Coroutine");
-        if (DragonLancersActive)
+        if (DragonLancersActive   && !VanillaRuleCoversRoom(BurdenType.TowerBiomeUp, room))
             TryStartTrap<TowerBiomeUp_BiomeRule> (room, "m_lancerAttackCoroutine","Lancer_Attack_Coroutine");
-        if (GiantSnowflakesActive)
+        if (GiantSnowflakesActive && !VanillaRuleCoversRoom(BurdenType.ForestBiomeUp, room))
             TryStartTrap<ForestBiomeUp_BiomeRule>(room, "m_forestAttackCoroutine","ForestAttackCoroutine");
-        if (AutomatonSwarmActive)
+        if (AutomatonSwarmActive  && !VanillaRuleCoversRoom(BurdenType.CaveBiomeUp, room))
             TryStartTrap<CaveBiomeUp_BiomeRule>  (room, "m_waveAttackCoroutine",  "Wave_Attack_Coroutine");
-        if (VoidWavesActive)
+        if (VoidWavesActive       && !VanillaRuleCoversRoom(BurdenType.StudyBiomeUp, room))
             TryStartTrap<StudyBiomeUp_BiomeRule> (room, "m_voidAttackCoroutine",  "Void_Attack_Coroutine");
     }
+
+    /// <summary>
+    /// True when the game is already running this hazard in this room on its own, so starting our
+    /// copy would double it.
+    ///
+    /// <para>The <c>*BiomeUp_BiomeRule</c> classes early-out on <see cref="BurdenManager.IsBurdenActive"/>,
+    /// which is why the trap system drives their coroutines directly instead of flipping the burden.
+    /// That holds only while nothing else has equipped the burden. Once a player picks one in the
+    /// burden selection screen, the rule fires by itself in its own biome - and only there, which is
+    /// why this is a per-room check rather than a blanket skip. The trap still spreads the hazard to
+    /// every other biome, which is the point of it.</para>
+    /// </summary>
+    private static bool VanillaRuleCoversRoom(BurdenType burdenType, BaseRoom room) =>
+        BurdenManager.IsBurdenActive(burdenType) && NativeBiomeBurden(room.BiomeType) == burdenType;
+
+    /// <summary>
+    /// The burden a biome runs natively. Mirrors the game's own (private)
+    /// <c>SpecialMode_EV.GetBiomeUpBurden</c>. Note <see cref="BiomeType.Stone"/> is Axis Mundi, the
+    /// "Bridge" burdens - the names do not line up.
+    /// </summary>
+    private static BurdenType NativeBiomeBurden(BiomeType biomeType) => biomeType switch
+    {
+        BiomeType.Castle => BurdenType.CastleBiomeUp,
+        BiomeType.Stone  => BurdenType.BridgeBiomeUp,
+        BiomeType.Forest => BurdenType.ForestBiomeUp,
+        BiomeType.Study  => BurdenType.StudyBiomeUp,
+        BiomeType.Tower  => BurdenType.TowerBiomeUp,
+        BiomeType.Cave   => BurdenType.CaveBiomeUp,
+        _                => BurdenType.None,
+    };
 
     private static void EnsureActiveTrapsPooled()
     {
