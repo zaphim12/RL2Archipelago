@@ -17,6 +17,8 @@ The run is completed as normal by defeating Cain. All biome bosses must be defea
 
 ### Manor Upgrade Location Names
 
+> These names apply to the default **tree** manor layout (decided by the `manor_layout` YAML option). Under the **shop** layout the manor has four numbered positions instead and its locations are named `Manor - Slot 2 Purchase 7`. See [Manor Layout](#manor-layout-manor_layout-manor_shop_depth).
+
 The manor upgrade tree doesn't have intuitive in-game names for its individual slots, so the location associated with each one is named after a given colored path it sits on and its position along that path, for example, `Cyan Path Upgrade 4` or `Red Path Upgrade 7`. The mod draws these colored paths directly onto the manor screen in-game so a location name can be traced to the slot it refers to.
 
 If you have trouble distinguishing the path colors, the chart below labels each one with its name in text.
@@ -83,6 +85,25 @@ Each chest type can be tuned independently. Raising a value means fewer chests n
 
 ---
 
+### Manor Layout (`manor_layout`, `manor_shop_depth`)
+
+**`manor_layout` values:** `tree`, `shop` | **Default:** `tree`
+**`manor_shop_depth` range:** 1–100 | **Default:** 25
+
+Controls how the manor is structured, and with it how many manor checks the run has.
+
+**`tree`** is the base game's manor: 72 nodes in a fixed branching order, each one is its own check, and a nodes are only purchase-able once the node before it has bought, same as vanilla. Each node is also only purchase-able a single time, unlike vanilla. The number of purchases cannot be raised or lowered in this layout.
+
+**`shop`** replaces the tree with a new layout that allows you to customize how many total purchases are available in the manor. It displays four shop positions (like the Unfair Flips shop). All four are always available. Each one offers only a single item at a time. Once you buy it, it is replaced by a new item until you exhaust every item in that node. Purchases get more expensive the further into each node you buy, and you can purchase one node many times without purchasing the other nodes at all if you prefer.
+
+`manor_shop_depth` sets how many purchases deep each position goes if the manor is in the shop layout. In that case, the manor has **4 x depth** checks (4 slots each one with `depth` purchases). This works out to 100 checks at the default depth of 25 vs the tree layou's fixed 72.
+
+Cost scales with how deep into a position a purchase sits, using the same formula as the tree (see [Manor Upgrade Costs](#manor-upgrade-costs-manor_cost_base-manor_cost_min_subtractive_factor-manor_cost_max_additive_factor)).
+
+The [`reveal_manor_upgrades`](#reveal-manor-upgrades-reveal_manor_upgrades) option only applies to the tree layout since the shop will only show you the immediately available items. [`manor_depth_percent_per_boss`](#manor-depth-percent-per-boss-gate-manor_depth_percent_per_boss) applies regardless of layout.
+
+---
+
 ### Manor Upgrade Bundle Size (`manor_upgrade_bundle_size`)
 
 **Range:** 1–35 | **Default:** 5
@@ -146,7 +167,7 @@ Controls whether traps can be identified before you pay for them. Anywhere the g
 | `manor_cost_min_subtractive_factor` | 0–100 | 20 |
 | `manor_cost_max_additive_factor` | 0–500 | 50 |
 
-The typical manor upgrade costs don't scale well in an Archipelago run, so a custom pricing formula is used. It incorporates a "depth" value which is determined by how many prior manor purchases were required to unlock a given slot. The first available slot is depth 1; slots unlocked after the first purchase are depth 2; and so on, up to a maximum of depth 11.
+The typical manor upgrade costs don't scale well in an Archipelago run, so a custom pricing formula is used. It incorporates a "depth" value which is determined by how many prior manor purchases were required to unlock a given slot. The first available slot is depth 1; slots unlocked after the first purchase are depth 2; and so on, up to the maximum depth (25 by default in the manor's shop layout, 11 for the manor's tree layout).
 
 The formula is:
 
@@ -162,13 +183,15 @@ cost = base × depth × random_factor
 
 > **Warning:** Tightening these options can cause generation errors if the resulting logical requirements become too difficult to satisfy.
 
-#### Manor Depths Per Boss Gate (`manor_depths_per_boss`)
+#### Manor Depth Percent Per Boss Gate (`manor_depth_percent_per_boss`)
 
-**Range:** 0–11 | **Default:** 3
+**Range:** 0–100 | **Default:** 25
 
-Each manor upgrade has a "depth" value reflecting how many upgrades are required to be purchased before this upgrade becomes available. This setting controls how many depth tiers are added into the "in-logic" pool per boss killed. The first *x* tiers are always in logic; each subsequent boss opens the next *x* tiers.
+Each manor upgrade has a "depth" value: how many upgrades had to be purchased before it becomes available for purchase. This setting controls what percentage of the total depth of of the manor is added to the "in-logic" pool per boss killed. The shallowest *x*% is always in logic; each subsequent boss opens the next *x*%.
 
-With the default of 3: depths 1–3 are available from the start, depths 4–6 require 1 boss cleared, depths 7–9 require 2, and so on. Set to 0 to disable this gating entirely.
+With the default value of 25 (meaning 25%), a quarter of the manor opens up per boss, so the whole thing is in logic after 3 bosses. On the vanilla 11-deep tree that works out to depths 1–3 from the start, 4–6 after 1 boss, 7–9 after 2, and 10–11 after 3+.
+
+Set it to 100 to put the entire manor in logic from the start, or 0 to disable this gating entirely.
 
 ---
 
@@ -226,6 +249,8 @@ When enabled, every manor upgrade node is shown from the start instead of only t
 
 Purchase rules are unchanged: a node still cannot be bought until the node before it has been purchased. Revealed-but-locked nodes show a padlock.
 
+Only applies to the [tree layout](#manor-layout-manor_layout-manor_shop_depth). The shop layout always shows exactly the next purchase at each of its four positions, so there is nothing to reveal.
+
 </details>
 
 
@@ -233,7 +258,7 @@ Purchase rules are unchanged: a node still cannot be bought until the node befor
 
 Rogue Legacy 2 must already be installed. All files needed can be downloaded from the [GitHub releases page](https://github.com/zaphim12/RL2Archipelago/releases). Look at the most recent release and scroll down to Assets.
 
-> **Note:** Mac and Linux compatibility has not been tested, but should likely work fine.
+> **Note:** Mac and Linux compatibility should work fine, and users have successfully completed runs on both. The most thoroughly tested version is Windows, though.
 
 ### Installing the Mod
 
@@ -257,6 +282,14 @@ Rogue Legacy 2 must already be installed. All files needed can be downloaded fro
 
 ## Troubleshooting
 
+### I installed the mod, but I don't see any Archipelago settings or a way to connect
+
+If you've installed the game properly then there should be a new option on the main menu titled "Connect to Archipelago" which opens a dialog box for you to enter the Archipelago server details. If you don't see this that means the mod was not installed correctly. This typically happens for one of a few reasons:
+1. **The wrong version of BepInEx was installed.** Double check that you downloaded the correct version of BepInEx for your operating system (Windows/Linux/Mac) and the correct variant if on Windows (x86/x64). Using the wrong version will fail to load the mod.
+2. **The files were not extracted from the zipped format.** The mod is provided in a .zip format. To install the mod, you have to unzip it and place the individual files into the plugins folder.
+3. **The files were not placed into the correct directory.** Ensure that your files are in the `...\BepInEx\plugins` folder. You will likely have to create this folder yourself if it's not there.
+4. **All of the above were done and it's still not working,** Just try the whole process over from step 1. And make extra sure that BepInEx loads on its own first before moving on to installing the mod. Most often the issue is with the BepInEx install and not the Archipelago mod.
+
 ### "Progress is NOT being saved"
 
 If a red banner reading **`[!] Progress is NOT being saved`** appears in the top-right corner, the game has stopped writing save files. It will keep letting you play, but nothing you do will be saved.
@@ -278,8 +311,6 @@ If a red banner reading **`[!] Progress is NOT being saved`** appears in the top
 ### My items disappeared
 
 Connect to the slot again. On every connect the mod compares what the multiworld says you have been sent against what is actually in your save, and puts back anything missing before you press Start. This should appear as `[APSync] Restored ...` lines in the BepInEx log.
-
-If your items come back but your gold, heirs or map progress are gone, your save was rolled back (usually by a crash). Follow the backup steps above to recover the rest.
 
 ### Reporting a problem
 

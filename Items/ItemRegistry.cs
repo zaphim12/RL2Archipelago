@@ -240,6 +240,19 @@ public static class ItemRegistry
         return index < 0 ? null : BASE_ID + MANOR_OFFSET + index;
     }
 
+    private static readonly HashSet<SkillTreeType> s_manorSkills = [.. s_skillTreeTypes];
+
+    /// <summary>
+    /// Whether an Archipelago manor upgrade item can grant levels to this skill.
+    ///
+    /// <para>Deliberately distinct from <see cref="Locations.LocationRegistry.FromSkillTreeType"/>,
+    /// which asks whether a slot is an AP <em>location</em>. The two sets coincide under the tree
+    /// manor layout but not under the shop layout, where items still target every skill in
+    /// <see cref="SkillTreeTypes"/> while only four prefab slots act as locations. Anything
+    /// reacting to item receipt must gate on this, not on the location mapping.</para>
+    /// </summary>
+    public static bool IsManorSkill(SkillTreeType type) => s_manorSkills.Contains(type);
+
     /// <summary>
     /// Maps an Archipelago item ID to the <see cref="BiomeType"/> whose teleporter
     /// it unlocks. Returns <c>null</c> if the item isn't a tracked teleporter unlock.

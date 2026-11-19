@@ -45,8 +45,6 @@ internal static class ManorBranchPrompt
             return;
         }
 
-        if (APSettings.DebugKeysEnabled) Dump(navObj.transform);
-
         // The prompt deliberately does NOT go under m_skillTreeIconsCanvasGroup like the overlay
         // does: castle view fades that group to alpha 0, and the prompt should stay on screen
         // there just as the game's own prompts do. It does not go under m_navigationObj either,
@@ -194,18 +192,6 @@ internal static class ManorBranchPrompt
 
         foreach (var replacement in go.GetComponentsInChildren<StringReplacementUtility>(includeInactive: true))
             Object.DestroyImmediate(replacement);
-    }
-
-    // ── Debug dump ───────────────────────────────────────────────────────────
-
-    /// <summary>Logs the navigation row's hierarchy with each label's typography, which is what
-    /// makes the cloned prompt checkable against the vanilla ones without a Unity editor.</summary>
-    private static void Dump(Transform root)
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine($"[ManorBranchPrompt] Navigation row under \"{root.name}\":");
-        AppendNode(sb, root, 1);
-        Plugin.Log.LogDebug(sb.ToString());
     }
 
     private static void AppendNode(StringBuilder sb, Transform node, int depth)

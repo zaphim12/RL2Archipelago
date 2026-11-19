@@ -225,6 +225,46 @@ MANOR_UPGRADE_DEPTHS: dict[str, int] = {f"Upgrade: {s.item_name}": s.depth for s
 # Keyed by "Manor - {location_name}" - depth used by the boss-kill gate logic.
 MANOR_LOCATION_DEPTHS: dict[str, int] = {f"Manor - {s.location_name}": s.depth for s in _MANOR_SLOTS}
 
+# The 72 tree-layout manor location names, as a set, so create_regions() can skip
+# them wholesale when the shop layout is selected.
+TREE_MANOR_LOCATION_NAME_SET: frozenset[str] = frozenset(
+    CORE_MANOR_LOCATION_NAMES + NPC_MANOR_LOCATION_NAMES
+)
+
+# ---------------------------------------------------------------------------
+# Manor shop layout
+#
+# An alternative to the tree above: four independent columns of purchases rather
+# than one fixed 72-node tree. Only the next unpurchased entry in each column is
+# ever on offer, so the manor can be scaled to any length via manor_shop_depth.
+# ---------------------------------------------------------------------------
+
+# Number of shop positions. Mirrored by ManorShopLayout.HostSlots in the C# mod,
+# which needs one prefab slot per position, so this is not a YAML option.
+MANOR_SHOP_POSITIONS = 4
+
+# Upper bound of the ManorShopDepth option. The shop location ID stride must be at
+# least this, so that every (position, depth) pair keeps the same ID at any depth
+# setting and no two positions can ever land on the same ID.
+MAX_MANOR_SHOP_DEPTH = 100
+
+# Per-position stride for shop location IDs: MAX_MANOR_SHOP_DEPTH rounded up to a
+# power of two. Raising MAX_MANOR_SHOP_DEPTH past this MUST raise this too, and both
+# must stay in lockstep with LocationRegistry in the C# mod.
+MANOR_SHOP_ID_STRIDE = 128
+
+# Deepest depth present in _MANOR_SLOTS. The tree layout's full depth, which
+# manor_depth_percent_per_boss is taken as a percentage of.
+MAX_TREE_MANOR_DEPTH = 11
+
+# The shared prefix of every shop location name, used to recognise them by name.
+MANOR_SHOP_NAME_PREFIX = "Manor - Slot "
+
+
+def manor_shop_location_name(position: int, depth_index: int) -> str:
+    """Location name for the `depth_index`-th purchase (zero-based) of shop `position`."""
+    return f"{MANOR_SHOP_NAME_PREFIX}{position + 1} Purchase {depth_index + 1}"
+
 # ---------------------------------------------------------------------------
 # Boss and miniboss location/event names
 # ---------------------------------------------------------------------------

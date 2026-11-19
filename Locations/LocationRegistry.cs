@@ -27,6 +27,9 @@ public static class LocationRegistry
     private const long MANOR_OFFSET         = 0x600;
     private const long TELEPORTER_OFFSET    = 0x700;
 
+    // Shop-layout manor locations get their own block distinct from the tree layout: 0xA00-0xBFF.
+    private const long MANOR_SHOP_OFFSET    = 0xA00;  // + position * MANOR_SHOP_ID_STRIDE + depthIndex
+
     private const long JOURNAL_GROUPED_OFFSET    = 0x800;  // BASE_ID + offset + biomeIndex (0-5)
     private const long MEMORY_GROUPED_OFFSET     = 0x808;  // BASE_ID + offset + biomeIndex (only 0, 2 active)
     private const long JOURNAL_INDIVIDUAL_OFFSET = 0x810;  // BASE_ID + offset + biomeIndex * 16 + journalIndex
@@ -121,6 +124,95 @@ public static class LocationRegistry
         return id;
     }
 
+    // ── Manor shop locations (position-depth based) ──────────────────────────
+    //
+    // The alternative manor layout: MANOR_SHOP_POSITIONS independent columns, each
+    // _manorShopDepth purchases deep, with only the next unpurchased entry of a column
+    // ever on offer. Which entry that is derives entirely from the checked-location set,
+    // so no column progress is persisted separately.
+    //
+    // Location ID = BASE_ID + MANOR_SHOP_OFFSET + position * MANOR_SHOP_ID_STRIDE + depthIndex
+    //
+    // The stride keeps IDs stable regardless of the configured depth, the same way the
+    // stride of 16 does for the blueprint and rune pools above.
+
+    /// <summary>Number of shop positions. Mirrors MANOR_SHOP_POSITIONS in the apworld.</summary>
+    public const int MANOR_SHOP_POSITIONS = 4;
+
+    /// <summary>Upper bound of the apworld's ManorShopDepth option.</summary>
+    public const int MAX_MANOR_SHOP_DEPTH = 100;
+
+    /// <summary>Per-position stride for shop location IDs: <see cref="MAX_MANOR_SHOP_DEPTH"/>
+    /// rounded up to a power of two. It must never be smaller than that bound, or one
+    /// position's deeper purchases would collide with the next position's shallow ones.
+    /// Mirrors MANOR_SHOP_ID_STRIDE in the apworld.</summary>
+    public const int MANOR_SHOP_ID_STRIDE = 128;
+
+    private static int _manorShopDepth = 25;
+
+    /// <summary>Configured depth of each shop column. Valid positions are
+    /// 0..<see cref="MANOR_SHOP_POSITIONS"/>-1 and depths 0..this-1.</summary>
+    public static int ManorShopDepth => _manorShopDepth;
+
+    /// <summary>
+    /// Sets the depth of each shop column. Called once after a successful login with the
+    /// value from slot data.
+    /// </summary>
+    public static void SetManorShopDepth(int n) =>
+        _manorShopDepth = n < 1 ? 1 : n > MAX_MANOR_SHOP_DEPTH ? MAX_MANOR_SHOP_DEPTH : n;
+
+    /// <summary>The location ID of a specific purchase, by zero-based position and depth.</summary>
+    public static long ManorShopLocation(int position, int depthIndex) =>
+        BASE_ID + MANOR_SHOP_OFFSET + position * MANOR_SHOP_ID_STRIDE + depthIndex;
+
+    /// <summary>
+    /// Splits a shop location ID back into its position and zero-based depth, or
+    /// <c>null</c> if the ID is not in the shop block or is out of range for it.
+    /// </summary>
+    public static (int Position, int DepthIndex)? ParseManorShopLocation(long id)
+    {
+        long offset = id - BASE_ID - MANOR_SHOP_OFFSET;
+        if (offset < 0) return null;
+        int position = (int)(offset / MANOR_SHOP_ID_STRIDE);
+        int depthIndex = (int)(offset % MANOR_SHOP_ID_STRIDE);
+        if (position >= MANOR_SHOP_POSITIONS || depthIndex >= MAX_MANOR_SHOP_DEPTH) return null;
+        return (position, depthIndex);
+    }
+
+    /// <summary>
+    /// The location ID currently on offer at the given shop position - the first purchase
+    /// in that column not yet checked - or <c>null</c> once the column is exhausted.
+    /// </summary>
+    public static long? NextManorShopLocation(int position, HashSet<long> checkedLocations)
+    {
+        for (int depth = 0; depth < _manorShopDepth; depth++)
+        {
+            long id = ManorShopLocation(position, depth);
+            if (!checkedLocations.Contains(id))
+                return id;
+        }
+        return null;
+    }
+
+    /// <summary>How many purchases of the given shop position have been made.</summary>
+    public static int ManorShopPurchasedCount(int position, HashSet<long> checkedLocations)
+    {
+        int count = 0;
+        for (int depth = 0; depth < _manorShopDepth; depth++)
+            if (checkedLocations.Contains(ManorShopLocation(position, depth)))
+                count++;
+        return count;
+    }
+
+    /// <summary>Total purchases made across every shop position.</summary>
+    public static int ManorShopTotalPurchased(HashSet<long> checkedLocations)
+    {
+        int count = 0;
+        for (int position = 0; position < MANOR_SHOP_POSITIONS; position++)
+            count += ManorShopPurchasedCount(position, checkedLocations);
+        return count;
+    }
+
     private static int _checksPerBiome = 11;
 
     /// <summary>
@@ -203,6 +295,12 @@ public static class LocationRegistry
         // Manor upgrade location names
         for (int i = 0; i < GameConstants.ManorLocationNames.Length; i++)
             d[BASE_ID + MANOR_OFFSET + i] = GameConstants.ManorLocationNames[i];
+
+        // Shop-layout manor location names, registered at the maximum depth so a name is
+        // available whatever manor_shop_depth the seed used.
+        for (int position = 0; position < MANOR_SHOP_POSITIONS; position++)
+            for (int depth = 0; depth < MAX_MANOR_SHOP_DEPTH; depth++)
+                d[ManorShopLocation(position, depth)] = $"Manor - Slot {position + 1} Purchase {depth + 1}";
 
         return d;
     }

@@ -175,28 +175,47 @@ def create_items(world: "RogueLegacy2World") -> None:
     starting_class_idx = getattr(world, '_starting_class_index', 0)
     excluded_class_name = CLASS_UNLOCK_ITEM_NAMES[starting_class_idx - 1] if starting_class_idx > 0 else None
 
-    # Priority: always included regardless of location count.
-    # Heirlooms, Teleporters, NPC unlocks, and single-level manor upgrades are always priority items
-    priority_items: list[RogueLegacy2Item] = []
-    priority_items += [create_item(player, n) for n in HEIRLOOM_ITEM_NAMES]
-    priority_items += [create_item(player, n) for n in TELEPORTER_ITEM_NAMES]
+    # Priority: included ahead of every optional pool, and split into two tiers so that a
+    # world with very few locations sheds the right items first (see the trim below).
+    #
+    # mandatory: items whose absence would make an access rule unsatisfiable. Heirlooms gate
+    #            bosses and biomes outright, and the NPC unlocks do the same via the
+    #            early_npc_unlocks count rules.
+    # optional:  everything else that is normally guaranteed - teleporters (always an
+    #            alternative to an heirloom, never the only way in), class unlocks, and the
+    #            remaining single-level manor upgrades.
     early_npcs = world.options.early_npc_unlocks.value
+
+    mandatory_items: list[RogueLegacy2Item] = [
+        create_item(player, n) for n in HEIRLOOM_ITEM_NAMES
+    ]
+    optional_priority: list[RogueLegacy2Item] = [
+        create_item(player, n) for n in TELEPORTER_ITEM_NAMES
+    ]
+
     for n in npc_names:
-        npc_classification = (
-            ItemClassification.progression if early_npcs else manor_classification(n)
-        )
         data = item_data_table[n]
-        priority_items.append(RogueLegacy2Item(n, npc_classification, data.code, player))
+        if early_npcs:
+            mandatory_items.append(
+                RogueLegacy2Item(n, ItemClassification.progression, data.code, player)
+            )
+        else:
+            optional_priority.append(
+                RogueLegacy2Item(n, manor_classification(n), data.code, player)
+            )
+
     for name in core_names:
         if MANOR_MAX_LEVELS.get(name, 1) <= 1:
             if name == excluded_class_name:
                 continue  # starting class - pre-unlocked at run start, not in pool
             data = item_data_table[name]
-            priority_items.append(RogueLegacy2Item(name, manor_classification(name), data.code, player))
+            optional_priority.append(
+                RogueLegacy2Item(name, manor_classification(name), data.code, player)
+            )
 
     # If the starting class is not Knight, add Knight Class as a randomizable item instead.
     if excluded_class_name is not None:
-        priority_items.append(create_item(player, KNIGHT_CLASS_ITEM_NAME))
+        optional_priority.append(create_item(player, KNIGHT_CLASS_ITEM_NAME))
 
     # Traps: placed immediately after priority items, before useful items.
     # Distribute evenly across the 5 trap types by cycling through the list.
@@ -222,6 +241,40 @@ def create_items(world: "RogueLegacy2World") -> None:
         classification = manor_classification(name)
         for _ in range(copies):
             manor_pool.append(RogueLegacy2Item(name, classification, data.code, player))
+
+    # ── Fit the guaranteed items into the available locations ────────────────
+    #
+    # Everything above this point is "guaranteed": normally there are far more locations
+    # than guaranteed items and nothing has to give. A very small world can invert that,
+    # handing Archipelago more items than it has room for and surfacing an opaque FillError
+    # deep inside Fill.py. Shed the least load-bearing items instead, in order: traps,
+    # then the optional priority tier.
+    if len(mandatory_items) > unfilled:
+        raise Exception(
+            f"Rogue Legacy 2: this YAML leaves only {unfilled} locations, but "
+            f"{len(mandatory_items)} items are required to keep the seed completable "
+            f"(6 heirlooms"
+            + (" and 3 NPC unlocks, which early_npc_unlocks makes progression" if early_npcs else "")
+            + "). Raise manor_shop_depth, blueprint_checks_per_biome, rune_checks_per_biome "
+            f"or journal_checks."
+        )
+
+    overflow = len(mandatory_items) + len(optional_priority) + len(trap_items) - unfilled
+    if overflow > 0:
+        dropped_traps = min(overflow, len(trap_items))
+        if dropped_traps:
+            trap_items = trap_items[: len(trap_items) - dropped_traps]
+            overflow -= dropped_traps
+    if overflow > 0:
+        # Float the stat upgrades to the front so the survivors are the ones the
+        # stat_upgrades_* gates count, then drop from the back. The shuffle keeps which
+        # class unlocks are lost from being the same every seed.
+        world.random.shuffle(optional_priority)
+        if stat_gating_enabled:
+            optional_priority.sort(key=lambda item: item.name not in stat_upgrade_names)
+        optional_priority = optional_priority[: len(optional_priority) - overflow]
+
+    priority_items = mandatory_items + optional_priority
 
     # Traps are guaranteed slots; subtract them from remaining before the useful/filler split.
     remaining    = unfilled - len(priority_items) - len(trap_items)
@@ -270,5 +323,10 @@ def create_items(world: "RogueLegacy2World") -> None:
     # If we have used all actual item candidates, and still have open slots, fill the rest with "Gold Coins" grants
     while len(pool) < unfilled:
         pool.append(create_item(player, "Gold Coins"))
+
+    # The trim above makes this a no-op; it is here so the "exactly one item per location"
+    # contract is enforced at the one place that matters rather than inferred from the
+    # arithmetic of every branch feeding into it.
+    assert len(pool) == unfilled, f"item pool is {len(pool)} for {unfilled} locations"
 
     multiworld.itempool += pool

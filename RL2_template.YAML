@@ -85,6 +85,29 @@ Rogue Legacy 2:
   # Valid range: 1–100  (default: 100)
   fairy_chest_ap_chance: 100
 
+  # ── Manor Layout ─────────────────────────────────────────────────────────
+
+  # How the manor is structured, and with it how many manor checks you get.
+  #
+  #   tree - The base game's manor: 72 nodes in a fixed branching order, with 
+  #          one check per node. Always exactly 72 manor checks.
+  #   shop - Four shop positions, all available at any time. Each offers one
+  #          item; buy it and the next purchase for that position takes its
+  #          place, until that position is exhausted. 4 * manor_shop_depth
+  #          checks, so the manor can be made as short or as long as you like.
+  #
+  # Note: reveal_manor_upgrades applies to the tree layout only.
+  # Valid values: tree, shop  (default: tree)
+  manor_layout: tree
+
+  # How many purchases deep each of the four shop positions goes, giving a
+  # total of 4 * manor_shop_depth checks. Ignored under the tree layout.
+  #
+  # Raising this far past the default without also adjusting manor_cost_base
+  # will make the deepest purchases in the manor very expensive.
+  # Valid range: 1–100  (default: 25)
+  manor_shop_depth: 25
+
   # ── Manor Upgrade Bundle Size ────────────────────────────────────────────
 
   # How many skill-tree levels are granted each time a manor upgrade item is
@@ -155,6 +178,8 @@ Rogue Legacy 2:
   # This does not change what you may buy. A node still cannot be purchased
   # until its parent has been.
   #
+  # Tree layout only. This has no effect for the shop manor layout.
+  #
   # true \ false  (default: false)
   reveal_manor_upgrades: false
 
@@ -193,16 +218,20 @@ Rogue Legacy 2:
   # Warning: Adjusting these options can cause generation errors if requirements
   # become too tight - adjust with care.
 
-  # Number of manor depth tiers unlocked per boss killed.
+  # Percentage of the manor's depth that comes into logic per boss killed.
   #
   # Each manor upgrade has a 'depth' reflecting how many prerequisite upgrades
-  # it has in the tree. The first x depth tiers are always in logic; each boss
-  # cleared opens the next x tiers.
-  # With the default of 3: depths 1–3 are available from the start,
-  # depths 4–6 require 1 boss, depths 7–9 require 2, and so on.
-  # Set to 0 to disable this gating entirely.
-  # Valid range: 0–11  (default: 3)
-  manor_depths_per_boss: 3
+  # it has before it can be purchased. The shallowest x% of depths are in logic
+  # from the start, the next x% once 1 boss is cleared, and so on.
+  #
+  # With the default of 25 a quarter opens up per boss, so the whole manor is in
+  # logic after 3 bosses. On the 11-deep tree that is depths 1-3 from the start,
+  # 4-6 after 1 boss, 7-9 after 2, 10-11 after 3.
+  #
+  # Set to 100 to put the whole manor in logic immediately, or 0 to disable this
+  # gating entirely.
+  # Valid range: 0–100  (default: 25)
+  manor_depth_percent_per_boss: 25
 
   # Percentage of each biome's chests considered in logic before the biome boss is killed.
   #

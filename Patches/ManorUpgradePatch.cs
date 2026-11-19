@@ -22,15 +22,25 @@ internal static class ManorUpgradePatch
     // soul shop purchase (e.g. "Unbreakable Will", "Absolute Strength") to get a
     // non-zero MaxLevel. Until purchased, IsSoulLocked returns true and the slot
     // is unpurchasable. In AP mode we bypass the soul shop entirely, so we ensure
-    // MaxLevel is at least 1 for any AP-tracked slot. This fixes IsSoulLocked
-    // (which is just MaxLevel <= 0) and ClampedLevel simultaneously.
+    // MaxLevel is at least 1 for any skill an AP item can grant. This fixes
+    // IsSoulLocked (which is just MaxLevel <= 0) and ClampedLevel simultaneously.
+    //
+    // Gated on ItemRegistry.IsManorSkill, NOT on the location mapping: the two
+    // coincide under the tree layout, but under the shop layout only four slots are
+    // locations while items still target every manor skill. Keying this on locations
+    // would silently stop granting levels to soul-locked skills like Potion_Up
+    // ("Health Drop Scaling") and Gold_Gain_Up ("Gold Gain Up I") in shop seeds.
+    //
+    // This covers the shop's host slots without naming them: every host is itself a
+    // randomized manor slot (see ManorShopLayout.Hosts), so IsManorSkill already answers
+    // true for all four.
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(SkillTreeObj), "get_MaxLevel")]
     private static void MaxLevel_Postfix(SkillTreeObj __instance, ref int __result)
     {
         if (!APClient.IsSessionActive) return;
-        if (LocationRegistry.FromSkillTreeType(__instance.SkillTreeType) == null) return;
+        if (!ItemRegistry.IsManorSkill(__instance.SkillTreeType)) return;
         if (__result <= 0) __result = 1;
     }
 
@@ -74,6 +84,29 @@ internal static class ManorUpgradePatch
         if (!APClient.IsSessionActive || APClient.RunState == null) return;
 
         s_savedLevels.Clear();
+
+        // ── Shop layout ──────────────────────────────────────────────────────
+        // Zero every manor level so vanilla Initialize activates no slot at all;
+        // ManorShopPatch then switches on just the four hosts.
+        //
+        // This is not only about visibility. Initialize calls UnlockConnectedSkillSlots on
+        // each slot it activates, which walks the authored navigation graph outward looking
+        // for an active neighbour and throws once it has recursed 20 deep. Under the tree
+        // layout the remap below leaves a connected subtree of *checked* slots, so that walk
+        // terminates. Item-granted levels are scattered all over the tree, so leaving them in
+        // place here makes vanilla Initialize itself liable to throw.
+        if (APClient.IsManorShopLayout)
+        {
+            foreach (var skillType in ItemRegistry.s_skillTreeTypes)
+            {
+                int level = SkillTreeManager.GetSkillObjLevel(skillType);
+                if (level == 0) continue;
+                s_savedLevels[skillType] = level;
+                SkillTreeManager.SetSkillObjLevel(skillType, 0, additive: false, runEvents: false);
+            }
+            return;
+        }
+
         foreach (var skillType in ItemRegistry.s_skillTreeTypes)
         {
             var locationId = LocationRegistry.FromSkillTreeType(skillType);
@@ -164,7 +197,8 @@ internal static class ManorUpgradePatch
         s_revealedBy.Clear();
         s_rootSlot = SkillTreeType.None;
 
-        if (!APClient.IsSessionActive || !APClient.RevealManorUpgrades) return;
+        // RevealManorUpgrades is a tree-layout only option
+        if (!APClient.IsSessionActive || !APClient.RevealManorUpgrades || APClient.IsManorShopLayout) return;
 
         try
         {
@@ -213,6 +247,8 @@ internal static class ManorUpgradePatch
     /// </summary>
     internal static bool IsSlotUnlocked(SkillTreeType type)
     {
+        // Shop hosts are always purchasable.
+        if (APClient.IsManorShopLayout) return true;
         if (!APClient.RevealManorUpgrades) return true;
         // Graph not built yet (or it failed to build): never gate on incomplete data.
         if (s_revealedBy.Count == 0) return true;
@@ -249,6 +285,9 @@ internal static class ManorUpgradePatch
     {
         s_animParamSavedLevel = -1;
         if (!APClient.IsSessionActive || APClient.RunState == null) return;
+        // Shop hosts have their animator param cleared, so this never runs for one, and no
+        // other node is on screen to animate.
+        if (APClient.IsManorShopLayout) return;
         var locationId = LocationRegistry.FromSkillTreeType(__instance.SkillTreeType);
         if (locationId == null) return;
 
@@ -299,17 +338,33 @@ internal static class ManorUpgradePatch
     //     purchase. In AP mode the stat comes from the AP item receipt, not purchase.
     //     Skipping the vanilla body prevents the premature grant.
     //
-    //   Vanilla allows for purchasing multiple levels. AP slots have exactly
-    //     one purchase; we fail immediately if the location is already checked.
-    //     to prevent purchasing the same slot more than once
+    //   Vanilla allows for purchasing multiple levels. A tree slot has exactly
+    //     one purchase and a shop host sells one at a time, so a multi-level
+    //     purchase is never honoured.
+    //
+    // Under the shop layout the slot being clicked is a column rather than a single
+    // location: ManorSlotView resolves which purchase is on offer, and a column that has
+    // run out simply fails. Every non-host node is inactive and so unclickable, but the
+    // guard below is still explicit, because letting vanilla run on one would spend gold
+    // outside Archipelago entirely.
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(SkillTreeSlot), nameof(SkillTreeSlot.PurchaseSkillUpgrade))]
     private static bool PurchaseSkillUpgrade_Prefix(SkillTreeSlot __instance)
     {
         if (!APClient.IsSessionActive || APClient.RunState == null) return true;
-        var locationId = LocationRegistry.FromSkillTreeType(__instance.SkillTreeType);
-        if (locationId == null) return true; // non-AP slot: let vanilla run
+
+        var view = ManorSlotView.For(__instance.SkillTreeType);
+        if (!view.IsTracked)
+        {
+            // Under the shop layout no manor node may run the vanilla purchase path.
+            if (APClient.IsManorShopLayout && ItemRegistry.IsManorSkill(__instance.SkillTreeType))
+            {
+                PlayFailAnim(__instance);
+                return false;
+            }
+            return true; // non-AP slot: let vanilla run
+        }
 
         var skillTreeObj = SkillTreeManager.GetSkillTreeObj(__instance.SkillTreeType);
 
@@ -329,16 +384,15 @@ internal static class ManorUpgradePatch
             return false;
         }
 
-        // Already purchased this AP location; prevent multiple purchases for slots which originally had multiple levels
-        if (APClient.RunState.CheckedLocations.Contains(locationId.Value))
+        // Nothing left here: an already-bought tree node, or an exhausted shop column.
+        if (view.IsComplete || view.Location == null)
         {
             PlayFailAnim(__instance);
             return false;
         }
 
-        int goldCost = APClient.ManorUpgradeCosts.TryGetValue(skillTreeObj.SkillTreeType, out var precomputedCost)
-            ? precomputedCost
-            : skillTreeObj.GoldCostWithLevelAppreciation;
+        long locationId = view.Location.Value;
+        int goldCost = view.Cost;
         if (SaveManager.PlayerSaveData.GoldCollectedIncludingBank < goldCost)
         {
             PlayFailAnim(__instance);
@@ -352,19 +406,33 @@ internal static class ManorUpgradePatch
         SaveManager.PlayerSaveData.GoldSpentOnSkills += goldCost;
         BroadcastGoldChanged(__instance, goldBefore, goldCost);
 
-        // Record the check BEFORE refreshing the UI so RefreshSlotState_Postfix
-        // already sees this location as checked and renders 1/1.
-        APClient.SendLocationCheck(locationId.Value);
+        // Record the check BEFORE refreshing the UI so RefreshSlotState_Postfix already sees
+        // it as checked: the tree then renders 1/1, and a shop host moves on to the next
+        // purchase in its column.
+        APClient.SendLocationCheck(locationId);
 
         // Broadcast SkillLevelChanged (prevLevel=0→newLevel=1) so the
         // SkillTreeWindowController listener plays the manor building animation,
         // calls UnlockConnectedSkillSlots, and refreshes all buttons.
+        //
+        // The shop layout rides the same broadcast, which is what re-renders the host as the
+        // next purchase: OnSkillLevelChanged ends in RefreshAllButtons, and that re-runs
+        // UpdateSkillTreeType and RefreshSlotState against the newly-advanced column. It is
+        // safe there because the host has no animator param (so AnimateBGImage is empty) and
+        // no unlock list (so UnlockConnectedSkillSlots reveals nothing), while the pop-up and
+        // labour-cost suppressions below already apply.
         Messenger<UIMessenger, UIEvent>.Broadcast(
             UIEvent.SkillLevelChanged,
             null,
             new SkillLevelChangedEventArgs(__instance.SkillTreeType, 0, 1));
 
-        __instance.FullyUpgradedRelay.Dispatch();
+        // Mirror vanilla's split: "upgraded" while more can be bought here, "fully upgraded"
+        // on the last one. A tree node is always its own last purchase; a shop column only
+        // reaches that on its final entry.
+        if (ManorSlotView.For(__instance.SkillTreeType).IsComplete)
+            __instance.FullyUpgradedRelay.Dispatch();
+        else
+            __instance.UpgradedRelay.Dispatch();
 
         return false; // skip vanilla. no SetSkillObjLevel, no vanilla stat grant
     }
@@ -375,13 +443,17 @@ internal static class ManorUpgradePatch
     // non-null. For AP-tracked slots the popup would show vanilla unlock text
     // (class name, NPC description, etc.) rather than the AP item, so we return
     // null to skip it. The normal slot animation still plays via the else branch.
+    //
+    // Covers shop hosts too: a host is one of the slots the randomizer leaves out, so it is
+    // not a manor skill and would otherwise keep its own vanilla pop-up.
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(SkillTreePopupLibrary), nameof(SkillTreePopupLibrary.GetPopupData))]
     private static bool GetPopupData_Prefix(SkillTreeType skillType, ref SkillTreePopupData __result)
     {
         if (!APClient.IsSessionActive) return true;
-        if (LocationRegistry.FromSkillTreeType(skillType) == null) return true;
+        if (!ItemRegistry.IsManorSkill(skillType) && !ManorSlotView.For(skillType).IsTracked)
+            return true;
         __result = null;
         return false;
     }
@@ -448,6 +520,12 @@ internal static class ManorUpgradePatch
     {
         if (!APClient.IsSessionActive || APClient.RunState == null) return;
 
+        if (APClient.IsManorShopLayout)
+        {
+            __result = LocationRegistry.ManorShopTotalPurchased(APClient.RunState.CheckedLocations);
+            return;
+        }
+
         int count = 0;
         foreach (var skillType in ItemRegistry.s_skillTreeTypes)
         {
@@ -503,15 +581,22 @@ internal static class ManorUpgradePatch
     private static void RefreshSlotState_Postfix(SkillTreeSlot __instance)
     {
         if (!APClient.IsSessionActive) return;
-        var locationId = LocationRegistry.FromSkillTreeType(__instance.SkillTreeType);
-        if (locationId == null) return;
+        var view = ManorSlotView.For(__instance.SkillTreeType);
+        if (!view.IsTracked) return;
 
         var t = Traverse.Create(__instance);
         var levelText = t.Field<TMP_Text>("m_levelText").Value;
         if (levelText == null) return;
 
-        bool isChecked = APClient.RunState?.CheckedLocations?.Contains(locationId.Value) ?? false;
-        levelText.text = isChecked ? "1 / 1" : "0 / 1";
+        // Tree: "0 / 1" or "1 / 1". Shop: purchases made out of the column's depth.
+        bool isChecked = view.IsComplete;
+        levelText.text = $"{view.Purchased} / {view.Total}";
+        // Vanilla hides this whenever the slot reads as locked or soul-locked. The MaxLevel
+        // bypass above rules out soul-locked, and no randomized manor slot is authored
+        // locked, so this is likely redundant, but the counter is the shop's only progress
+        // readout, so it is worth making certain of.
+        if (!levelText.gameObject.activeSelf)
+            levelText.gameObject.SetActive(true);
 
         var iconFrame       = t.Field<Image>("m_iconFrame").Value;
         var iconCanvasGroup = t.Field<CanvasGroup>("m_iconCanvasGroup").Value;
@@ -535,37 +620,36 @@ internal static class ManorUpgradePatch
 
         if (isChecked)
         {
-            // Show purchased visuals: gold frame + full opacity.
+            // Nothing left to buy here: gold frame + full opacity.
             if (iconFrame != null)
                 iconFrame.overrideSprite = t.Field<Sprite>("m_goldFrameSprite").Value;
             if (iconCanvasGroup != null)
                 iconCanvasGroup.alpha = 1f;
-            // Slot already purchased - hide the "affordable" dollar-sign indicator.
+            // Nothing purchasable - hide the "affordable" dollar-sign indicator.
             if (newIndicator != null && newIndicator.gameObject.activeSelf)
                 newIndicator.gameObject.SetActive(false);
         }
         else
         {
-            // Slot not yet purchased: undo any "purchased" visuals the game applied
+            // Something is still on offer: undo any "purchased" visuals the game applied
             // because the skill level may be > 0 due to AP item receipt.
             if (iconFrame != null)
                 iconFrame.overrideSprite = null;
             if (iconCanvasGroup != null)
-                iconCanvasGroup.alpha = 0.5f;
+                // A shop host always has something to sell, so dimming it would read as
+                // unavailable. Only the tree's unbought nodes are dimmed.
+                iconCanvasGroup.alpha = APClient.IsManorShopLayout ? 1f : 0.5f;
 
             // Recompute the "affordable" indicator ignoring level gating, since we
             // allow all visible slots to be purchased regardless of manor level.
             if (newIndicator != null)
             {
                 var skillTreeObj = SkillTreeManager.GetSkillTreeObj(__instance.SkillTreeType);
-                int slotCost = APClient.ManorUpgradeCosts.TryGetValue(__instance.SkillTreeType, out var precomputed)
-                    ? precomputed
-                    : skillTreeObj.GoldCostWithLevelAppreciation;
                 bool canAfford = unlocked
                     && skillTreeObj != null
                     && !skillTreeObj.IsLocked
                     && !skillTreeObj.IsSoulLocked
-                    && SaveManager.PlayerSaveData.GoldCollectedIncludingBank >= slotCost;
+                    && SaveManager.PlayerSaveData.GoldCollectedIncludingBank >= view.Cost;
                 newIndicator.gameObject.SetActive(canAfford);
             }
         }
@@ -581,13 +665,15 @@ internal static class ManorUpgradePatch
     private static void UpdateSkillTreeType_Postfix(SkillTreeSlot __instance)
     {
         if (!APClient.IsSessionActive) return;
-        var locationId = LocationRegistry.FromSkillTreeType(__instance.SkillTreeType);
-        if (locationId == null) return;
+        var view = ManorSlotView.For(__instance.SkillTreeType);
+        if (!view.IsTracked) return;
 
         var iconImage = Traverse.Create(__instance).Field<Image>("m_iconImage").Value;
         if (iconImage == null) return;
 
-        var replacement = APSprites.GetSpriteForLocation(locationId.Value);
+        if (view.DisplayLocation == null) return;
+
+        var replacement = APSprites.GetSpriteForLocation(view.DisplayLocation.Value);
         if (replacement != null)
             iconImage.sprite = replacement;
     }
@@ -600,9 +686,9 @@ internal static class ManorUpgradePatch
     private static void OverrideInfoPlateIcon(SkillTreeWindowController instance, SkillTreeType skillTreeType)
     {
         if (!APClient.IsSessionActive) return;
-        var locationId = LocationRegistry.FromSkillTreeType(skillTreeType);
-        if (locationId == null) return;
-        var replacement = APSprites.GetSpriteForLocation(locationId.Value);
+        var view = ManorSlotView.For(skillTreeType);
+        if (!view.IsTracked || view.DisplayLocation == null) return;
+        var replacement = APSprites.GetSpriteForLocation(view.DisplayLocation.Value);
         if (replacement == null) return;
         if (Traverse.Create(instance).Field<Image>("m_infoPlateIcon").Value is { } icon)
             icon.sprite = replacement;
@@ -652,11 +738,11 @@ internal static class ManorUpgradePatch
     private static void UpdateText_Postfix(SkillTreeDescriptionUpdater __instance, SkillTreeType __0)
     {
         if (!APClient.IsSessionActive) return;
-        var locationId = LocationRegistry.FromSkillTreeType(__0);
-        if (locationId == null) return;
+        var view = ManorSlotView.For(__0);
+        if (!view.IsTracked) return;
 
-        // CostMultiple shows "Cost (xN): ###" for multi-level slots. AP slots always
-        // have 1 level, so hide this element unconditionally regardless of scouting state.
+        // CostMultiple shows "Cost (xN): ###" for multi-level slots. Both layouts sell exactly
+        // one thing at a time, so hide this element unconditionally regardless of scouting state.
         if (__instance.DescriptionType == SkillTreeDescriptionUpdater.SkillTreeDescriptionType.CostMultiple)
         {
             if (__instance.gameObject.activeSelf)
@@ -664,14 +750,13 @@ internal static class ManorUpgradePatch
             return;
         }
 
-        // Purchase shows the "Upgrade xN" keybind prompt. For checked slots it should
-        // disappear entirely; for unchecked slots it should always say "Upgrade x1".
+        // Purchase shows the "Upgrade xN" keybind prompt. It disappears when there is nothing
+        // left to buy here; otherwise it always says "Upgrade x1".
         if (__instance.DescriptionType == SkillTreeDescriptionUpdater.SkillTreeDescriptionType.Purchase)
         {
             // Hidden for a locked slot too: under reveal_manor_upgrades it is only on screen
             // for planning, so advertising a purchase that would just shake and fail is wrong.
-            bool isChecked = APClient.RunState?.CheckedLocations?.Contains(locationId.Value) ?? false;
-            if (isChecked || !IsSlotUnlocked(__0))
+            if (view.IsComplete || !IsSlotUnlocked(__0))
             {
                 if (__instance.gameObject.activeSelf)
                     __instance.gameObject.SetActive(false);
@@ -690,20 +775,20 @@ internal static class ManorUpgradePatch
         {
             if (__instance.CurrentValue is { } costCv)
             {
-                bool isChecked = APClient.RunState?.CheckedLocations?.Contains(locationId.Value) ?? false;
-                if (isChecked)
-                    costCv.text = LocalizationManager.GetString("LOC_ID_GENERAL_UI_NA_1", isFemale: false);
-                else if (APClient.ManorUpgradeCosts.TryGetValue(__0, out var customCost))
-                    costCv.text = customCost.ToString();
+                costCv.text = view.IsComplete
+                    ? LocalizationManager.GetString("LOC_ID_GENERAL_UI_NA_1", isFemale: false)
+                    : view.Cost.ToString();
             }
             return;
         }
 
+        if (view.DisplayLocation == null) return;
+
         // Null while the scout cache is empty (notably during auto-reconnect). Every AP slot
         // then falls back to vanilla RL2 text uniformly, so no slot stands out. This guard must
-        // stay identity-agnostic: a trap-specific fallback here would introduce a tell on any 
+        // stay identity-agnostic: a trap-specific fallback here would introduce a tell on any
         // locations that contain a trap
-        var scouted = APClient.GetItemView(locationId.Value);
+        var scouted = APClient.GetItemView(view.DisplayLocation.Value);
         if (scouted == null) return;
 
         var descText = __instance.DescriptionLocItem?.TextObj;
@@ -735,8 +820,7 @@ internal static class ManorUpgradePatch
         {
             if (__instance.CurrentValue is { } levelCv)
             {
-                bool isChecked = APClient.RunState?.CheckedLocations?.Contains(locationId.Value) ?? false;
-                levelCv.text = isChecked ? "1 / 1" : "0 / 1";
+                levelCv.text = $"{view.Purchased} / {view.Total}";
             }
         }
     }

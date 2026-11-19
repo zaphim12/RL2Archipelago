@@ -57,12 +57,20 @@ from .constants import (
     LOC_THEIAS_SUN_LANTERN_CONVERSATION,
     LOC_BYARRRITH_HALPHARR_CLEARED,
     MANOR_LOCATION_DEPTHS,
+    MANOR_SHOP_ID_STRIDE,
+    MANOR_SHOP_NAME_PREFIX,
+    MANOR_SHOP_POSITIONS,
+    MAX_MANOR_SHOP_DEPTH,
+    MAX_TREE_MANOR_DEPTH,
     NPC_MANOR_LOCATION_NAMES,
     NPC_MANOR_UPGRADES,
     STAT_UPGRADE_MANOR_UPGRADES,
     TELEPORTER_KERGUELEN_PLATEAU,
     TELEPORTER_SUN_TOWER,
+    TREE_MANOR_LOCATION_NAME_SET,
+    manor_shop_location_name,
 )
+from .options import ManorLayout
 from .items import BASE_ID
 
 # ---------------------------------------------------------------------------
@@ -79,6 +87,9 @@ BLUEPRINT_OFFSET     = 0x400
 RUNE_OFFSET          = 0x500
 MANOR_OFFSET         = 0x600
 TELEPORTER_OFFSET    = 0x700
+
+# Shop-layout manor locations get their own block rather than extending MANOR_OFFSET: 0xA00-0xBFF.
+MANOR_SHOP_OFFSET         = 0xA00  # BASE_ID + offset + position * STRIDE + depthIndex
 
 JOURNAL_GROUPED_OFFSET    = 0x800  # BASE_ID + offset + biomeIndex (0-5)
 MEMORY_GROUPED_OFFSET     = 0x808  # BASE_ID + offset + biomeIndex (only 0, 2 active)
@@ -246,6 +257,17 @@ for _i, _loc_name in enumerate(CORE_MANOR_LOCATION_NAMES + NPC_MANOR_LOCATION_NA
         address=BASE_ID + MANOR_OFFSET + _i,
     )
 
+# Register every possible shop-layout manor location, at the maximum depth, so
+# location_name_to_id is complete and a given (position, depth) keeps the same ID at
+# any manor_shop_depth setting. create_regions() instantiates only the active subset,
+# and none of them when the tree layout is selected.
+for _pos in range(MANOR_SHOP_POSITIONS):
+    for _d in range(MAX_MANOR_SHOP_DEPTH):
+        location_data_table[manor_shop_location_name(_pos, _d)] = RogueLegacy2LocationData(
+            region="Manor",
+            address=BASE_ID + MANOR_SHOP_OFFSET + _pos * MANOR_SHOP_ID_STRIDE + _d,
+        )
+
 # Register all possible blueprint locations (max slots) so location_name_to_id
 # is stable across different blueprint_checks_per_biome settings.
 for _biome_idx, _biome_name in enumerate(BIOME_NAMES):
@@ -311,6 +333,15 @@ def create_regions(world: "RogueLegacy2World") -> None:
     rune_n = world.options.rune_checks_per_biome.value
     journal_mode = world.options.journal_checks.value
 
+    # Manor layout: exactly one of the two manor location families is instantiated.
+    shop_layout = world.options.manor_layout.value == ManorLayout.option_shop
+    shop_depth = world.options.manor_shop_depth.value
+    active_shop_names = {
+        manor_shop_location_name(position, depth_index)
+        for position in range(MANOR_SHOP_POSITIONS)
+        for depth_index in range(shop_depth)
+    } if shop_layout else set()
+
     # The set of blueprint and rune location names active for this world.
     active_blueprint_names = {
         blueprint_chest_name(biome_name, slot)
@@ -333,6 +364,12 @@ def create_regions(world: "RogueLegacy2World") -> None:
 
     # ── Assign locations to their regions ────────────────────────────────────
     for location_name, location_data in location_data_table.items():
+        # Manor locations: the tree's 72 nodes and the shop's columns are mutually
+        # exclusive, and the shop only instantiates down to the configured depth.
+        if location_name in TREE_MANOR_LOCATION_NAME_SET and shop_layout:
+            continue
+        if location_name.startswith(MANOR_SHOP_NAME_PREFIX) and location_name not in active_shop_names:
+            continue
         # Blueprint/rune locations: only instantiate those within configured limits.
         if "Blueprint Chest" in location_name and location_name not in active_blueprint_names:
             continue
@@ -615,15 +652,31 @@ def create_regions(world: "RogueLegacy2World") -> None:
         return sum(state.count(name, player) for name in _STAT_UPGRADE_ITEM_NAMES)
 
     # ── [1] Manor upgrade locations gated by boss-kill count ─────────────────
-    # Each group of 'x' depth tiers is gated behind one additional boss cleared.
-    # Depths '1' thru 'x' are always in logic; depths 'x+1' thru '2x' require 1 boss; etc.
-    manor_depths_per_boss = world.options.manor_depths_per_boss.value
-    if manor_depths_per_boss > 0:
+    # A percentage of the manor's full depth comes into logic per boss cleared.
+    # The shallowest x% of depths are always in logic, the next x%
+    # require 1 boss, and so on, capped at the number of bosses there are.
+    manor_percent = world.options.manor_depth_percent_per_boss.value
+    if manor_percent > 0:
+        if shop_layout:
+            max_depth = shop_depth
+            manor_depths = {
+                manor_shop_location_name(position, depth_index): depth_index + 1
+                for position in range(MANOR_SHOP_POSITIONS)
+                for depth_index in range(shop_depth)
+            }
+        else:
+            max_depth = MAX_TREE_MANOR_DEPTH
+            manor_depths = MANOR_LOCATION_DEPTHS
+
+        # At least one tier per boss, so a small percentage on a shallow manor still
+        # advances rather than dividing by zero.
+        depths_per_boss = max(1, round(max_depth * manor_percent / 100))
+
         for location in list(regions["Manor"].locations):
             if location.address is None:
                 continue
-            depth = MANOR_LOCATION_DEPTHS.get(location.name, 1)
-            bosses_req = min((depth - 1) // manor_depths_per_boss, len(_BOSS_CLEARED_EVENTS))
+            depth = manor_depths.get(location.name, 1)
+            bosses_req = min((depth - 1) // depths_per_boss, len(_BOSS_CLEARED_EVENTS))
             if bosses_req > 0:
                 add_rule(location, lambda state, n=bosses_req: _count_bosses_cleared(state) >= n)
 

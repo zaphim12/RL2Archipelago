@@ -86,6 +86,41 @@ class FairyChestApChance(Range):
     default = 100
 
 
+class ManorLayout(Choice):
+    """How the manor is structured.
+
+    tree (0): The vanilla manor tree. Exactly 72 nodes in a fixed branching order.
+              Each node can be purchased once, so every run has exactly
+              72 manor checks no matter the settings.
+    shop (1): Four shop positions, each an independent column ManorShopDepth
+              purchases deep. All four positions are purchasable at any time until
+              exhausted. Buying one immediately puts the next purchase of that
+              column on offer. Total manor checks = 4 * ManorShopDepth, so the
+              manor scales to fit the run you want.
+
+    Note: RevealManorUpgrades only applies to the tree layout.
+    """
+    display_name = "Manor Layout"
+    option_tree = 0
+    option_shop = 1
+    default = 0
+
+
+class ManorShopDepth(Range):
+    """How many purchases deep each of the four shop positions goes. Shop layout only.
+
+    Total manor checks = 4 * this value, so the default of 25 gives 100 manor checks
+    (versus the tree layout's fixed 72).
+
+    Cost scales with how deep into a column a purchase sits. Lower ManorCostBase
+    alongside a large depth if you want the deepest purchases to stay affordable.
+    """
+    display_name = "Manor Shop Depth"
+    range_start = 1
+    range_end = 100
+    default = 25
+
+
 class ManorUpgradeBundleSize(Range):
     """Number of skill tree levels granted when receiving a manor upgrade item.
 
@@ -205,23 +240,24 @@ class ManorCostMaxAdditiveFactor(Range):
 # Warning: Altering these settings can easily create generation errors if
 # the resulting logical requirements are too tight
 
-class ManorDepthsPerBoss(Range):
-    """Number of manor depth tiers that are considered 'in-logic' per boss killed.
+class ManorDepthPercentPerBoss(Range):
+    """Percentage of the manor's depth that comes into logic per boss killed.
 
-    'Depth' is a value assigned to each manor upgrade that reflects how many upgrades
-    were required beforehand to reach that upgrade in the manor tree. 
+    'Depth' is how far into the manor an upgrade sits: how many upgrades had to be
+    bought before it could becomes available for purchase.
 
-    The first 'x' depth tiers are always in logic; each additional boss killed
-    opens the next x tiers. With the default of 3: depths 1–3
-    are available from the start, depths 4–6 require 1 boss cleared, depths 7–9
-    require 2, and so on. 
+    The shallowest x% of depths are in logic from the start, the next x% come into
+    logic once 1 boss is cleared, the next x% after 2, and so on. With the default of
+    25, a quarter of the manor opens up per boss, so the whole thing is in logic after
+    3 bosses.
 
-    Set to 0 to disable this gating entirely.
+    Set to 100 to put the entire manor in logic from the start, or 0 to disable this
+    gating entirely (identical outcome; 0 just skips the work).
     """
-    display_name = "Manor Depths Per Boss Gate"
+    display_name = "Manor Depth Percent Per Boss Gate"
     range_start = 0
-    range_end = 11
-    default = 3
+    range_end = 100
+    default = 25
 
 
 class ChestPreBossPercent(Range):
@@ -302,6 +338,9 @@ class RevealManorUpgrades(Toggle):
 
     Purchase rules are unchanged: a node still cannot be bought until the previous
     node has been purchased. Revealed-but-locked nodes show a padlock.
+
+    Tree layout only. The shop layout always shows exactly the next purchase of each
+    of its four columns, so this setting has no effect there.
     """
     display_name = "Reveal Manor Upgrades"
     default = 0
@@ -315,6 +354,8 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     bronze_chest_ap_chance: BronzeChestApChance
     silver_chest_ap_chance: SilverChestApChance
     fairy_chest_ap_chance: FairyChestApChance
+    manor_layout: ManorLayout
+    manor_shop_depth: ManorShopDepth
     manor_upgrade_bundle_size: ManorUpgradeBundleSize
     journal_checks: JournalChecks
     trap_count: TrapCount
@@ -322,7 +363,7 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     manor_cost_base: ManorCostBase
     manor_cost_min_subtractive_factor: ManorCostMinSubtractiveFactor
     manor_cost_max_additive_factor: ManorCostMaxAdditiveFactor
-    manor_depths_per_boss: ManorDepthsPerBoss
+    manor_depth_percent_per_boss: ManorDepthPercentPerBoss
     chest_pre_boss_percent: ChestPreBossPercent
     stat_upgrades_per_boss: StatUpgradesPerBoss
     stat_upgrades_per_biome_tier: StatUpgradesPerBiomeTier

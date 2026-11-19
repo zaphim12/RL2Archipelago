@@ -1,10 +1,15 @@
 from BaseClasses import Tutorial
 from worlds.AutoWorld import WebWorld, World
 
-from .constants import CORE_MANOR_UPGRADES, MANOR_UPGRADE_DEPTHS, NPC_MANOR_UPGRADES
+from .constants import (
+    CORE_MANOR_UPGRADES,
+    MANOR_SHOP_POSITIONS,
+    MANOR_UPGRADE_DEPTHS,
+    NPC_MANOR_UPGRADES,
+)
 from .items import RogueLegacy2Item, items_table, create_item, create_items
 from .locations_and_regions import locations_table, create_regions
-from .options import RogueLegacy2GameOptions
+from .options import ManorLayout, RogueLegacy2GameOptions
 
 
 class RogueLegacy2WebWorld(WebWorld):
@@ -57,32 +62,48 @@ class RogueLegacy2World(World):
         self.multiworld.completion_condition[self.player] = \
             lambda state: state.has("Victory", self.player)
 
-    def _compute_manor_upgrade_costs(self) -> list[int]:
-        """Compute a gold cost for each manor upgrade slot using the seeded world RNG.
+    def _manor_cost_at_depth(self, depth: int) -> int:
+        """Draw one manor gold cost for the given tree/column depth.
 
-        Costs are baked into slot data at generation time so the client always
-        receives pre-computed values. Reconnecting to the same session yields
-        identical costs without any client-side RNG.
-
-        Formula per slot: base * depth * factor, rounded to the nearest 25 gold.
-        factor is drawn uniformly from [1 - subtract_factor, 1 + add_factor].
+        Formula: base * depth * factor, rounded to the nearest 25 gold, where factor
+        is drawn uniformly from [1 - subtract_factor, 1 + add_factor]. Uses the seeded
+        world RNG, so costs are baked into slot data at generation time and reconnecting
+        to the same session yields identical costs without any client-side RNG.
         """
         base = self.options.manor_cost_base.value
         min_factor = 1.0 - self.options.manor_cost_min_subtractive_factor.value / 100.0
         max_factor = 1.0 + self.options.manor_cost_max_additive_factor.value / 100.0
-        costs: list[int] = []
-        for upgrade in CORE_MANOR_UPGRADES + NPC_MANOR_UPGRADES:
-            depth = MANOR_UPGRADE_DEPTHS.get(upgrade, 1)
-            factor = self.random.uniform(min_factor, max_factor)
-            raw = base * depth * factor
-            costs.append(max(25, round(raw / 25) * 25))
-        return costs
+        raw = base * depth * self.random.uniform(min_factor, max_factor)
+        return max(25, round(raw / 25) * 25)
+
+    def _compute_manor_upgrade_costs(self) -> list[int]:
+        """Tree layout: one cost per manor slot, ordered to match the C# slot list."""
+        return [
+            self._manor_cost_at_depth(MANOR_UPGRADE_DEPTHS.get(upgrade, 1))
+            for upgrade in CORE_MANOR_UPGRADES + NPC_MANOR_UPGRADES
+        ]
+
+    def _compute_manor_shop_costs(self) -> list[int]:
+        """Shop layout: one cost per purchase, flat and position-major.
+
+        Index = position * manor_shop_depth + depth_index, which is how the C# client
+        indexes it. A purchase's depth is its one-based position in its column, so the
+        two layouts price identically at equal depth.
+        """
+        depth = self.options.manor_shop_depth.value
+        return [
+            self._manor_cost_at_depth(depth_index + 1)
+            for _position in range(MANOR_SHOP_POSITIONS)
+            for depth_index in range(depth)
+        ]
 
     def fill_slot_data(self) -> dict:
         data = self.options.as_dict(
             "death_link",
             "blueprint_checks_per_biome",
             "rune_checks_per_biome",
+            "manor_layout",
+            "manor_shop_depth",
             "manor_upgrade_bundle_size",
             "journal_checks",
             "trap_appearance",
@@ -92,14 +113,21 @@ class RogueLegacy2World(World):
             "bronze_chest_ap_chance",
             "silver_chest_ap_chance",
             "fairy_chest_ap_chance",
-            "manor_depths_per_boss",
+            "manor_depth_percent_per_boss",
             "chest_pre_boss_percent",
             "stat_upgrades_per_boss",
             "stat_upgrades_per_biome_tier",
             "early_npc_unlocks",
             "reveal_manor_upgrades",
         )
-        data["manor_upgrade_costs"] = self._compute_manor_upgrade_costs()
+        # Only the active layout's cost array is computed, so the unused one does not
+        # consume world RNG. The client reads whichever one its layout calls for.
+        if self.options.manor_layout.value == ManorLayout.option_shop:
+            data["manor_upgrade_costs"] = []
+            data["manor_shop_costs"] = self._compute_manor_shop_costs()
+        else:
+            data["manor_upgrade_costs"] = self._compute_manor_upgrade_costs()
+            data["manor_shop_costs"] = []
         data["randomize_starting_class"] = int(self.options.randomize_starting_class.value)
         data["starting_class_index"] = self._starting_class_index
         return data

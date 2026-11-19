@@ -10,6 +10,9 @@ namespace RL2Archipelago.Patches;
 /// <para>The window prefab is instantiated fresh on every scene load and destroyed by
 /// <c>WindowManager.UnloadWindow</c>, so the overlay is rebuilt per open and never cached across
 /// scenes.</para>
+///
+/// <para>Inert under the shop manor layout: there is no tree left to draw lines along, since
+/// every node but the four shop hosts is hidden.</para>
 /// </summary>
 [HarmonyPatch]
 internal static class ManorBranchOverlayPatch
@@ -21,7 +24,7 @@ internal static class ManorBranchOverlayPatch
     [HarmonyPatch(typeof(SkillTreeWindowController), "OnOpen")]
     private static void OnOpen_Postfix(SkillTreeWindowController __instance)
     {
-        if (!APClient.IsSessionActive) return;
+        if (!APClient.IsSessionActive || APClient.IsManorShopLayout) return;
 
         try
         {
@@ -41,7 +44,7 @@ internal static class ManorBranchOverlayPatch
     [HarmonyPatch(typeof(SkillTreeWindowController), "RefreshAllButtons")]
     private static void RefreshAllButtons_Postfix()
     {
-        if (!APClient.IsSessionActive) return;
+        if (!APClient.IsSessionActive || APClient.IsManorShopLayout) return;
 
         try
         {
