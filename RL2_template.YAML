@@ -43,14 +43,17 @@ Rogue Legacy 2:
 
   # ── Fabled Weapons ──────────────────────────────────────────────────────
 
-  # When enabled, each class's fabled weapon is randomized into the multiworld.
-  # Class items become progressive: the first copy unlocks the class and the
-  # second unlocks that class's fabled weapon.
+  # How each class's fabled weapon is obtained.
   #
-  # When disabled, the class items revert to plain one-stage unlocks, and the
-  # fabled weapons stay purchasable with Souls in the Soul Shop instead.
-  # true / false  (default: true)
-  fabled_weapons: true
+  #   randomized - Shuffled into the multiworld. Class items become progressive:
+  #                the first copy unlocks the class and the second unlocks that
+  #                class's fabled weapon.
+  #   soul_shop  - Class items are plain one-stage unlocks and
+  #                the fabled weapons stay purchasable with Souls as in vanilla.
+  #   unlocked   - Every class can use its fabled weapon
+  #                as soon as that class is unlocked.
+  # Valid values: randomized, soul_shop, unlocked  (default: randomized)
+  fabled_weapons: randomized
 
   # ── Blueprint Checks ────────────────────────────────────────────────────
 

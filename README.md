@@ -243,11 +243,15 @@ When enabled, the default unlocked class is randomized instead of always being a
 
 ### Fabled Weapons (`fabled_weapons`)
 
-**Values:** true / false | **Default:** true
+**Values:** `randomized`, `soul_shop`, `unlocked` | **Default:** `randomized`
 
-When enabled, each class's fabled weapon is randomized into the multiworld. Class items become **progressive**: the first copy of `Progressive Boxer Class` unlocks the Boxer, and the second unlocks the Boxer's fabled weapon.
+How fabled weapons are obtained.
 
-When disabled, the class items revert to plain one-stage unlocks named `Upgrade: Boxer Class`, and the fabled weapons stay purchasable with Souls in the Soul Shop instead. These are ungated so they are available from the start.
+**`randomized`** shuffles them into the multiworld. Class items become **progressive**: the first copy of `Progressive Boxer Class` unlocks the Boxer, and the second unlocks the Boxer's fabled weapon.
+
+**`soul_shop`** leaves them as vanilla Soul Shop purchases. Class items are plain one-stage unlocks named `Upgrade: Boxer Class`, and the fabled weapons stay listed in the shop and cost Souls. Although they are ungated, so they are available from the start.
+
+**`unlocked`** gives every class its fabled weapon for free as soon as that class is unlocked. Similar to `soul_shop`, class items are plain one-stage unlocks.
 
 ---
 

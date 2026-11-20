@@ -181,13 +181,14 @@ internal static class APItemReconciler
         var progressiveClass = ItemRegistry.ToProgressiveClassPosition(itemId);
         if (progressiveClass.HasValue)
         {
-            if (!APClient.FabledWeapons) return IgnoreWrongClassItem(itemId, "fabled weapons are off");
+            if (!APClient.ProgressiveClassItems)
+                return IgnoreWrongClassItem(itemId, "fabled weapons are not randomized in this seed");
 
             return ApplyProgressiveClass(
                 progressiveClass.Value, count, runState, startingClassSlot, ref runStateChanged);
         }
 
-        if (APClient.FabledWeapons && ItemRegistry.IsPlainClassItem(itemId))
+        if (APClient.ProgressiveClassItems && ItemRegistry.IsPlainClassItem(itemId))
             return IgnoreWrongClassItem(itemId, "this seed unlocks classes through the progressive item");
 
         if (itemId == ItemRegistry.KnightClassItem)

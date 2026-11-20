@@ -13,10 +13,8 @@ namespace RL2Archipelago.Patches;
 /// What survives is the four entries that are pure convenience and grant no power: the Music Box,
 /// the two ore/aether converters, and the soul stone exchange.</para>
 ///
-/// <para>The one conditional entry is the fabled weapons. When <see cref="APClient.FabledWeapons"/>
-/// is on they are randomized as the second copy of each class item, so the shop must not also sell
-/// them. When it is off they are not in the item pool at all, so the shop stays their source and
-/// they are kept visible.</para>
+/// <para>The one conditional entry is the fabled weapons, and only
+/// <see cref="FabledWeaponMode.SoulShop"/> keeps them listed.</para>
 ///
 /// <para>Hiding is done exactly the way the base game hides a disabled entry: deactivate the
 /// GameObject in <c>UpdateActive</c>. <c>BaseOmniUIWindowController.UpdateActiveArrays</c> rebuilds
@@ -50,7 +48,7 @@ internal static class SoulShopPatch
     /// </summary>
     private static bool IsAllowed(SoulShopType type) =>
         s_alwaysAllowed.Contains(type)
-        || (!APClient.FabledWeapons && s_fabledWeapons.Contains(type));
+        || (APClient.FabledWeapons == FabledWeaponMode.SoulShop && s_fabledWeapons.Contains(type));
 
     /// <summary>
     /// Hides every entry outside the allow-list. This is the patch that does the real work; the
@@ -121,7 +119,7 @@ internal static class SoulShopPatch
     // that is not ours to reimplement. The game does its own arithmetic; it just does it over a
     // set that excludes the items the multiworld handed out.
     //
-    // Only active while FabledWeapons is on, which is exactly when the shop refuses to sell them,
+    // Only active under FabledWeaponMode.Randomized, where the shop refuses to sell them,
     // so every owned variant in such a seed is one AP granted, and none can have been paid for.
 
     private static readonly Dictionary<SoulShopType, int> s_suppressedOwnedLevels = [];
@@ -135,7 +133,7 @@ internal static class SoulShopPatch
     {
         // deductSpentSouls false never runs the spend loop, so there is nothing to suppress.
         if (!deductSpentSouls || s_suppressing) return;
-        if (!APClient.IsSessionActive || !APClient.FabledWeapons) return;
+        if (!APClient.IsSessionActive || !APClient.ProgressiveClassItems) return;
 
         var table = SaveManager.ModeSaveData?.SoulShopTable;
         if (table == null) return;

@@ -333,18 +333,23 @@ class RandomizeStartingClass(Toggle):
     default = 1
 
 
-class FabledWeapons(Toggle):
-    """Whether each class's fabled weapon is randomized into the multiworld.
+class FabledWeapons(Choice):
+    """How each class's fabled weapon is obtained.
 
-    Class items are progressive: the first copy unlocks the class, and the second
-    unlocks that class's fabled weapon. The starting class is already one stage ahead,
-    so its one and only copy just unlocks the fabled weapon.
-
-    When disabled, the fabled weapons are technically still available through the
-    Soul Shop if you can afford the price.
+    randomized (0): Fabled weapons are shuffled into the multiworld. Class items become
+                    progressive: the first copy unlocks the class, and the second unlocks
+                    that class's fabled weapon. The starting class is already one stage
+                    ahead, so its one and only copy just unlocks the fabled weapon.
+    soul_shop (1):  Class items are plain one-stage unlocks, and the fabled weapons stay
+                    purchasable in the Soul Shop.
+    unlocked (2):   Every class can use its fabled weapon as soon as that class is unlocked.
+                    Class items are plain one-stage unlocks, same as under soul_shop.
     """
     display_name = "Fabled Weapons"
-    default = 1
+    option_randomized = 0
+    option_soul_shop  = 1
+    option_unlocked   = 2
+    default = 0
 
 
 class RevealManorUpgrades(Toggle):

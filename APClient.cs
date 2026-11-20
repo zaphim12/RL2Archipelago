@@ -35,6 +35,17 @@ public enum JournalChecksMode { Disabled = 0, Individual = 1, Grouped = 2 }
 public enum ManorLayoutMode { Tree = 0, Shop = 1 }
 
 /// <summary>
+/// How this seed hands out fabled weapons. Values match the apworld's FabledWeapons option.
+///
+/// <para><see cref="Randomized"/> shuffles them into the multiworld as the second stage of each
+/// progressive class item, and the Soul Shop no longer sells them. <see cref="SoulShop"/> leaves
+/// them as vanilla Soul Shop purchases, so they stay listed there and cost souls.
+/// <see cref="Unlocked"/> gives every class its fabled weapon for free the moment that class is
+/// unlocked, so they are neither randomized nor sold.</para>
+/// </summary>
+public enum FabledWeaponMode { Randomized = 0, SoulShop = 1, Unlocked = 2 }
+
+/// <summary>
 /// High-level connection lifecycle state. Distinct from <see cref="APClient.IsConnected"/>
 /// (a raw socket bool) so the UI can tell an in-progress reconnect from a clean
 /// user-initiated disconnect.
@@ -134,11 +145,17 @@ public static class APClient
     public static bool KnightClassReceived { get; internal set; } = false;
 
     /// <summary>
-    /// True when fabled weapons are randomized into the multiworld as a progressive copy of each
-    /// class item. When false they stay buyable in the Soul Shop instead, which is the only
-    /// reason the client needs to know (see <see cref="Patches.SoulShopPatch"/>).
+    /// How this seed hands out fabled weapons. Mirrors the fabled_weapons YAML option.
     /// </summary>
-    public static bool FabledWeapons { get; private set; } = true;
+    public static FabledWeaponMode FabledWeapons { get; private set; } = FabledWeaponMode.Randomized;
+
+    /// <summary>
+    /// Whether class unlocks are the two-stage progressive items rather than the plain one-stage
+    /// ones. True only under <see cref="FabledWeaponMode.Randomized"/>, since that is the only mode
+    /// that puts a fabled weapon in the item pool, and it decides which of the two parallel class
+    /// item sets this seed generated.
+    /// </summary>
+    public static bool ProgressiveClassItems => FabledWeapons == FabledWeaponMode.Randomized;
 
     /// <summary>
     /// Pre-computed gold costs for each manor upgrade slot, keyed by <see cref="SkillTreeType"/>.
@@ -387,7 +404,7 @@ public static class APClient
             RandomizeStartingClass = Convert.ToInt32(SlotData["randomize_starting_class"]) != 0;
             StartingClassIndex = Convert.ToInt32(SlotData["starting_class_index"]);
 
-            FabledWeapons = Convert.ToInt32(SlotData["fabled_weapons"]) != 0;
+            FabledWeapons = (FabledWeaponMode)Convert.ToInt32(SlotData["fabled_weapons"]);
             KnightClassReceived = RunState.KnightClassReceived;
 
             // On first connect to this seed: queue the burden picker. MenuPatch opens it once the main
@@ -790,7 +807,7 @@ public static class APClient
         RandomizeStartingClass = false;
         StartingClassIndex = 0;
         KnightClassReceived = false;
-        FabledWeapons = false;
+        FabledWeapons = FabledWeaponMode.Randomized;
         APItemReconciler.Reset();
         RevealManorUpgrades = false;
         ManorLayout = ManorLayoutMode.Tree;

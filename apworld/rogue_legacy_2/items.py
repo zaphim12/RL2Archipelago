@@ -23,6 +23,7 @@ from .constants import (
     STAT_UPGRADE_MANOR_UPGRADES,
     TELEPORTER_NAMES,
 )
+from .options import FabledWeapons
 
 # All item and location IDs are offset from this base.
 BASE_ID = 0x0BEEF000
@@ -191,7 +192,9 @@ def create_items(world: "RogueLegacy2World") -> None:
     starting_class_pos = KNIGHT_CLASS_POSITION if starting_class_idx == 0 else starting_class_idx - 1
 
     # Which of the two parallel class item sets this seed uses. See constants.py.
-    fabled_weapons = bool(world.options.fabled_weapons)
+    # Only the randomized mode puts fabled weapons in the pool at all. soul_shop and
+    # unlocked both leave class items as plain one-stage unlocks.
+    fabled_weapons = world.options.fabled_weapons == FabledWeapons.option_randomized
     class_item_names = PROGRESSIVE_CLASS_ITEM_NAMES if fabled_weapons else PLAIN_CLASS_ITEM_NAMES
 
     # The 14 class slots are handled by the dedicated block below, not by the generic
