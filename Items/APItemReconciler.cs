@@ -2,6 +2,7 @@ using RL2Archipelago.Locations;
 using RL2Archipelago.Patches;
 using RL2Archipelago.Traps;
 using System;
+using System.Collections.Generic;
 
 namespace RL2Archipelago.Items;
 
@@ -58,6 +59,7 @@ internal static class APItemReconciler
         && !SaveManager.LoadingFailed
         && SaveManager.PlayerSaveData != null
         && SaveManager.EquipmentSaveData != null
+        && SaveManager.ModeSaveData != null   // fabled weapons live in ModeSaveData.SoulShopTable
         && !ManorUpgradePatch.IsRemappingLevels;
 
     /// <summary>
@@ -167,6 +169,27 @@ internal static class APItemReconciler
         if (rune.HasValue)
             return ApplyRuneBlueprint(itemId, rune.Value, count);
 
+        // ── Class items: only this seed's set may take effect ────────────────
+        //
+        // Class items use one of two sets depending on the fabled_weapons setting.
+        // The two sets cover the same 15 classes and differ only in how many stages they have, so
+        // a seed generates one or the other. Both are in the global item table though, which means
+        // the wrong one can still arrive (e.g. from the cheat cnosole). Honouring it would hand over
+        // something the seed never offered: a fabled weapon in a run that disabled them, or a class
+        // unlock that was supposed to come from the progressive item. Both are checked explicitly
+        // rather than inferred from copy counts.
+        var progressiveClass = ItemRegistry.ToProgressiveClassPosition(itemId);
+        if (progressiveClass.HasValue)
+        {
+            if (!APClient.FabledWeapons) return IgnoreWrongClassItem(itemId, "fabled weapons are off");
+
+            return ApplyProgressiveClass(
+                progressiveClass.Value, count, runState, startingClassSlot, ref runStateChanged);
+        }
+
+        if (APClient.FabledWeapons && ItemRegistry.IsPlainClassItem(itemId))
+            return IgnoreWrongClassItem(itemId, "this seed unlocks classes through the progressive item");
+
         if (itemId == ItemRegistry.KnightClassItem)
             return ApplyKnightClass(runState, ref runStateChanged);
 
@@ -186,6 +209,29 @@ internal static class APItemReconciler
         Plugin.Log.LogError($"[APSync] No handler for item '{DisplayName(itemId)}' (ID {itemId}).");
         return 0;
     }
+
+    /// <summary>Item IDs already reported by <see cref="IgnoreWrongClassItem"/> this session.</summary>
+    private static readonly HashSet<long> s_reportedWrongClassItems = [];
+
+    /// <summary>
+    /// Drops a class item belonging to the set this seed did not generate.
+    ///
+    /// <para>Logged once per item rather than every pass: the reconciler re-derives the whole
+    /// ledger on every run and this branch, unlike the others, never changes anything, so it would
+    /// otherwise repeat for as long as the item sits in the ledger.</para>
+    /// </summary>
+    private static int IgnoreWrongClassItem(long itemId, string reason)
+    {
+        if (s_reportedWrongClassItems.Add(itemId))
+            Plugin.Log.LogWarning(
+                $"[APSync] Ignoring '{DisplayName(itemId)}': {reason}. " +
+                "It belongs to the class item set this seed does not use.");
+
+        return 0;
+    }
+
+    /// <summary>Clears session-scoped state. Called when a session is torn down.</summary>
+    internal static void Reset() => s_reportedWrongClassItems.Clear();
 
     private static int ApplyHeirloom(long itemId, HeirloomType heirloom, ref bool refreshAbilities)
     {
@@ -290,6 +336,70 @@ internal static class APItemReconciler
     }
 
     /// <summary>
+    /// Applies a progressive class item: the first copy unlocks the class, the second unlocks its
+    /// fabled weapon. Only generated when the fabled_weapons option is on. With it off the seed
+    /// carries the plain one-stage class items instead, which never reach this path.
+    ///
+    /// <para>The starting class is unlocked for free at run start, outside the ledger, so for that
+    /// one class the first copy received is already the second stage.</para>
+    /// </summary>
+    private static int ApplyProgressiveClass(
+        int position,
+        int count,
+        APRunState runState,
+        SkillTreeType? startingClassSlot,
+        ref bool runStateChanged)
+    {
+        var skill = ItemRegistry.ProgressiveClassSkill(position);
+
+        bool isStartingClass = skill.HasValue
+            ? startingClassSlot == skill.Value
+            : APClient.StartingClassIndex == 0;   // no backing slot means Knight
+
+        int stages = count + (isStartingClass ? 1 : 0);
+        if (stages <= 0) return 0;
+
+        int corrections = 0;
+
+        // Stage 1: the class itself. Knight has no manor slot, it is gated by a run state flag
+        // because vanilla hardcodes it into the heir pool and bypasses IsClassUnlocked entirely.
+        if (skill.HasValue)
+            corrections += RaiseSkillLevel(skill.Value, stages);
+        else
+            corrections += ApplyKnightClass(runState, ref runStateChanged);
+
+        // Stage 2: the fabled weapon.
+        if (stages >= 2)
+        {
+            var className = DisplayName(ItemRegistry.ProgressiveClassItem(position));
+            corrections += ApplyFabledWeapon(ItemRegistry.ProgressiveClassVariant(position), className);
+        }
+
+        return corrections;
+    }
+
+    /// <summary>
+    /// Unlocks a class's fabled weapon by owning and equipping its Soul Shop entry, which is the
+    /// single thing <c>LineageWindowController.IsFabledWeaponUnlocked</c> consults. Mirrors the
+    /// game's own grant in <c>SpecialMode_EV</c>. Owned must be set first, because
+    /// <c>SetEquippedLevel</c> clamps to the owned level.
+    ///
+    /// <para>Idempotent and monotone up, like every other write in this file: already-unlocked is a
+    /// no-op reporting no correction, and nothing here can lower a level.</para>
+    /// </summary>
+    private static int ApplyFabledWeapon(SoulShopType variant, string className)
+    {
+        var entry = SaveManager.ModeSaveData?.GetSoulShopObj(variant);
+        if (entry == null || entry.CurrentEquippedLevel > 0) return 0;
+
+        entry.SetOwnedLevel(1, additive: false, clampToMaxLevel: true);
+        entry.SetEquippedLevel(1, additive: false);
+
+        Plugin.Log.LogDebug($"[APSync] Restored fabled weapon for {className} ({variant}).");
+        return 1;
+    }
+
+    /// <summary>
     /// Manor levels are owned entirely by Archipelago items: buying a slot in an AP run deliberately
     /// skips the vanilla level grant (see <see cref="ManorUpgradePatch"/>), so an absolute set is
     /// correct and cannot clobber player progress.
@@ -303,6 +413,22 @@ internal static class APItemReconciler
         // The randomized starting class grants one free bundle on this slot, outside the ledger.
         int bundles = count + (startingClassSlot == skill ? 1 : 0);
 
+        int corrections = RaiseSkillLevel(skill, bundles);
+        if (corrections > 0)
+            Plugin.Log.LogDebug($"[APSync] Restored manor upgrade: {DisplayName(itemId)}");
+
+        return corrections;
+    }
+
+    /// <summary>
+    /// Raises a manor skill to the level <paramref name="bundles"/> received bundles entitle it to.
+    /// Shared by plain manor upgrades and progressive class items.
+    /// </summary>
+    private static int RaiseSkillLevel(SkillTreeType skill, int bundles)
+    {
+        var skillObj = SkillTreeManager.GetSkillTreeObj(skill);
+        if (skillObj == null) return 0;
+
         // Clamp against MaxLevel so a maxed slot doesn't report a correction on every pass.
         int target = Math.Min(bundles * APClient.ManorUpgradeBundleSize, skillObj.MaxLevel);
         if (SkillTreeManager.GetSkillObjLevel(skill) >= target) return 0;
@@ -310,7 +436,6 @@ internal static class APItemReconciler
         // runEvents: false keeps UnlockConnectedSkillSlots from revealing adjacent manor slots, which
         // should only happen when the player physically buys the prerequisite.
         SkillTreeManager.SetSkillObjLevel(skill, target, additive: false, runEvents: false);
-        Plugin.Log.LogDebug($"[APSync] Restored manor upgrade: {DisplayName(itemId)} (level {target})");
         return 1;
     }
 

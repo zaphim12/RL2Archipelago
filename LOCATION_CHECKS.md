@@ -261,8 +261,9 @@ Permanent meta-progression unlocks bought with Souls. Tracked via `ModeSaveData.
 - `MaxCharonDonationFlat` - Gold carry increase
 - `ReduceBurdenFlat` / `BurdenOverload` - Burden/NG+ management
 - `MaxEquipmentDrops` / `MaxRuneDrops` - Better drop rates
-- Fabled Weapon variants (ArcherVariant, AxeVariant, BoxerVariant, etc.) - alternate class kits
 - `ForceRandomizeKit` / `UnlockJukebox` / `OreAetherSwap` / `UnlockOverload`
+
+**Fabled Weapon variants** (`ArcherVariant`, `AxeVariant`, `BoxerVariant`, …) are the exception: these 15 entries *are* randomized, as the second stage of each progressive class item (when `fabled_weapons` is enabled).
 
 ### Eggplant Hunt (4-Stage Collectible Chain)
 - Disculded for being very difficult to reach (without house rules) and kinda random. Also the tutorial eggplant can be permanently missed on a run 

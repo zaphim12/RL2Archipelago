@@ -26,6 +26,7 @@ public static class ItemRegistry
     private const long TELEPORTER_OFFSET = 0x700;
     private const long FILLER_OFFSET     = 0x800;
     private const long TRAP_OFFSET       = 0x900;
+    private const long PROGRESSIVE_CLASS_OFFSET = 0xA00;
 
     // ── Manor upgrade items ──────────────────────────────────────────────────
     //
@@ -50,6 +51,21 @@ public static class ItemRegistry
     // Knight Class is not a manor slot; it only enters the pool when a non-Knight
     // starting class is chosen. Index 72 follows the NPC unlock slots (69–71).
     public const long KnightClassItem = BASE_ID + MANOR_OFFSET + 72;
+
+    // ── Progressive class items ──────────────────────────────────────────────
+    //
+    // The fabled_weapons counterpart to the 15 plain class items (ManorSlots 44–57 plus
+    // KnightClassItem). A seed carries one set or the other, never both. With the option on, the
+    // plain items are not generated and these are, two copies each, first unlocking the class and
+    // second its fabled weapon.
+    //
+    // They need IDs of their own purely because Archipelago's name->ID map is global per game and
+    // cannot vary with a YAML option, so "Upgrade: Boxer Class" and "Progressive Boxer Class"
+    // cannot share one ID. Position 0-13 = ManorSlots 44-57, position 14 = Knight.
+    public const int ProgressiveClassCount = 15;
+
+    public static long ProgressiveClassItem(int position) =>
+        BASE_ID + PROGRESSIVE_CLASS_OFFSET + position;
 
     // ── Filler items ─────────────────────────────────────────────────────────
 
@@ -115,6 +131,16 @@ public static class ItemRegistry
             d[BASE_ID + MANOR_OFFSET + i] = GameConstants.ManorItemNames[i];
 
         d[KnightClassItem] = $"Upgrade: {GameConstants.KnightClassItemName}";
+
+        // Progressive class item names, in lockstep with PROGRESSIVE_CLASS_ITEM_NAMES in
+        // constants.py: positions 0-13 track the class manor slots, 14 is Knight.
+        for (int position = 0; position < ProgressiveClassCount; position++)
+        {
+            string className = position == GameConstants.KnightClassPosition
+                ? GameConstants.KnightClassItemName
+                : GameConstants.ManorSlots[GameConstants.FirstClassSlotIndex + position].ItemName;
+            d[ProgressiveClassItem(position)] = $"Progressive {className}";
+        }
 
         return d;
     }
@@ -239,6 +265,45 @@ public static class ItemRegistry
         int index = Array.IndexOf(s_skillTreeTypes, type);
         return index < 0 ? null : BASE_ID + MANOR_OFFSET + index;
     }
+
+    /// <summary>
+    /// Whether this is one of the 15 plain, one-stage class items (the 14 class manor slots plus
+    /// <see cref="KnightClassItem"/>). These are what a seed generates when fabled weapons are off.
+    /// </summary>
+    public static bool IsPlainClassItem(long itemId)
+    {
+        if (itemId == KnightClassItem) return true;
+
+        long offset = itemId - BASE_ID - MANOR_OFFSET;
+        if (offset < 0 || offset >= GameConstants.ManorSlots.Length) return false;
+
+        return GameConstants.ManorSlots[(int)offset].IsClassUnlock;
+    }
+
+    /// <summary>
+    /// Position of a progressive class item within the 15-entry class list, or <c>null</c> if the
+    /// item is not one. Deliberately does not match the plain class items.
+    /// </summary>
+    public static int? ToProgressiveClassPosition(long itemId)
+    {
+        long offset = itemId - BASE_ID - PROGRESSIVE_CLASS_OFFSET;
+        return offset < 0 || offset >= ProgressiveClassCount ? null : (int)offset;
+    }
+
+    /// <summary>
+    /// The manor slot backing a progressive class item, or <c>null</c> for Knight, which has no
+    /// manor slot of its own.
+    /// </summary>
+    public static SkillTreeType? ProgressiveClassSkill(int position) =>
+        position == GameConstants.KnightClassPosition
+            ? null
+            : GameConstants.ManorSlots[GameConstants.FirstClassSlotIndex + position].SkillTree;
+
+    /// <summary>The Soul Shop entry holding the fabled weapon this class item's second copy grants.</summary>
+    public static SoulShopType ProgressiveClassVariant(int position) =>
+        position == GameConstants.KnightClassPosition
+            ? GameConstants.KnightFabledVariant
+            : GameConstants.ManorSlots[GameConstants.FirstClassSlotIndex + position].FabledVariant;
 
     private static readonly HashSet<SkillTreeType> s_manorSkills = [.. s_skillTreeTypes];
 

@@ -95,11 +95,12 @@ BLUEPRINT_TYPES: list[str] = [
 # ---------------------------------------------------------------------------
 
 class ManorSlot(NamedTuple):
-    item_name: str           # AP item display name  (e.g. "Vitality Up I")
-    location_name: str       # In-game building name (e.g. "Mess Hall")
-    max_level: int           # Max purchasable levels; single-level slots are 1
-    depth: int               # Manor tree depth; drives gold cost formula in __init__.py
-    is_stat_upgrade: bool    # counts toward the stat-upgrade total for biome gating
+    item_name: str                 # AP item display name  (e.g. "Vitality Up I")
+    location_name: str             # In-game building name (e.g. "Mess Hall")
+    max_level: int                 # Max purchasable levels; single-level slots are 1
+    depth: int                     # Manor tree depth; drives gold cost formula in __init__.py
+    is_stat_upgrade: bool          # counts toward the stat-upgrade total for biome gating
+    is_class_unlock: bool = False  # class slots are progressive: 1st copy = class, 2nd = fabled weapon
 
 _MANOR_SLOTS: list[ManorSlot] = [
     # ── Vitality ─────────────────────────────────────────────────────────────
@@ -163,20 +164,20 @@ _MANOR_SLOTS: list[ManorSlot] = [
     ManorSlot("Architect Unlock",            "Magenta Path Upgrade 1",     1,  5, True),    # 42 Architect
     ManorSlot("Architect Cost Reduction",    "Magenta Path Upgrade 2",     5,  6, False),   # 43 Architect_Cost_Down
     # ── Class unlocks ────────────────────────────────────────────────────────
-    ManorSlot("Boxer Class",                 "Red Path Upgrade 6",         1,  6, False),   # 44 BoxingGlove_Class_Unlock
-    ManorSlot("Duelist Class",               "Cyan Path Upgrade 3",        1,  6, False),   # 45 Saber_Class_Unlock
-    ManorSlot("Assassin Class",              "Cyan Path Upgrade 5",        1,  8, False),   # 46 DualBlades_Class_Unlock
-    ManorSlot("Chef Class",                  "Purple Path Upgrade 3",      1,  6, False),   # 47 Ladle_Class_Unlock
-    ManorSlot("Barbarian Class",             "Red Path Upgrade 4",         1,  4, False),   # 48 Axe_Class_Unlock
-    ManorSlot("Mage Class",                  "Purple Path Upgrade 1",      1,  4, False),   # 49 Wand_Class_Unlock
-    ManorSlot("Ranger Class",                "Red Path Upgrade 2",         1,  2, False),   # 50 Bow_Class_Unlock
-    ManorSlot("Valkyrie Class",              "Cyan Path Upgrade 1",        1,  4, False),   # 51 Spear_Class_Unlock
-    ManorSlot("Gunslinger Class",            "White Path Upgrade 1",       1,  8, False),   # 52 Gun_Class_Unlock
-    ManorSlot("Ronin Class",                 "Brown Path Upgrade 3",       1,  8, False),   # 53 Samurai_Class_Unlock
-    ManorSlot("Bard Class",                  "Magenta Path Upgrade 3",     1,  7, False),   # 54 Music_Class_Unlock
-    ManorSlot("Pirate Class",                "Orange Path Upgrade 5",      1,  9, False),   # 55 Pirate_Class_Unlock
-    ManorSlot("Astromancer Class",           "Purple Path Upgrade 6",      1,  9, False),   # 56 Astro_Class_Unlock
-    ManorSlot("Dragon Lancer Class",         "Orange Path Upgrade 3",      1,  7, False),   # 57 Lancer_Class_Unlock
+    ManorSlot("Boxer Class",                 "Red Path Upgrade 6",         1,  6, False, True),   # 44 BoxingGlove_Class_Unlock
+    ManorSlot("Duelist Class",               "Cyan Path Upgrade 3",        1,  6, False, True),   # 45 Saber_Class_Unlock
+    ManorSlot("Assassin Class",              "Cyan Path Upgrade 5",        1,  8, False, True),   # 46 DualBlades_Class_Unlock
+    ManorSlot("Chef Class",                  "Purple Path Upgrade 3",      1,  6, False, True),   # 47 Ladle_Class_Unlock
+    ManorSlot("Barbarian Class",             "Red Path Upgrade 4",         1,  4, False, True),   # 48 Axe_Class_Unlock
+    ManorSlot("Mage Class",                  "Purple Path Upgrade 1",      1,  4, False, True),   # 49 Wand_Class_Unlock
+    ManorSlot("Ranger Class",                "Red Path Upgrade 2",         1,  2, False, True),   # 50 Bow_Class_Unlock
+    ManorSlot("Valkyrie Class",              "Cyan Path Upgrade 1",        1,  4, False, True),   # 51 Spear_Class_Unlock
+    ManorSlot("Gunslinger Class",            "White Path Upgrade 1",       1,  8, False, True),   # 52 Gun_Class_Unlock
+    ManorSlot("Ronin Class",                 "Brown Path Upgrade 3",       1,  8, False, True),   # 53 Samurai_Class_Unlock
+    ManorSlot("Bard Class",                  "Magenta Path Upgrade 3",     1,  7, False, True),   # 54 Music_Class_Unlock
+    ManorSlot("Pirate Class",                "Orange Path Upgrade 5",      1,  9, False, True),   # 55 Pirate_Class_Unlock
+    ManorSlot("Astromancer Class",           "Purple Path Upgrade 6",      1,  9, False, True),   # 56 Astro_Class_Unlock
+    ManorSlot("Dragon Lancer Class",         "Orange Path Upgrade 3",      1,  7, False, True),   # 57 Lancer_Class_Unlock
     # ── Relics ───────────────────────────────────────────────────────────────
     ManorSlot("Relic Resolve Cost Down",     "Lime Path Upgrade 2",        5,  7, True),    # 58 Relic_Cost_Down
     ManorSlot("Relic Reroll Up",             "Lime Path Upgrade 3",       10,  8, False),   # 59 Reroll_Relic
@@ -217,6 +218,30 @@ CLASS_UNLOCK_ITEM_NAMES: list[str] = [f"Upgrade: {s.item_name}" for s in _MANOR_
 # Knight Class as an AP item (granted when starting class is not Knight and the player
 # finds it in the multiworld). Not a manor slot - has its own item ID at index 72.
 KNIGHT_CLASS_ITEM_NAME: str = "Upgrade: Knight Class"
+
+# ---------------------------------------------------------------------------
+# Class items
+#
+# Two parallel sets covering the same 15 classes, because Archipelago's name->ID map is
+# one global table per game and cannot vary with a YAML option:
+#
+#   fabled_weapons off -> PLAIN_CLASS_ITEM_NAMES, one copy, "Upgrade: Boxer Class".
+#   fabled_weapons on  -> PROGRESSIVE_CLASS_ITEM_NAMES, two copies, "Progressive Boxer
+#                         Class". First copy unlocks the class, second its fabled weapon.
+#
+# Only one set is ever generated into a given seed. Both orderings are
+# [ManorSlots 44..57, then Knight], so index 14 is Knight in each and the two can be
+# indexed interchangeably.
+# ---------------------------------------------------------------------------
+
+PLAIN_CLASS_ITEM_NAMES: list[str] = CLASS_UNLOCK_ITEM_NAMES + [KNIGHT_CLASS_ITEM_NAME]
+
+PROGRESSIVE_CLASS_ITEM_NAMES: list[str] = (
+    [f"Progressive {s.item_name}" for s in _MANOR_SLOTS[44:58]] + ["Progressive Knight Class"]
+)
+
+# Position of Knight within either list.
+KNIGHT_CLASS_POSITION: int = 14
 
 # Keyed by "Upgrade: {item_name}" - depth in the manor unlock tree, used by
 # _compute_manor_upgrade_costs() to scale gold costs. Defaults to 1 if absent.

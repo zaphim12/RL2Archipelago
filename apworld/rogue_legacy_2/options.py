@@ -333,6 +333,20 @@ class RandomizeStartingClass(Toggle):
     default = 1
 
 
+class FabledWeapons(Toggle):
+    """Whether each class's fabled weapon is randomized into the multiworld.
+
+    Class items are progressive: the first copy unlocks the class, and the second
+    unlocks that class's fabled weapon. The starting class is already one stage ahead,
+    so its one and only copy just unlocks the fabled weapon.
+
+    When disabled, the fabled weapons are technically still available through the
+    Soul Shop if you can afford the price.
+    """
+    display_name = "Fabled Weapons"
+    default = 1
+
+
 class RevealManorUpgrades(Toggle):
     """Show every manor upgrade node from the start instead of only the ones adjacent to a purchase.
 
@@ -369,4 +383,5 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     stat_upgrades_per_biome_tier: StatUpgradesPerBiomeTier
     early_npc_unlocks: EarlyNPCUnlocks
     randomize_starting_class: RandomizeStartingClass
+    fabled_weapons: FabledWeapons
     reveal_manor_upgrades: RevealManorUpgrades

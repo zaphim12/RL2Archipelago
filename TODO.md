@@ -43,11 +43,11 @@
 [x] Blueprints
   [x] Make sure that the leather blueprint doesn't get unlocked by default like the base-game does
 [x] Runes
-[ ] Manor upgrades
-  [ ] See if unlocking the Knight class works, and if so try to randomize the starting class and allow Knights to be unlocked later
+[x] Fabled weapons
+[x] Manor upgrades
+  [x] See if unlocking the Knight class works, and if so try to randomize the starting class and allow Knights to be unlocked later
   [x] Give rewards in a bundle of configurable size (e.g. 5 strength upgrades per item)
   [x] Have some number of rewards be useful and the rest be filler
-  [ ] Allow setting a maximum number of total bundles
 
 ## Locations:
 [x] Boss kills

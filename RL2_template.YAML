@@ -41,6 +41,17 @@ Rogue Legacy 2:
   # true / false  (default: true)
   randomize_starting_class: true
 
+  # ── Fabled Weapons ──────────────────────────────────────────────────────
+
+  # When enabled, each class's fabled weapon is randomized into the multiworld.
+  # Class items become progressive: the first copy unlocks the class and the
+  # second unlocks that class's fabled weapon.
+  #
+  # When disabled, the class items revert to plain one-stage unlocks, and the
+  # fabled weapons stay purchasable with Souls in the Soul Shop instead.
+  # true / false  (default: true)
+  fabled_weapons: true
+
   # ── Blueprint Checks ────────────────────────────────────────────────────
 
   # Number of Archipelago location checks available from blueprint chest

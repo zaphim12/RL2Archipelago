@@ -241,6 +241,16 @@ When enabled, the default unlocked class is randomized instead of always being a
 
 ---
 
+### Fabled Weapons (`fabled_weapons`)
+
+**Values:** true / false | **Default:** true
+
+When enabled, each class's fabled weapon is randomized into the multiworld. Class items become **progressive**: the first copy of `Progressive Boxer Class` unlocks the Boxer, and the second unlocks the Boxer's fabled weapon.
+
+When disabled, the class items revert to plain one-stage unlocks named `Upgrade: Boxer Class`, and the fabled weapons stay purchasable with Souls in the Soul Shop instead. These are ungated so they are available from the start.
+
+---
+
 ### Reveal Manor Upgrades (`reveal_manor_upgrades`)
 
 **Values:** true / false | **Default:** false

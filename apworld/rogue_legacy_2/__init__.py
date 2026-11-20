@@ -118,6 +118,7 @@ class RogueLegacy2World(World):
             "stat_upgrades_per_boss",
             "stat_upgrades_per_biome_tier",
             "early_npc_unlocks",
+            "fabled_weapons",
             "reveal_manor_upgrades",
         )
         # Only the active layout's cost array is computed, so the unused one does not

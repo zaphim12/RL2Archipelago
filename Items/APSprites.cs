@@ -45,7 +45,12 @@ internal static class APSprites
             if (sprite != null) return sprite;
         }
 
-        var skillTreeType = ItemRegistry.ToSkillTreeType(scouted.ItemId);
+        // A progressive class item has no manor item ID of its own, so it has to resolve through
+        // the associated class's manor slot or it would fall back to the generic AP logo.
+        var progressiveClass = ItemRegistry.ToProgressiveClassPosition(scouted.ItemId);
+        var skillTreeType = progressiveClass.HasValue
+            ? ItemRegistry.ProgressiveClassSkill(progressiveClass.Value)
+            : ItemRegistry.ToSkillTreeType(scouted.ItemId);
         if (skillTreeType.HasValue)
         {
             var sprite = IconLibrary.GetSkillTreeIcon(skillTreeType.Value);

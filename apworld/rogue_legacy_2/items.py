@@ -14,8 +14,11 @@ from .constants import (
     CORE_MANOR_UPGRADES,
     HEIRLOOM_NAMES,
     KNIGHT_CLASS_ITEM_NAME,
+    KNIGHT_CLASS_POSITION,
     MANOR_MAX_LEVELS,
     NPC_MANOR_UPGRADES,
+    PLAIN_CLASS_ITEM_NAMES,
+    PROGRESSIVE_CLASS_ITEM_NAMES,
     RUNE_NAMES,
     STAT_UPGRADE_MANOR_UPGRADES,
     TELEPORTER_NAMES,
@@ -31,6 +34,7 @@ MANOR_OFFSET      = 0x600
 TELEPORTER_OFFSET = 0x700
 FILLER_OFFSET     = 0x800
 TRAP_OFFSET       = 0x900
+PROGRESSIVE_CLASS_OFFSET = 0xA00
 
 
 class RogueLegacy2Item(Item):
@@ -123,11 +127,22 @@ for _i, _name in enumerate(CORE_MANOR_UPGRADES + NPC_MANOR_UPGRADES):
     )
 
 # Knight Class unlock item (index 72, after NPC slots 69-71).
-# Only enters the pool when a non-Knight starting class is chosen; handled in create_items().
+# Unlike the other 14 classes Knight has no manor slot, so it needs an ID of its own.
 item_data_table[KNIGHT_CLASS_ITEM_NAME] = RogueLegacy2ItemData(
     code=BASE_ID + MANOR_OFFSET + 72,
     classification=ItemClassification.useful,
 )
+
+# Progressive class items: the fabled_weapons = enabled counterpart to the 15 plain class
+# items above. A seed generates one set or the other, never both, but Archipelago's 
+# name->ID map is global and cannot vary per slot, so both are always registered here.
+# ID = BASE_ID + PROGRESSIVE_CLASS_OFFSET + position, position 0-13 = ManorSlots 44-57,
+# position 14 = Knight.
+for _i, _name in enumerate(PROGRESSIVE_CLASS_ITEM_NAMES):
+    item_data_table[_name] = RogueLegacy2ItemData(
+        code=BASE_ID + PROGRESSIVE_CLASS_OFFSET + _i,
+        classification=ItemClassification.useful,
+    )
 
 # Convenience: name→ID dict used by World.item_name_to_id
 items_table: dict[str, int] = {
@@ -170,10 +185,18 @@ def create_items(world: "RogueLegacy2World") -> None:
             return ItemClassification.progression_skip_balancing
         return ItemClassification.useful
 
-    # Determine the starting class item to exclude from the pool (if any).
-    # starting_class_index: 0 = Knight (no change), 1–14 = one of CLASS_UNLOCK_ITEM_NAMES.
+    # starting_class_index: 0 = Knight, 1–14 = one of CLASS_UNLOCK_ITEM_NAMES. Translated into a
+    # position in the 15-entry class lists, where Knight sits last rather than first.
     starting_class_idx = getattr(world, '_starting_class_index', 0)
-    excluded_class_name = CLASS_UNLOCK_ITEM_NAMES[starting_class_idx - 1] if starting_class_idx > 0 else None
+    starting_class_pos = KNIGHT_CLASS_POSITION if starting_class_idx == 0 else starting_class_idx - 1
+
+    # Which of the two parallel class item sets this seed uses. See constants.py.
+    fabled_weapons = bool(world.options.fabled_weapons)
+    class_item_names = PROGRESSIVE_CLASS_ITEM_NAMES if fabled_weapons else PLAIN_CLASS_ITEM_NAMES
+
+    # The 14 class slots are handled by the dedicated block below, not by the generic
+    # single-level manor loop, since which item represents a class depends on the option.
+    class_slot_names = frozenset(CLASS_UNLOCK_ITEM_NAMES)
 
     # Priority: included ahead of every optional pool, and split into two tiers so that a
     # world with very few locations sheds the right items first (see the trim below).
@@ -206,16 +229,26 @@ def create_items(world: "RogueLegacy2World") -> None:
 
     for name in core_names:
         if MANOR_MAX_LEVELS.get(name, 1) <= 1:
-            if name == excluded_class_name:
-                continue  # starting class - pre-unlocked at run start, not in pool
+            if name in class_slot_names:
+                continue  # see the class item block below
             data = item_data_table[name]
             optional_priority.append(
                 RogueLegacy2Item(name, manor_classification(name), data.code, player)
             )
 
-    # If the starting class is not Knight, add Knight Class as a randomizable item instead.
-    if excluded_class_name is not None:
-        optional_priority.append(create_item(player, KNIGHT_CLASS_ITEM_NAME))
+    # ── Class items ──────────────────────────────────────────────────────────
+    #
+    # One copy per class unlocks it. The starting class is pre-unlocked at run start,
+    # so it contributes no unlock copy at all.
+    #
+    # With fabled_weapons on, each class gets one further copy that unlocks its fabled
+    # weapon, including the starting class, whose single copy is therefore the weapon
+    # rather than the class.
+    for position, name in enumerate(class_item_names):
+        copies = 1 if fabled_weapons else 0
+        if position != starting_class_pos:
+            copies += 1
+        optional_priority.extend(create_item(player, name) for _ in range(copies))
 
     # Traps: placed immediately after priority items, before useful items.
     # Distribute evenly across the 5 trap types by cycling through the list.
@@ -268,7 +301,8 @@ def create_items(world: "RogueLegacy2World") -> None:
     if overflow > 0:
         # Float the stat upgrades to the front so the survivors are the ones the
         # stat_upgrades_* gates count, then drop from the back. The shuffle keeps which
-        # class unlocks are lost from being the same every seed.
+        # class items are lost from being the same every seed, and mixes class unlocks
+        # and fabled weapons together rather than always losing one kind first.
         world.random.shuffle(optional_priority)
         if stat_gating_enabled:
             optional_priority.sort(key=lambda item: item.name not in stat_upgrade_names)

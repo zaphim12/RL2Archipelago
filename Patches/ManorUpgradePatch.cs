@@ -680,8 +680,19 @@ internal static class ManorUpgradePatch
 
     // ── Description box icon override ───────────────────────────────────────
     //
-    // m_infoPlateIcon is set in three places: OnHighlightedSkillChanged (hover),
+    // Vanilla sets m_infoPlateIcon in three places: OnHighlightedSkillChanged (hover),
     // OnOpen (window opens), and OnFocus (window regains focus after a sub-window).
+    //
+    // Notably absent: OnSkillLevelChanged. Buying something never changes which icon the info
+    // plate should show in vanilla, because a node keeps its SkillTreeType for life, so the
+    // hover handler is enough, and it bails early unless the *selected slot object* changed.
+    //
+    // A shop host breaks that assumption. It is one reused slot object that re-renders as the
+    // next purchase in its column, so after a purchase the plate should show a different item
+    // while the selected slot is still the same object. The grid icon and the description text
+    // both refresh (they hang off UpdateSkillTreeType and UpdateText, which RefreshAllButtons
+    // re-runs), but the info plate has no such path and keeps the icon of the item just bought
+    // until the player navigates away and back. Hence the fourth hook below.
 
     private static void OverrideInfoPlateIcon(SkillTreeWindowController instance, SkillTreeType skillTreeType)
     {
@@ -714,6 +725,23 @@ internal static class ManorUpgradePatch
     [HarmonyPostfix]
     [HarmonyPatch(typeof(SkillTreeWindowController), "OnFocus")]
     private static void OnFocus_Postfix(SkillTreeWindowController __instance)
+    {
+        var selected = Traverse.Create(__instance).Field<SkillTreeSlot>("m_selectedSkillTreeButton").Value;
+        if (selected != null)
+            OverrideInfoPlateIcon(__instance, selected.SkillTreeType);
+    }
+
+    /// <summary>
+    /// Re-applies the info plate icon after a purchase, which vanilla never does.
+    ///
+    /// <para>Runs as a postfix so the vanilla body's <c>RefreshAllButtons</c> has already
+    /// re-rendered the slot, and so the location check recorded before the broadcast has already
+    /// advanced a shop column to its next purchase. Both leave <c>ManorSlotView</c> resolving to
+    /// the item the plate should now be showing.</para>
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(SkillTreeWindowController), "OnSkillLevelChanged")]
+    private static void OnSkillLevelChanged_Postfix(SkillTreeWindowController __instance)
     {
         var selected = Traverse.Create(__instance).Field<SkillTreeSlot>("m_selectedSkillTreeButton").Value;
         if (selected != null)

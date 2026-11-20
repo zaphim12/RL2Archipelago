@@ -143,8 +143,19 @@ public static class GameConstants
     public const string OffshoreBankAccountItemName   = "Living Safe Unlock";
     public const string FoundationItemName            = "Blacksmith Unlock";
     public const string EnchantressQuartersItemName   = "Enchantress Unlock";
-    // Knight Class (conditional AP item; only in pool when starting class ≠ Knight)
+    // Knight Class. Unlike the other 14 classes Knight has no manor slot, so it carries its own
+    // item ID and its own fabled variant rather than coming from the ManorSlots table.
     public const string KnightClassItemName           = "Knight Class";
+    public const SoulShopType KnightFabledVariant     = SoulShopType.SwordVariant;
+
+    /// <summary>
+    /// Position of Knight within the 15-entry class item lists, which run
+    /// [ManorSlots 44..57, then Knight]. Mirrors KNIGHT_CLASS_POSITION in constants.py.
+    /// </summary>
+    public const int KnightClassPosition = 14;
+
+    /// <summary>Index of the first class unlock slot in <see cref="ManorSlots"/>.</summary>
+    public const int FirstClassSlotIndex = 44;
 
     // ── Manor location slot names ─────────────────────────────────────────────────────
 
@@ -269,8 +280,27 @@ public static class GameConstants
         public readonly SkillTreeType SkillTree;
         public readonly string ItemName;
         public readonly string LocationName;
-        public ManorSlot(SkillTreeType skillTree, string itemName, string locationName)
-            => (SkillTree, ItemName, LocationName) = (skillTree, itemName, locationName);
+
+        /// <summary>
+        /// The Soul Shop entry holding this class's fabled weapon, or
+        /// <see cref="SoulShopType.None"/> for every slot that is not a class unlock.
+        ///
+        /// <para>Doubles as the "is this a class slot?" test (<see cref="IsClassUnlock"/>), so the
+        /// two facts cannot drift apart the way a separate parallel list would.</para>
+        /// </summary>
+        public readonly SoulShopType FabledVariant;
+
+        /// <summary>
+        /// Class slots are progressive: the first copy unlocks the class, the second unlocks its
+        /// fabled weapon. That changes their AP item name, so it is not purely cosmetic.
+        /// </summary>
+        public bool IsClassUnlock => FabledVariant != SoulShopType.None;
+
+        public ManorSlot(
+            SkillTreeType skillTree, string itemName, string locationName,
+            SoulShopType fabledVariant = SoulShopType.None)
+            => (SkillTree, ItemName, LocationName, FabledVariant)
+             = (skillTree, itemName, locationName, fabledVariant);
     }
 
     public static readonly ManorSlot[] ManorSlots =
@@ -336,20 +366,20 @@ public static class GameConstants
         new(SkillTreeType.Architect,                 ScrewDistilleryItemName,       ScrewDistilleryLocationName),       // 42
         new(SkillTreeType.Architect_Cost_Down,       DrillStoreItemName,            DrillStoreLocationName),            // 43
         // ── Class unlocks ────────────────────────────────────────────────────
-        new(SkillTreeType.BoxingGlove_Class_Unlock,  FightingRingItemName,          FightingRingLocationName),          // 44
-        new(SkillTreeType.Saber_Class_Unlock,        DanceHallItemName,             DanceHallLocationName),             // 45
-        new(SkillTreeType.DualBlades_Class_Unlock,   GuildOfDarkArtsItemName,       GuildOfDarkArtsLocationName),       // 46
-        new(SkillTreeType.Ladle_Class_Unlock,        KitchenItemName,               KitchenLocationName),               // 47
-        new(SkillTreeType.Axe_Class_Unlock,          ButchersShoppeItemName,        ButchersShoppeLocationName),        // 48
-        new(SkillTreeType.Wand_Class_Unlock,         AcademyItemName,               AcademyLocationName),               // 49
-        new(SkillTreeType.Bow_Class_Unlock,          ArcheryRangeItemName,          ArcheryRangeLocationName),          // 50
-        new(SkillTreeType.Spear_Class_Unlock,        SandPitsItemName,              SandPitsLocationName),              // 51
-        new(SkillTreeType.Gun_Class_Unlock,          SaltpeterMinesItemName,        SaltpeterMinesLocationName),        // 52
-        new(SkillTreeType.Samurai_Class_Unlock,      RyokanItemName,                RyokanLocationName),                // 53
-        new(SkillTreeType.Music_Class_Unlock,        TavernItemName,                TavernLocationName),                // 54
-        new(SkillTreeType.Pirate_Class_Unlock,       FlyingDocksItemName,           FlyingDocksLocationName),           // 55
-        new(SkillTreeType.Astro_Class_Unlock,        AstralGardensItemName,         AstralGardensLocationName),         // 56
-        new(SkillTreeType.Lancer_Class_Unlock,       AviaryItemName,                AviaryLocationName),                // 57
+        new(SkillTreeType.BoxingGlove_Class_Unlock,  FightingRingItemName,          FightingRingLocationName,           SoulShopType.BoxerVariant),       // 44
+        new(SkillTreeType.Saber_Class_Unlock,        DanceHallItemName,             DanceHallLocationName,              SoulShopType.DuelistVariant),     // 45
+        new(SkillTreeType.DualBlades_Class_Unlock,   GuildOfDarkArtsItemName,       GuildOfDarkArtsLocationName,        SoulShopType.DualBladesVariant),  // 46
+        new(SkillTreeType.Ladle_Class_Unlock,        KitchenItemName,               KitchenLocationName,                SoulShopType.LadleVariant),       // 47
+        new(SkillTreeType.Axe_Class_Unlock,          ButchersShoppeItemName,        ButchersShoppeLocationName,         SoulShopType.AxeVariant),         // 48
+        new(SkillTreeType.Wand_Class_Unlock,         AcademyItemName,               AcademyLocationName,                SoulShopType.WandVariant),        // 49
+        new(SkillTreeType.Bow_Class_Unlock,          ArcheryRangeItemName,          ArcheryRangeLocationName,           SoulShopType.ArcherVariant),      // 50
+        new(SkillTreeType.Spear_Class_Unlock,        SandPitsItemName,              SandPitsLocationName,               SoulShopType.SpearVariant),       // 51
+        new(SkillTreeType.Gun_Class_Unlock,          SaltpeterMinesItemName,        SaltpeterMinesLocationName,         SoulShopType.GunslingerVariant),  // 52
+        new(SkillTreeType.Samurai_Class_Unlock,      RyokanItemName,                RyokanLocationName,                 SoulShopType.SamuraiVariant),     // 53
+        new(SkillTreeType.Music_Class_Unlock,        TavernItemName,                TavernLocationName,                 SoulShopType.LuteVariant),        // 54
+        new(SkillTreeType.Pirate_Class_Unlock,       FlyingDocksItemName,           FlyingDocksLocationName,            SoulShopType.PirateVariant),      // 55
+        new(SkillTreeType.Astro_Class_Unlock,        AstralGardensItemName,         AstralGardensLocationName,          SoulShopType.AstromancerVariant), // 56
+        new(SkillTreeType.Lancer_Class_Unlock,       AviaryItemName,                AviaryLocationName,                 SoulShopType.LancerVariant),      // 57
         // ── Relics ───────────────────────────────────────────────────────────
         new(SkillTreeType.Relic_Cost_Down,           ArchaeologyCampItemName,       ArchaeologyCampLocationName),       // 58
         new(SkillTreeType.Reroll_Relic,              MedievalForgeryItemName,       MedievalForgeryLocationName),       // 59

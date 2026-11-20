@@ -134,6 +134,13 @@ public static class APClient
     public static bool KnightClassReceived { get; internal set; } = false;
 
     /// <summary>
+    /// True when fabled weapons are randomized into the multiworld as a progressive copy of each
+    /// class item. When false they stay buyable in the Soul Shop instead, which is the only
+    /// reason the client needs to know (see <see cref="Patches.SoulShopPatch"/>).
+    /// </summary>
+    public static bool FabledWeapons { get; private set; } = true;
+
+    /// <summary>
     /// Pre-computed gold costs for each manor upgrade slot, keyed by <see cref="SkillTreeType"/>.
     /// Populated from slot data on connect under the tree layout. Empty when not connected,
     /// and empty under the shop layout, which uses <see cref="ManorShopCosts"/> instead.
@@ -379,6 +386,8 @@ public static class APClient
 
             RandomizeStartingClass = Convert.ToInt32(SlotData["randomize_starting_class"]) != 0;
             StartingClassIndex = Convert.ToInt32(SlotData["starting_class_index"]);
+
+            FabledWeapons = Convert.ToInt32(SlotData["fabled_weapons"]) != 0;
             KnightClassReceived = RunState.KnightClassReceived;
 
             // On first connect to this seed: queue the burden picker. MenuPatch opens it once the main
@@ -781,6 +790,8 @@ public static class APClient
         RandomizeStartingClass = false;
         StartingClassIndex = 0;
         KnightClassReceived = false;
+        FabledWeapons = false;
+        APItemReconciler.Reset();
         RevealManorUpgrades = false;
         ManorLayout = ManorLayoutMode.Tree;
         // Cleared so one layout's prices can never be read while the other layout is active.
@@ -1307,7 +1318,7 @@ public static class APClient
             if (trap.HasValue)
                 runState.ActiveTraps.Add(trap.Value);
 
-            EnqueueReceiveNotification(pending);
+            EnqueueReceiveNotification(pending, seen);
         }
 
         if (!dirty) return;
@@ -1378,7 +1389,12 @@ public static class APClient
     /// because <see cref="EnqueueSendNotification"/> already showed the
     /// "you discovered your own item" HUD at send time.
     /// </summary>
-    private static void EnqueueReceiveNotification(PendingItem pending)
+    /// <param name="receivedCount">
+    /// Copies of this item the slot has now been sent, including this one. Only used to tell the
+    /// two stages of a progressive class item apart, which otherwise share a name and would give
+    /// the player no way to know whether they just got the class or its fabled weapon.
+    /// </param>
+    private static void EnqueueReceiveNotification(PendingItem pending, int receivedCount)
     {
         if (Session != null && pending.SourceSlot == Session.ConnectionInfo.Slot)
             return;
@@ -1391,11 +1407,36 @@ public static class APClient
             : $"Player {pending.SourceSlot}";
 
         bool isTrap = ItemRegistry.ToTrapBurdenType(pending.ItemId).HasValue;
+        var description = IsFabledWeaponStage(pending.ItemId, receivedCount)
+            ? $"Fabled weapon unlocked - sent by {sender}"
+            : $"Sent by {sender}";
+
         APNotifications.Enqueue(
             title: isTrap ? "Trap!" : "Item Received",
             subtitle: itemName,
-            description: $"Sent by {sender}",
+            description: description,
             critical: isTrap || ItemRegistry.ToHeirloomType(pending.ItemId).HasValue);
+    }
+
+    /// <summary>
+    /// Whether the copy that just arrived is the fabled-weapon stage of a progressive class item.
+    ///
+    /// <para>Mirrors the arithmetic in <see cref="APItemReconciler"/>: the starting class is
+    /// unlocked outside the ledger, so for that one class the first copy received is already the
+    /// second stage.</para>
+    /// </summary>
+    private static bool IsFabledWeaponStage(long itemId, int receivedCount)
+    {
+        var position = ItemRegistry.ToProgressiveClassPosition(itemId);
+        if (!position.HasValue) return false;
+
+        var skill = ItemRegistry.ProgressiveClassSkill(position.Value);
+        bool isStartingClass = skill.HasValue
+            ? StartingClassIndex > 0
+              && GameConstants.ManorSlots[43 + StartingClassIndex].SkillTree == skill.Value
+            : StartingClassIndex == 0;   // no backing slot means Knight
+
+        return receivedCount + (isStartingClass ? 1 : 0) >= 2;
     }
 
 
