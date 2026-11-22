@@ -2,7 +2,11 @@ from dataclasses import dataclass
 
 from Options import Choice, DeathLink, PerGameCommonOptions, Range, Toggle
 
-from .constants import MAX_MASTERY_RANK_PER_CLASS, MAX_TOTAL_MASTERY_RANK
+from .constants import (
+    MAX_CHEST_CHECKS_PER_BIOME,
+    MAX_MASTERY_RANK_PER_CLASS,
+    MAX_TOTAL_MASTERY_RANK,
+)
 
 
 class RL2DeathLink(DeathLink):
@@ -26,7 +30,7 @@ class BlueprintChecksPerBiome(Range):
     """
     display_name = "Blueprint Checks Per Biome"
     range_start = 0
-    range_end = 16
+    range_end = MAX_CHEST_CHECKS_PER_BIOME
     default = 11
 
 
@@ -42,7 +46,7 @@ class RuneChecksPerBiome(Range):
     """
     display_name = "Rune Checks Per Biome"
     range_start = 0
-    range_end = 16
+    range_end = MAX_CHEST_CHECKS_PER_BIOME
     default = 4
 
 

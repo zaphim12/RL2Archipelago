@@ -15,6 +15,7 @@ using RL2Archipelago.UI;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -296,9 +297,14 @@ public static class APClient
     // background reconnect worker can re-establish the session after a drop.
     private static APConnectionData _activeConnData;
 
-    // Guards RunState.CheckedLocations against concurrent access: the main thread adds
-    // checks via SendLocationCheck while the reconnect worker reads them in Resync.
+    // Guards RunState.CheckedLocations and RunState.RemoteCheckedLocations against concurrent
+    // access: the main thread adds checks via SendLocationCheck and AbsorbRemoteChecks while the
+    // reconnect worker reads them in Resync.
     private static readonly object _checkedLock = new object();
+
+    // Chest-pool locations the server reported checked, queued off the websocket thread for the
+    // main thread to fold into RunState. Drained by ProcessConnectionEvents().
+    private static readonly ConcurrentQueue<long> _pendingRemoteChecks = new();
 
     // 0 = no reconnect worker running, 1 = running. Toggled via Interlocked so only one
     // backoff loop exists at a time.
@@ -490,7 +496,7 @@ public static class APClient
         // No session means the reconnect worker has nothing to reconnect to.
         _activeConnData = null;
 
-        DrainPendingItemQueue();
+        DrainWebsocketQueues();
         _replayCounts.Clear();
         _nextItemIndex = 0;
         _ledgerDirty = false;
@@ -595,6 +601,7 @@ public static class APClient
 
         Session.Items.ItemReceived += APSession_ItemReceived;
         Session.MessageLog.OnMessageReceived += APSession_OnMessageReceived;
+        Session.Locations.CheckedLocationsUpdated += APSession_CheckedLocationsUpdated;
         // Manually drain items the server sent during the handshake before the handler
         // was wired; those sit in the library's buffer unfired.
         APSession_ItemReceived(Session.Items);
@@ -615,6 +622,13 @@ public static class APClient
         // made it to the server (network drop mid-send, or checks made while offline),
         // resend it now so the multiworld stays consistent.
         ResyncCheckedLocations();
+
+        // The reverse direction, for the pooled categories only. The Connected packet's
+        // checked_locations was parsed before the handler above was attached, so its contents never
+        // raise the event; seed from the snapshot instead.
+        foreach (var id in Session.Locations.AllLocationsChecked)
+            if (LocationRegistry.IsPooledLocation(id))
+                _pendingRemoteChecks.Enqueue(id);
 
         // Re-send goal completion if the final boss was beaten while disconnected.
         // SetGoalAchieved is idempotent server-side.
@@ -642,12 +656,14 @@ public static class APClient
     }
 
     /// <summary>
-    /// Empties the pending-item queue. <c>ConcurrentQueue&lt;T&gt;.Clear()</c> does not exist on the
-    /// .NET Framework target, hence the dequeue loop.
+    /// Empties the queues that the websocket thread feeds, so nothing from an outgoing session is applied
+    /// to the next one. <c>ConcurrentQueue&lt;T&gt;.Clear()</c> does not exist on the .NET Framework
+    /// target, hence the dequeue loops.
     /// </summary>
-    private static void DrainPendingItemQueue()
+    private static void DrainWebsocketQueues()
     {
         while (_pendingItems.TryDequeue(out _)) { }
+        while (_pendingRemoteChecks.TryDequeue(out _)) { }
     }
 
     private static void APSession_SocketClosed(string reason) => HandleConnectionDropped(reason);
@@ -667,6 +683,7 @@ public static class APClient
         dead.Socket.SocketOpened  -= APSession_SocketOpened;
         dead.Items.ItemReceived -= APSession_ItemReceived;
         dead.MessageLog.OnMessageReceived -= APSession_OnMessageReceived;
+        dead.Locations.CheckedLocationsUpdated -= APSession_CheckedLocationsUpdated;
         dead.Socket.ErrorReceived -= APSession_ErrorReceived;
         dead.Socket.SocketClosed  -= APSession_SocketClosed;
         try { ObserveFault(dead.Socket.DisconnectAsync(), "Socket abort"); } catch { /* best-effort */ }
@@ -808,6 +825,7 @@ public static class APClient
         {
             Session.Items.ItemReceived -= APSession_ItemReceived;
             Session.MessageLog.OnMessageReceived -= APSession_OnMessageReceived;
+            Session.Locations.CheckedLocationsUpdated -= APSession_CheckedLocationsUpdated;
             Session.Socket.ErrorReceived -= APSession_ErrorReceived;
             Session.Socket.SocketClosed  -= APSession_SocketClosed;
 
@@ -850,7 +868,7 @@ public static class APClient
         if (!APSaveRecovery.InProgress)
             APSaveRedirect.Rollback(restoreSnapshot: false);
 
-        DrainPendingItemQueue();
+        DrainWebsocketQueues();
         _replayCounts.Clear();
         _nextItemIndex = 0;
         _ledgerDirty = false;
@@ -1224,6 +1242,55 @@ public static class APClient
                 description: "Connection restored.",
                 critical: true);
         }
+
+        AbsorbRemoteChecks();
+    }
+
+    /// <summary>
+    /// Folds pooled locations the server already has checked into
+    /// <see cref="APRunState.RemoteCheckedLocations"/>, so the blueprint, rune and individual
+    /// journal/memory pools step over them instead of spending a pickup on a slot whose item has
+    /// already gone out to its recipient.
+    ///
+    /// <para>Runs on the main thread because it writes the run state to disk. The queue it drains is
+    /// filled from the websocket thread by <see cref="APSession_CheckedLocationsUpdated"/> and,
+    /// at connect, from the handshake's <c>checked_locations</c> snapshot.</para>
+    /// </summary>
+    private static void AbsorbRemoteChecks()
+    {
+        if (_pendingRemoteChecks.IsEmpty) return;
+
+        var runState = RunState;
+        if (runState == null)
+        {
+            // No run to record against (a session torn down between enqueue and drain). Drop them;
+            // the next connect re-seeds from the server's snapshot anyway.
+            while (_pendingRemoteChecks.TryDequeue(out _)) { }
+            return;
+        }
+
+        int added = 0;
+        while (_pendingRemoteChecks.TryDequeue(out var id))
+        {
+            lock (_checkedLock)
+            {
+                // A check this player made is already accounted for; keep the remote set meaning
+                // strictly "checked by someone other than us".
+                if (runState.CheckedLocations.Contains(id)) continue;
+                if (!runState.RemoteCheckedLocations.Add(id)) continue;
+            }
+
+            added++;
+            var displayName = LocationRegistry.Names.TryGetValue(id, out var n) ? n : id.ToString();
+            Plugin.Log.LogDebug($"[AP] '{displayName}' was checked without us; its pool will skip it.");
+        }
+
+        if (added == 0) return;
+
+        runState.Save(APSaveDirectoryName);
+        Plugin.Log.LogInfo(
+            $"[AP] {added} pooled location(s) were already checked on the server. " +
+            "The chest and journal pools will skip them instead of awarding an empty slot.");
     }
 
     /// <summary>
@@ -1596,6 +1663,20 @@ public static class APClient
     {
         Plugin.Log.LogMessage($"[AP] {message}");
         // TODO: Surface this in an in-game console / chat overlay.
+    }
+
+    /// <summary>
+    /// Called on the AP websocket thread when the server reports locations checked (including ones
+    /// this client never checked itself like from a slot being released). Only the
+    /// pooled categories care, and only so they can skip a slot whose item has already been sent;
+    /// filter here and leave the rest to the main-thread drain.
+    /// </summary>
+    private static void APSession_CheckedLocationsUpdated(ReadOnlyCollection<long> newCheckedLocations)
+    {
+        if (newCheckedLocations == null) return;
+        foreach (var id in newCheckedLocations)
+            if (LocationRegistry.IsPooledLocation(id))
+                _pendingRemoteChecks.Enqueue(id);
     }
 
     // Called on the AP websocket thread. only set flags; no game-state access.

@@ -24,6 +24,13 @@ BIOME_NAMES: list[str] = [
     BIOME_PISHON_DRY_LAKE,
 ]
 
+# Ceiling on both chest pools' per-biome slot counts, and so the upper bound of the
+# BlueprintChecksPerBiome and RuneChecksPerBiome options.
+#
+# CHEST_SLOT_ID_STRIDE in locations_and_regions must stay at or above this; see the note there.
+# Mirrors MAX_CHEST_CHECKS_PER_BIOME in the C# mod.
+MAX_CHEST_CHECKS_PER_BIOME = 50
+
 # ---------------------------------------------------------------------------
 # Heirlooms
 # ---------------------------------------------------------------------------

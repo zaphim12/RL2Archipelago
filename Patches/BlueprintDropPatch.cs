@@ -82,7 +82,7 @@ internal static class BlueprintDropPatch
         var biomeIndex = LocationRegistry.GetBiomeIndex(room.BiomeType);
         if (biomeIndex == null) { __result = null; return; }
 
-        var locationId = LocationRegistry.NextBlueprintChestLocation(biomeIndex.Value, APClient.RunState.CheckedLocations);
+        var locationId = LocationRegistry.NextBlueprintChestLocation(biomeIndex.Value, APClient.RunState);
         if (locationId == null) { __result = null; return; } // pool exhausted; null triggers gold fallback in coroutine
 
         // Level/rarity filter blocked the drop but the probability roll said "blueprint".
@@ -105,7 +105,7 @@ internal static class BlueprintDropPatch
         var biomeIndex = LocationRegistry.GetBiomeIndex(room.BiomeType);
         if (biomeIndex == null) return true;
 
-        var locationId = LocationRegistry.NextBlueprintChestLocation(biomeIndex.Value, APClient.RunState.CheckedLocations);
+        var locationId = LocationRegistry.NextBlueprintChestLocation(biomeIndex.Value, APClient.RunState);
         if (locationId == null) return true;
 
         APClient.SendLocationCheck(locationId.Value);

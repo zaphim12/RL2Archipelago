@@ -58,7 +58,7 @@ Kills your character when another player with deathlink enabled dies. Triggers d
 
 ### Normal/Silver Chest Checks per Biome (`blueprint_checks_per_biome`)
 
-**Range:** 0–16 | **Default:** 11 *(11 checks × 6 biomes = 66 checks, approximately matching the 65 total blueprints in the base game)*
+**Range:** 0–50 | **Default:** 11 *(11 checks × 6 biomes = 66 checks, approximately matching the 65 total blueprints in the base game)*
 
 Normal and silver chests have a random chance to roll into an AP item (by default the same probability as the base game: 15% for a normal chest, 99% for a silver chest - see `bronze_chest_ap_chance` and `silver_chest_ap_chance` below). This setting controls how many AP checks you can get from opening chests in each biome. Once all checks have been completed in a biome, all chests will only give gold, like the base game.
 
@@ -66,7 +66,7 @@ Normal and silver chests have a random chance to roll into an AP item (by defaul
 
 ### Fairy Chest Checks per Biome (`rune_checks_per_biome`)
 
-**Range:** 0–16 | **Default:** 4 *(4 checks × 6 biomes = 24 checks, matching the 24 total runes in the base game)*
+**Range:** 0–50 | **Default:** 4 *(4 checks × 6 biomes = 24 checks, matching the 24 total runes in the base game)*
 
 When a fairy chest is opened, an AP item will be given every time until the pool is exhausted (see `fairy_chest_ap_chance` below to make this a percentage chance instead). Then chests will just drop red aether as normal.
 

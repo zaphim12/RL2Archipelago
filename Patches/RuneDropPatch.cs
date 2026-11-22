@@ -38,7 +38,7 @@ internal static class RuneDropPatch
         if (Random.Range(0, 100) >= APClient.FairyChestApChance)
         { __result = null; return; } // chance miss - null triggers red-aether fallback
 
-        var locationId = LocationRegistry.NextRuneChestLocation(biomeIndex.Value, APClient.RunState.CheckedLocations);
+        var locationId = LocationRegistry.NextRuneChestLocation(biomeIndex.Value, APClient.RunState);
         if (locationId == null) { __result = null; return; } // pool exhausted - null triggers red-aether fallback
 
         if (!gotRune)
@@ -58,7 +58,7 @@ internal static class RuneDropPatch
         var biomeIndex = LocationRegistry.GetBiomeIndex(room.BiomeType);
         if (biomeIndex == null) return true;
 
-        var locationId = LocationRegistry.NextRuneChestLocation(biomeIndex.Value, APClient.RunState.CheckedLocations);
+        var locationId = LocationRegistry.NextRuneChestLocation(biomeIndex.Value, APClient.RunState);
         if (locationId == null) return true;
 
         APClient.SendLocationCheck(locationId.Value);

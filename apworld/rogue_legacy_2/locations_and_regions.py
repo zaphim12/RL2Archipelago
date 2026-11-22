@@ -70,6 +70,7 @@ from .constants import (
     LOGICAL_MASTERY_RANKS_PER_CLASS,
     MASTERY_CLASS_NAMES,
     MASTERY_NAME_PREFIX,
+    MAX_CHEST_CHECKS_PER_BIOME,
     MAX_MANOR_SHOP_DEPTH,
     MAX_MASTERY_RANK_PER_CLASS,
     MAX_TOTAL_MASTERY_RANK,
@@ -97,8 +98,6 @@ from .items import BASE_ID
 BOSS_KILL_OFFSET     = 0x100
 MINIBOSS_KILL_OFFSET = 0x200
 HEIRLOOM_OFFSET      = 0x300
-BLUEPRINT_OFFSET     = 0x400
-RUNE_OFFSET          = 0x500
 MANOR_OFFSET         = 0x600
 TELEPORTER_OFFSET    = 0x700
 
@@ -127,14 +126,19 @@ MASTERY_CLASS_OFFSET = 0x1000  # BASE_ID + offset + classPosition * STRIDE + (le
 # two above it. Mirrors MASTERY_CLASS_ID_STRIDE in the C# mod.
 MASTERY_CLASS_ID_STRIDE = 64
 
+# Blueprint and rune chest pools, 6 biomes at CHEST_SLOT_ID_STRIDE each. They start after the
+# per-class mastery block (which ends at 0x13BF).
+BLUEPRINT_OFFSET = 0x1400  # BASE_ID + offset + biomeIndex * STRIDE + slotIndex, to 0x157F
+RUNE_OFFSET      = 0x1600  # BASE_ID + offset + biomeIndex * STRIDE + slotIndex, to 0x177F
+
 _JOURNAL_COUNTS = [4, 4, 4, 6, 7, 7]  # Citadel Agartha, Axis Mundi, Kerguelen Plateau, Stygian Study, Sun Tower, Pishon Dry Lake
 _MEMORY_COUNTS  = [4, 0, 5, 0, 0, 0]
 
-# Blueprint IDs use a biome-stride layout so IDs are stable regardless of how
-# many slots are enabled:  id = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * 16 + slotIndex
-# This mirrors LocationRegistry._checksPerBiome in the C# mod.
-_MAX_BLUEPRINT_CHECKS_PER_BIOME = 16  # upper bound of the BlueprintChecksPerBiome option
-_MAX_RUNE_CHECKS_PER_BIOME      = 16  # upper bound of the RuneChecksPerBiome option
+# Blueprint and rune IDs use a biome-stride layout so IDs are stable regardless of how many slots
+# are enabled:  id = BASE_ID + <pool>_OFFSET + biomeIndex * CHEST_SLOT_ID_STRIDE + slotIndex.
+# The stride must never drop below MAX_CHEST_CHECKS_PER_BIOME, or one biome's deep slots would
+# collide with the next biome's shallow ones. Mirrors CHEST_SLOT_ID_STRIDE in the C# mod.
+CHEST_SLOT_ID_STRIDE = 64
 
 
 # ---------------------------------------------------------------------------
@@ -302,19 +306,19 @@ for _pos in range(MANOR_SHOP_POSITIONS):
 # Register all possible blueprint locations (max slots) so location_name_to_id
 # is stable across different blueprint_checks_per_biome settings.
 for _biome_idx, _biome_name in enumerate(BIOME_NAMES):
-    for _slot in range(_MAX_BLUEPRINT_CHECKS_PER_BIOME):
+    for _slot in range(MAX_CHEST_CHECKS_PER_BIOME):
         location_data_table[blueprint_chest_name(_biome_name, _slot)] = RogueLegacy2LocationData(
             region=_biome_name,
-            address=BASE_ID + BLUEPRINT_OFFSET + _biome_idx * 16 + _slot,
+            address=BASE_ID + BLUEPRINT_OFFSET + _biome_idx * CHEST_SLOT_ID_STRIDE + _slot,
         )
 
 # Register all possible fairy chest (rune) locations so location_name_to_id
 # is stable across different rune_checks_per_biome settings.
 for _biome_idx, _biome_name in enumerate(BIOME_NAMES):
-    for _slot in range(_MAX_RUNE_CHECKS_PER_BIOME):
+    for _slot in range(MAX_CHEST_CHECKS_PER_BIOME):
         location_data_table[fairy_chest_name(_biome_name, _slot)] = RogueLegacy2LocationData(
             region=_biome_name,
-            address=BASE_ID + RUNE_OFFSET + _biome_idx * 16 + _slot,
+            address=BASE_ID + RUNE_OFFSET + _biome_idx * CHEST_SLOT_ID_STRIDE + _slot,
         )
 
 # Register all journal/memory locations so location_name_to_id is complete.

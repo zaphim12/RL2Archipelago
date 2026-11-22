@@ -22,6 +22,20 @@ public class APRunState
     public HashSet<long> CheckedLocations { get; set; } = new();
 
     /// <summary>
+    /// Pooled locations the <em>server</em> already considers checked even though this client never
+    /// checked them (i.e. released by another player or given via adming command). Their items have
+    /// already gone out to their recipients, so if we don't track it, we'll cause players to check
+    /// chests or read journals that effectively give nothing.
+    ///
+    /// <para>Deliberately separate from <see cref="CheckedLocations"/>. That set means "this player
+    /// found it", and other systems read it that way: <c>APSaveRedirect.PassesHealthGate</c> treats a
+    /// non-empty set as proof this run's save files must exist, which would be wrong for checks the
+    /// player never made. Only the pooled categories consult this set, via
+    /// <see cref="IsPooledSlotConsumed"/>.</para>
+    /// </summary>
+    public HashSet<long> RemoteCheckedLocations { get; set; } = new();
+
+    /// <summary>
     /// How many copies of each Archipelago item ID this slot has been sent, keyed by item ID.
     /// This is the run's source of truth for received items and the input to
     /// <see cref="Items.APItemReconciler"/>, which derives an absolute target state from it.
@@ -98,6 +112,15 @@ public class APRunState
     /// <summary>Copies of a consumable <paramref name="itemId"/> already applied to the save.</summary>
     public int AppliedCount(long itemId) =>
         AppliedItemCounts.TryGetValue(itemId, out var count) ? count : 0;
+
+    /// <summary>
+    /// True when a pooled slot must not be handed out again: either this player checked it, or the
+    /// server already did. Every non-pooled location category is keyed off
+    /// <see cref="CheckedLocations"/> alone, because those checks are tied to a fixed in-world event
+    /// rather than drawn from a pool at pickup time.
+    /// </summary>
+    public bool IsPooledSlotConsumed(long locationId) =>
+        CheckedLocations.Contains(locationId) || RemoteCheckedLocations.Contains(locationId);
 
     // ── Persistence ──────────────────────────────────────────────────────────
 

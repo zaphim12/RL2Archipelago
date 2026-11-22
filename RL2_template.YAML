@@ -65,7 +65,7 @@ Rogue Legacy 2:
   # There are 6 biomes, so the total blueprint check count is this value × 6.
   # The default of 11 gives 66 checks, closely mirroring the 65 unique
   # blueprints in the base game.
-  # Valid range: 0–16  (default: 11)
+  # Valid range: 0–50  (default: 11)
   blueprint_checks_per_biome: 11
 
   # Percent chance that opening a bronze chest triggers an AP location check
@@ -89,7 +89,7 @@ Rogue Legacy 2:
   #
   # There are 6 biomes, so the total fairy chest check count is this value × 6.
   # The default of 4 gives 24 checks, matching the typical rune drop count.
-  # Valid range: 0–16  (default: 4)
+  # Valid range: 0–50  (default: 4)
   rune_checks_per_biome: 4
 
   # Percent chance that opening a fairy chest triggers an AP location check

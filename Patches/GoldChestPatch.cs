@@ -24,7 +24,7 @@ internal static class GoldChestPatch
         var biomeIndex = LocationRegistry.GetBiomeIndex(room.BiomeType);
         if (biomeIndex == null) return;
 
-        var locationId = LocationRegistry.NextRuneChestLocation(biomeIndex.Value, APClient.RunState.CheckedLocations);
+        var locationId = LocationRegistry.NextRuneChestLocation(biomeIndex.Value, APClient.RunState);
         if (locationId == null) return; // pool exhausted; gold chest behaves normally
 
         APClient.SendLocationCheck(locationId.Value);

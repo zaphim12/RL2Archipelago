@@ -11,7 +11,13 @@ namespace RL2Archipelago.Patches;
 /// and are ignored; only player-initiated reads (<c>additive=true</c>) are tracked.
 ///
 /// Mode Grouped: fires when a biome's read count reaches the biome total.
-/// Mode Individual: fires once per entry, using (count - 1) as the zero-based index.
+/// Mode Individual: fires once per entry, consuming the biome's next unchecked slot.
+///
+/// <para>Individual mode draws from a per-biome pool exactly as the chest patches do, rather than
+/// indexing by (count - 1). The two agree while this client is the only thing checking the pool;
+/// they diverge once the server reports a slot checked on its own (a <c>/collect</c>, or an admin
+/// release), and then the pool scan steps over that slot instead of spending a read on an item that
+/// has already gone out to its recipient.</para>
 /// </summary>
 [HarmonyPatch]
 internal static class JournalReadPatch
@@ -48,11 +54,10 @@ internal static class JournalReadPatch
         else // Individual
         {
             if (readCount <= 0) return;
-            int index = readCount - 1;
 
             long? locationId = journalType == JournalType.Journal
-                ? LocationRegistry.GetIndividualJournalLocation(journalCategoryType, index)
-                : LocationRegistry.GetIndividualMemoryLocation(journalCategoryType, index);
+                ? LocationRegistry.NextIndividualJournalLocation(journalCategoryType, APClient.RunState)
+                : LocationRegistry.NextIndividualMemoryLocation(journalCategoryType, APClient.RunState);
 
             if (locationId.HasValue)
                 APClient.SendLocationCheck(locationId.Value);

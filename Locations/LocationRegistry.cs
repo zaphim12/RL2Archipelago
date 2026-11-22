@@ -22,8 +22,6 @@ public static class LocationRegistry
     private const long BOSS_KILL_OFFSET     = 0x100;
     private const long MINIBOSS_KILL_OFFSET = 0x200;
     private const long HEIRLOOM_OFFSET      = 0x300;
-    private const long BLUEPRINT_OFFSET     = 0x400;
-    private const long RUNE_OFFSET          = 0x500;
     private const long MANOR_OFFSET         = 0x600;
     private const long TELEPORTER_OFFSET    = 0x700;
 
@@ -43,6 +41,11 @@ public static class LocationRegistry
     // and follows at 0x1000.
     private const long MASTERY_TOTAL_OFFSET = 0xC00;   // + (level - 1)
     private const long MASTERY_CLASS_OFFSET = 0x1000;  // + classPosition * MASTERY_CLASS_ID_STRIDE + (level - 1)
+
+    // Blueprint and rune chest pools, 6 biomes at CHEST_SLOT_ID_STRIDE each. They start after the
+    // per-class mastery block (which ends at 0x13BF).
+    private const long BLUEPRINT_OFFSET = 0x1400;  // + biomeIndex * CHEST_SLOT_ID_STRIDE + slotIndex, to 0x157F
+    private const long RUNE_OFFSET      = 0x1600;  // + biomeIndex * CHEST_SLOT_ID_STRIDE + slotIndex, to 0x177F
 
     // Journals and memories per biome, indexed Castle=0, Bridge=1, Forest=2, Study=3, Tower=4, Cave=5.
     // Verified from Journal_EV.GetNumJournals() via Assembly-CSharp decompile.
@@ -82,13 +85,13 @@ public static class LocationRegistry
     // Checks are allocated from a per-biome pool rather than tied to specific
     // equipment pieces, so room-level gating doesn't leave any locations
     // permanently inaccessible. The number of slots per biome is configurable
-    // via the player's YAML (0–16, default 11).
+    // via the player's YAML (0–50, default 11).
     //
-    // Location ID = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * 16 + slotIndex
+    // Location ID = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * CHEST_SLOT_ID_STRIDE + slotIndex
     //   biomeIndex: Castle=0, Lake=1, Forest=2, Study=3, Tower=4, Cave=5
     //   slotIndex:  0 .. (_checksPerBiome - 1)
     //
-    // The stride of 16 keeps IDs stable regardless of N so a seed generated
+    // The stride keeps IDs stable regardless of N so a seed generated
     // with N=11 and one with N=5 share the same IDs for their active slots.
 
     // ── Teleporter unlock locations ──────────────────────────────────────────
@@ -142,8 +145,8 @@ public static class LocationRegistry
     //
     // Location ID = BASE_ID + MANOR_SHOP_OFFSET + position * MANOR_SHOP_ID_STRIDE + depthIndex
     //
-    // The stride keeps IDs stable regardless of the configured depth, the same way the
-    // stride of 16 does for the blueprint and rune pools above.
+    // The stride keeps IDs stable regardless of the configured depth, the same way
+    // CHEST_SLOT_ID_STRIDE does for the blueprint and rune pools.
 
     /// <summary>Number of shop positions. Mirrors MANOR_SHOP_POSITIONS in the apworld.</summary>
     public const int MANOR_SHOP_POSITIONS = 4;
@@ -222,6 +225,21 @@ public static class LocationRegistry
         return count;
     }
 
+    /// <summary>
+    /// The ceiling on both chest pools' per-biome slot counts, and so on the
+    /// <c>blueprint_checks_per_biome</c> and <c>rune_checks_per_biome</c> options. Mirrors
+    /// MAX_CHEST_CHECKS_PER_BIOME in the apworld.
+    /// </summary>
+    public const int MAX_CHEST_CHECKS_PER_BIOME = 50;
+
+    /// <summary>
+    /// Per-biome stride for blueprint and rune location IDs. It keeps a biome's IDs stable at any
+    /// configured slot count, and it must never fall below <see cref="MAX_CHEST_CHECKS_PER_BIOME"/>
+    /// or one biome's deep slots would collide with the next biome's shallow ones. Mirrors
+    /// CHEST_SLOT_ID_STRIDE in the apworld.
+    /// </summary>
+    public const int CHEST_SLOT_ID_STRIDE = 64;
+
     private static int _checksPerBiome = 11;
 
     /// <summary>
@@ -229,14 +247,14 @@ public static class LocationRegistry
     /// a successful login with the value from slot data.
     /// </summary>
     public static void SetBlueprintChecksPerBiome(int n) =>
-        _checksPerBiome = n < 0 ? 0 : n > 16 ? 16 : n;
+        _checksPerBiome = n < 0 ? 0 : n > MAX_CHEST_CHECKS_PER_BIOME ? MAX_CHEST_CHECKS_PER_BIOME : n;
 
     // ── Fairy chest (rune) locations (biome-slot based) ──────────────────────
     //
-    // Same stride-16 pooling strategy as blueprints. Default 4 slots per biome
+    // Same pooling strategy and stride as blueprints. Default 4 slots per biome
     // (24 total), configurable via "rune_checks_per_biome" in slot data.
     //
-    // Location ID = BASE_ID + RUNE_OFFSET + biomeIndex * 16 + slotIndex
+    // Location ID = BASE_ID + RUNE_OFFSET + biomeIndex * CHEST_SLOT_ID_STRIDE + slotIndex
 
     private static int _runeChecksPerBiome = 4;
 
@@ -245,7 +263,7 @@ public static class LocationRegistry
     /// a successful login with the value from slot data.
     /// </summary>
     public static void SetRuneChecksPerBiome(int n) =>
-        _runeChecksPerBiome = n < 0 ? 0 : n > 16 ? 16 : n;
+        _runeChecksPerBiome = n < 0 ? 0 : n > MAX_CHEST_CHECKS_PER_BIOME ? MAX_CHEST_CHECKS_PER_BIOME : n;
 
     // ── Mastery rank locations ──────────────────────────────────────────────
     //
@@ -261,9 +279,9 @@ public static class LocationRegistry
     public const int MAX_MASTERY_RANK_PER_CLASS = 50;
 
     /// <summary>
-    /// Per-class stride for mastery location IDs. Like the stride of 16 on the blueprint and
-    /// rune pools, it keeps a class's IDs stable at any configured level count, and it must
-    /// never fall below <see cref="MAX_MASTERY_RANK_PER_CLASS"/> or one class's deep ranks
+    /// Per-class stride for mastery location IDs. Like <see cref="CHEST_SLOT_ID_STRIDE"/> on the
+    /// blueprint and rune pools, it keeps a class's IDs stable at any configured level count, and it
+    /// must never fall below <see cref="MAX_MASTERY_RANK_PER_CLASS"/> or one class's deep ranks
     /// would collide with the next class's shallow ones. Mirrors MASTERY_CLASS_ID_STRIDE
     /// in the apworld.
     /// </summary>
@@ -351,13 +369,14 @@ public static class LocationRegistry
                 d[BASE_ID + MEMORY_INDIVIDUAL_OFFSET + biome * 16 + m] = $"{GameConstants.BiomeNames[biome]} - Memory Fragment {m + 1}";
         }
 
+        // Registered at the maximum slot count so a name is available whatever the seed configured.
         for (int biome = 0; biome < 6; biome++)
-            for (int slot = 0; slot < 16; slot++)
-                d[BASE_ID + BLUEPRINT_OFFSET + biome * 16 + slot] = $"{GameConstants.BiomeNames[biome]} - Blueprint Chest {slot + 1}";
+            for (int slot = 0; slot < MAX_CHEST_CHECKS_PER_BIOME; slot++)
+                d[BASE_ID + BLUEPRINT_OFFSET + biome * CHEST_SLOT_ID_STRIDE + slot] = $"{GameConstants.BiomeNames[biome]} - Blueprint Chest {slot + 1}";
 
         for (int biome = 0; biome < 6; biome++)
-            for (int slot = 0; slot < 16; slot++)
-                d[BASE_ID + RUNE_OFFSET + biome * 16 + slot] = $"{GameConstants.BiomeNames[biome]} - Fairy Chest {slot + 1}";
+            for (int slot = 0; slot < MAX_CHEST_CHECKS_PER_BIOME; slot++)
+                d[BASE_ID + RUNE_OFFSET + biome * CHEST_SLOT_ID_STRIDE + slot] = $"{GameConstants.BiomeNames[biome]} - Fairy Chest {slot + 1}";
 
         // Manor upgrade location names
         for (int i = 0; i < GameConstants.ManorLocationNames.Length; i++)
@@ -444,33 +463,60 @@ public static class LocationRegistry
     };
 
     /// <summary>
-    /// Returns the location ID of the next unchecked blueprint slot for the given
+    /// Returns the location ID of the next unconsumed blueprint slot for the given
     /// biome index, or <c>null</c> if all slots in that biome have been used.
     /// </summary>
-    public static long? NextBlueprintChestLocation(int biomeIndex, HashSet<long> checkedLocations)
+    public static long? NextBlueprintChestLocation(int biomeIndex, APRunState runState)
     {
         for (int i = 0; i < _checksPerBiome; i++)
         {
-            long id = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * 16 + i;
-            if (!checkedLocations.Contains(id))
+            long id = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * CHEST_SLOT_ID_STRIDE + i;
+            if (!runState.IsPooledSlotConsumed(id))
                 return id;
         }
         return null;
     }
 
     /// <summary>
-    /// Returns the location ID of the next unchecked fairy chest slot for the given
+    /// Returns the location ID of the next unconsumed fairy chest slot for the given
     /// biome index, or <c>null</c> if all slots in that biome have been used.
     /// </summary>
-    public static long? NextRuneChestLocation(int biomeIndex, HashSet<long> checkedLocations)
+    public static long? NextRuneChestLocation(int biomeIndex, APRunState runState)
     {
         for (int i = 0; i < _runeChecksPerBiome; i++)
         {
-            long id = BASE_ID + RUNE_OFFSET + biomeIndex * 16 + i;
-            if (!checkedLocations.Contains(id))
+            long id = BASE_ID + RUNE_OFFSET + biomeIndex * CHEST_SLOT_ID_STRIDE + i;
+            if (!runState.IsPooledSlotConsumed(id))
                 return id;
         }
         return null;
+    }
+
+    // Every pool is laid out as 6 biomes at a fixed stride regardless of how many slots per biome
+    // the seed actually uses, so a whole pool is one contiguous block from its offset.
+    private const long CHEST_POOL_SPAN   = 6 * CHEST_SLOT_ID_STRIDE;
+    private const long JOURNAL_POOL_SPAN = 6 * 16;  // journals and memories both stride by 16
+
+    /// <summary>
+    /// True for an ID in one of the pooled location categories: the blueprint and rune chest pools,
+    /// and the individual journal and memory pools. What these have in common is that the slot a
+    /// pickup consumes is chosen at pickup time rather than being bound to a fixed in-world event,
+    /// which makes them the only categories where a check the server already has must be skipped
+    /// over rather than simply ignored. See <see cref="APRunState.RemoteCheckedLocations"/>.
+    ///
+    /// <para>The <em>grouped</em> journal and memory locations are deliberately excluded: there is
+    /// one per biome, earned by reading everything in it, so there is no pool to skip within.</para>
+    /// </summary>
+    public static bool IsPooledLocation(long id) =>
+        InPool(id, BLUEPRINT_OFFSET, CHEST_POOL_SPAN)
+        || InPool(id, RUNE_OFFSET, CHEST_POOL_SPAN)
+        || InPool(id, JOURNAL_INDIVIDUAL_OFFSET, JOURNAL_POOL_SPAN)
+        || InPool(id, MEMORY_INDIVIDUAL_OFFSET, JOURNAL_POOL_SPAN);
+
+    private static bool InPool(long id, long poolOffset, long poolSpan)
+    {
+        long index = id - BASE_ID - poolOffset;
+        return index >= 0 && index < poolSpan;
     }
 
     /// <summary>
@@ -511,25 +557,47 @@ public static class LocationRegistry
     }
 
     /// <summary>
-    /// In Individual mode, returns the location ID for a specific journal entry (zero-based
-    /// <paramref name="index"/>), or <c>null</c> for an untracked category or out-of-range index.
+    /// In Individual mode, returns the location ID of the next unconsumed journal slot in the given
+    /// biome, or <c>null</c> for an untracked category or once every slot in it has been used.
+    ///
+    /// <para>A read consumes the lowest slot that is still live rather than the one matching the
+    /// save's read count, so slots the server already has checked are stepped over instead of
+    /// spending a read on an item that has already gone out (due to a slot being completed or /collect
+    /// command). With nothing checked remotely the two agree: the Nth read takes slot N.</para>
     /// </summary>
-    public static long? GetIndividualJournalLocation(JournalCategoryType cat, int index)
+    public static long? NextIndividualJournalLocation(JournalCategoryType cat, APRunState runState)
     {
         var bi = GetJournalBiomeIndex(cat);
-        if (bi is null || index < 0 || index >= s_journalCounts[bi.Value]) return null;
-        return BASE_ID + JOURNAL_INDIVIDUAL_OFFSET + bi.Value * 16 + index;
+        if (bi is null) return null;
+        return NextJournalPoolSlot(
+            JOURNAL_INDIVIDUAL_OFFSET, bi.Value, s_journalCounts[bi.Value], runState);
     }
 
     /// <summary>
-    /// In Individual mode, returns the location ID for a specific memory fragment (zero-based
-    /// <paramref name="index"/>), or <c>null</c> for an untracked category or out-of-range index.
+    /// In Individual mode, returns the location ID of the next unconsumed memory slot in the given
+    /// biome, or <c>null</c> for an untracked category or once every slot in it has been used.
+    /// Behaves exactly like <see cref="NextIndividualJournalLocation"/>.
     /// </summary>
-    public static long? GetIndividualMemoryLocation(JournalCategoryType cat, int index)
+    public static long? NextIndividualMemoryLocation(JournalCategoryType cat, APRunState runState)
     {
         var bi = GetJournalBiomeIndex(cat);
-        if (bi is null || index < 0 || index >= s_memoryCounts[bi.Value]) return null;
-        return BASE_ID + MEMORY_INDIVIDUAL_OFFSET + bi.Value * 16 + index;
+        if (bi is null) return null;
+        return NextJournalPoolSlot(
+            MEMORY_INDIVIDUAL_OFFSET, bi.Value, s_memoryCounts[bi.Value], runState);
+    }
+
+    // Shared by the journal and memory pools, which have the same stride-16 layout. Not usable for
+    // the chest pools, those stride by CHEST_SLOT_ID_STRIDE.
+    private static long? NextJournalPoolSlot(
+        long poolOffset, int biomeIndex, int slotCount, APRunState runState)
+    {
+        for (int i = 0; i < slotCount; i++)
+        {
+            long id = BASE_ID + poolOffset + biomeIndex * 16 + i;
+            if (!runState.IsPooledSlotConsumed(id))
+                return id;
+        }
+        return null;
     }
 
     /// <summary>
