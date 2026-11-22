@@ -25,6 +25,16 @@ namespace RL2Archipelago;
 public enum JournalChecksMode { Disabled = 0, Individual = 1, Grouped = 2 }
 
 /// <summary>
+/// How this seed turns class mastery ranks into location checks. Values match the apworld's
+/// MasteryChecks option.
+///
+/// <para><see cref="Total"/> tracks the overall mastery level (the sum of every class's rank)
+/// and <see cref="PerClass"/> tracks each class's rank separately. 
+/// A seed uses one or the other, so only that mode's location block is ever sent.</para>
+/// </summary>
+public enum MasteryChecksMode { Disabled = 0, Total = 1, PerClass = 2 }
+
+/// <summary>
 /// How the manor is structured for this seed. Values match the apworld's ManorLayout option.
 ///
 /// <para><see cref="Tree"/> is the vanilla skill tree: 72 fixed nodes, each its own location,
@@ -89,6 +99,17 @@ public static class APClient
 
     /// <summary>Controls whether journal/memory reads generate location checks. Read from slot data on connect.</summary>
     public static JournalChecksMode JournalChecksMode { get; private set; } = JournalChecksMode.Grouped;
+
+    /// <summary>Controls whether mastery rank gains generate location checks. Read from slot data on connect.</summary>
+    public static MasteryChecksMode MasteryChecks { get; private set; } = MasteryChecksMode.Disabled;
+
+    /// <summary>
+    /// Mastery XP award multiplier as a percentage, where 100 is the vanilla rate. Read from slot
+    /// data on connect and applied by <see cref="MasteryXPPatch"/>. Independent of
+    /// <see cref="MasteryChecks"/>: how fast ranks come is a pacing preference in its own right,
+    /// whether or not those ranks are also location checks.
+    /// </summary>
+    public static int MasteryXpPercent { get; private set; } = 300;
 
     /// <summary>Percent chance (1–100) a bronze chest triggers an AP check. Read from slot data on connect.</summary>
     public static int BronzeChestApChance { get; private set; } = 15;
@@ -348,6 +369,11 @@ public static class APClient
 
             ManorUpgradeBundleSize = Convert.ToInt32(SlotData["manor_upgrade_bundle_size"]);
             JournalChecksMode = (JournalChecksMode)Convert.ToInt32(SlotData["journal_checks"]);
+            MasteryChecks = (MasteryChecksMode)Convert.ToInt32(SlotData["mastery_checks"]);
+            MasteryXpPercent = Convert.ToInt32(SlotData["mastery_xp_multiplier"]);
+            LocationRegistry.SetMasteryLevelCounts(
+                Convert.ToInt32(SlotData["total_mastery_levels"]),
+                Convert.ToInt32(SlotData["mastery_levels_per_class"]));
             TrapAppearanceVisible = Convert.ToInt32(SlotData["trap_appearance"]) != 0;
             RevealManorUpgrades = Convert.ToInt32(SlotData["reveal_manor_upgrades"]) != 0;
             ManorLayout = (ManorLayoutMode)Convert.ToInt32(SlotData["manor_layout"]);
@@ -809,6 +835,8 @@ public static class APClient
         KnightClassReceived = false;
         FabledWeapons = FabledWeaponMode.Randomized;
         APItemReconciler.Reset();
+        MasteryChecks = MasteryChecksMode.Disabled;
+        MasteryXpPercent = 300;
         RevealManorUpgrades = false;
         ManorLayout = ManorLayoutMode.Tree;
         // Cleared so one layout's prices can never be read while the other layout is active.

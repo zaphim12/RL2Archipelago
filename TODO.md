@@ -62,6 +62,10 @@
   [x] Have a configurable number of blueprint drop locations per biome (0-16 currently, 11 by default)
 [x] Journals and Memories
   [x] Configurable to be off, individual, or sets of memories/journals
+[x] Class mastery ranks
+  [x] Configurable to be off, total, or per class
+  [x] Allow gaining XP without Sage Totem
+  [x] Configurable XP multiplier
 [x] Skill tree node purchases
   [x] Config for blacksmith, enchantress, and living safe to be non-randomized
   [x] Custom cost algorithm with configurable values

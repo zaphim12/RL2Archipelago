@@ -35,6 +35,15 @@ public static class LocationRegistry
     private const long JOURNAL_INDIVIDUAL_OFFSET = 0x810;  // BASE_ID + offset + biomeIndex * 16 + journalIndex
     private const long MEMORY_INDIVIDUAL_OFFSET  = 0x870;  // BASE_ID + offset + biomeIndex * 16 + memoryIndex
 
+    // Mastery rank locations. A seed uses one mode or the other, never both, but they get
+    // separate blocks so a (mode, rank) pair keeps the same ID either way.
+    //
+    // Total needs 750 consecutive IDs (the 15 classes at MAX_MASTERY_RANK_PER_CLASS each), so
+    // 0xC00-0xFFF is reserved for it; per-class needs 960 (15 at MASTERY_CLASS_ID_STRIDE each)
+    // and follows at 0x1000.
+    private const long MASTERY_TOTAL_OFFSET = 0xC00;   // + (level - 1)
+    private const long MASTERY_CLASS_OFFSET = 0x1000;  // + classPosition * MASTERY_CLASS_ID_STRIDE + (level - 1)
+
     // Journals and memories per biome, indexed Castle=0, Bridge=1, Forest=2, Study=3, Tower=4, Cave=5.
     // Verified from Journal_EV.GetNumJournals() via Assembly-CSharp decompile.
     private static readonly int[] s_journalCounts = { 4, 4, 4, 6, 7, 7 };
@@ -238,6 +247,64 @@ public static class LocationRegistry
     public static void SetRuneChecksPerBiome(int n) =>
         _runeChecksPerBiome = n < 0 ? 0 : n > 16 ? 16 : n;
 
+    // ── Mastery rank locations ──────────────────────────────────────────────
+    //
+    // Mastery ranks are derived from the save's per-class XP, so there is nothing to track
+    // here beyond how many ranks this seed turned into checks. The mod reports every rank up
+    // to the player's current one on each commit, which is idempotent, so a rank gained while
+    // the socket was down resyncs on reconnect like any other check.
+
+    /// <summary>
+    /// The game's ceiling on a single class's mastery rank, and so the ceiling on
+    /// <see cref="MasteryLevelsPerClass"/>. Mirrors MAX_MASTERY_RANK_PER_CLASS in the apworld.
+    /// </summary>
+    public const int MAX_MASTERY_RANK_PER_CLASS = 50;
+
+    /// <summary>
+    /// Per-class stride for mastery location IDs. Like the stride of 16 on the blueprint and
+    /// rune pools, it keeps a class's IDs stable at any configured level count, and it must
+    /// never fall below <see cref="MAX_MASTERY_RANK_PER_CLASS"/> or one class's deep ranks
+    /// would collide with the next class's shallow ones. Mirrors MASTERY_CLASS_ID_STRIDE
+    /// in the apworld.
+    /// </summary>
+    public const int MASTERY_CLASS_ID_STRIDE = 64;
+
+    /// <summary>Every playable class at the cap: the ceiling on <see cref="MasteryTotalLevels"/>.</summary>
+    public static readonly int MAX_TOTAL_MASTERY_RANK =
+        MAX_MASTERY_RANK_PER_CLASS * GameConstants.MasteryClassTypes.Length;
+
+    private static int _masteryTotalLevels    = 50;
+    private static int _masteryLevelsPerClass = 10;
+
+    /// <summary>How many overall mastery levels are checks. Used by the Total mode only.</summary>
+    public static int MasteryTotalLevels => _masteryTotalLevels;
+
+    /// <summary>How many ranks of each class are checks. Used by the PerClass mode only.</summary>
+    public static int MasteryLevelsPerClass => _masteryLevelsPerClass;
+
+    /// <summary>
+    /// Sets both mastery level counts. Called once after a successful login with the values
+    /// from slot data; the unused mode's count is harmless.
+    /// </summary>
+    public static void SetMasteryLevelCounts(int totalLevels, int perClassLevels)
+    {
+        _masteryTotalLevels = totalLevels < 1 ? 1
+            : totalLevels > MAX_TOTAL_MASTERY_RANK ? MAX_TOTAL_MASTERY_RANK : totalLevels;
+        _masteryLevelsPerClass = perClassLevels < 1 ? 1
+            : perClassLevels > MAX_MASTERY_RANK_PER_CLASS ? MAX_MASTERY_RANK_PER_CLASS : perClassLevels;
+    }
+
+    /// <summary>The location ID for the given one-based overall mastery level.</summary>
+    public static long TotalMasteryLocation(int level) =>
+        BASE_ID + MASTERY_TOTAL_OFFSET + level - 1;
+
+    /// <summary>
+    /// The location ID for rank <paramref name="level"/> (one-based) of the class at
+    /// <paramref name="classPosition"/> in <see cref="GameConstants.MasteryClassTypes"/>.
+    /// </summary>
+    public static long ClassMasteryLocation(int classPosition, int level) =>
+        BASE_ID + MASTERY_CLASS_OFFSET + classPosition * MASTERY_CLASS_ID_STRIDE + level - 1;
+
     /// <summary>Human-readable name for each location ID, used in logs and UI.</summary>
     public static readonly IReadOnlyDictionary<long, string> Names = BuildNames();
 
@@ -301,6 +368,16 @@ public static class LocationRegistry
         for (int position = 0; position < MANOR_SHOP_POSITIONS; position++)
             for (int depth = 0; depth < MAX_MANOR_SHOP_DEPTH; depth++)
                 d[ManorShopLocation(position, depth)] = $"Manor - Slot {position + 1} Purchase {depth + 1}";
+
+        // Mastery rank names for both modes at their maximum level counts.
+        // All names should be available regardless of what the seed configured.
+        for (int level = 1; level <= MAX_TOTAL_MASTERY_RANK; level++)
+            d[TotalMasteryLocation(level)] = $"Mastery - Total Rank {level}";
+
+        for (int position = 0; position < GameConstants.MasteryClassNames.Length; position++)
+            for (int level = 1; level <= MAX_MASTERY_RANK_PER_CLASS; level++)
+                d[ClassMasteryLocation(position, level)] =
+                    $"Mastery - {GameConstants.MasteryClassNames[position]} Rank {level}";
 
         return d;
     }

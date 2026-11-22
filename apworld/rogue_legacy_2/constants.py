@@ -291,6 +291,66 @@ def manor_shop_location_name(position: int, depth_index: int) -> str:
     return f"{MANOR_SHOP_NAME_PREFIX}{position + 1} Purchase {depth_index + 1}"
 
 # ---------------------------------------------------------------------------
+# Mastery ranks
+#
+# Three facts from the decompile shape everything here:
+#
+#   - A class's rank is derived from its XP, and XP only reaches the save when an heir dies
+#     (PlayerDeathRankTextController.ApplyXPToSaveFile), so ranks are monotone. They cannot
+#     regress, which is what lets the mod report them idempotently.
+#   - Mastery XP has exactly one source, the enemy-kill award in EnemyHitResponse, and in the
+#     base game that award is gated on SkillTreeLogicHelper.IsTotemUnlocked(), so vanilla
+#     grants nothing at all before the Sage Totem manor slot is bought. The mod lifts that
+#     gate (Patches/MasteryXPPatch.cs) so mastery checks don't depends on one manor item.
+#   - One class caps at MAX_MASTERY_RANK_PER_CLASS, which is the only hard requirement the
+#     chain has: an overall level beyond that needs more classes unlocked.
+# ---------------------------------------------------------------------------
+
+# The game's true ceiling on a single class's mastery rank.
+#
+# The engine could in principle go further: Mastery_EV.XP_REQUIRED holds 101 thresholds and
+# GetMaxMasteryRank clamps against its length. 50 is the cap the game itself exposes.
+MAX_MASTERY_RANK_PER_CLASS = 50
+
+# How many of one class's ranks total mode's logic is willing to assume you will grind.
+#
+# Deliberately far below MAX_MASTERY_RANK_PER_CLASS. The arithmetic truth is that a single class
+# can supply 50 overall levels on its own, so a rule built on the real cap would happily expect
+# fifty ranks out of one class and call that reachable. The XP curve makes a class's last
+# ranks vastly more expensive than its first, effectively impossible without heavily tweaking
+# the XP multiplier. Assuming 10 spreads the requirement across classes instead
+#
+# This is a soft rule, and a safe one. It only ever asks for MORE class unlocks than the game
+# strictly needs, so it cannot make a seed unbeatable; it just stops the generator treating a
+# deep single-class grind as a reasonable expectation. Above 10 * 15 levels the assumption becomes
+# impossible to honour, and the requirement simply clamps to every class.
+LOGICAL_MASTERY_RANKS_PER_CLASS = 10
+
+# The 15 playable classes in the canonical class order: _MANOR_SLOTS[44:58] then Knight,
+# matching PLAIN_CLASS_ITEM_NAMES and KNIGHT_CLASS_POSITION. The " Class" suffix is
+# dropped for use in location names. Mirrors GameConstants.MasteryClassNames in the C# mod,
+# and position in this list is the class index in mastery location IDs.
+MASTERY_CLASS_NAMES: list[str] = [
+    s.item_name.removesuffix(" Class") for s in _MANOR_SLOTS[44:58]
+] + ["Knight"]
+
+# Every playable class at the cap. Upper bound of the TotalMasteryLevels option.
+MAX_TOTAL_MASTERY_RANK = MAX_MASTERY_RANK_PER_CLASS * len(MASTERY_CLASS_NAMES)
+
+# The shared prefix of every mastery location name, used to recognise them by name.
+MASTERY_NAME_PREFIX = "Mastery - "
+
+
+def total_mastery_location_name(level: int) -> str:
+    """Location name for the `level`-th (one-based) overall mastery rank."""
+    return f"{MASTERY_NAME_PREFIX}Total Rank {level}"
+
+
+def class_mastery_location_name(class_position: int, level: int) -> str:
+    """Location name for rank `level` (one-based) of the class at `class_position`."""
+    return f"{MASTERY_NAME_PREFIX}{MASTERY_CLASS_NAMES[class_position]} Rank {level}"
+
+# ---------------------------------------------------------------------------
 # Boss and miniboss location/event names
 # ---------------------------------------------------------------------------
 

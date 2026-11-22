@@ -74,6 +74,16 @@ internal static class APItemReconciler
         && (!WorldBuilder.IsInstantiated || WorldBuilder.State == BiomeBuildStateID.Complete);
 
     /// <summary>
+    /// Latched by <see cref="SetManorSkillLevel"/> whenever a manor level is actually written, and
+    /// consumed at the end of the pass that set it.
+    ///
+    /// <para>A field rather than a <c>ref</c> parameter like <c>refreshAbilities</c> because the
+    /// starting-class slot is applied outside the per-item loop that threads those. Main-thread only
+    /// and never read across passes, so there is nothing to synchronise.</para>
+    /// </summary>
+    private static bool _statsDirty;
+
+    /// <summary>
     /// Raises every piece of save state that is below what the ledger says it should be. Cheap when
     /// there is nothing to do: one read per received item.
     /// </summary>
@@ -87,6 +97,7 @@ internal static class APItemReconciler
         bool anyFailure = false;
         bool refreshAbilities = false;
         bool runStateChanged = false;
+        _statsDirty = false;
 
         var startingClassSlot = ParseStartingClassSlot(runState.StartingClassSkill);
 
@@ -135,6 +146,30 @@ internal static class APItemReconciler
             catch (Exception ex)
             {
                 Plugin.Log.LogWarning($"[APSync] Could not refresh player abilities: {ex.Message}");
+            }
+        }
+
+        // Stat upgrades are cached on the PlayerController, not read from the skill tree on demand,
+        // and the writes above deliberately run without events, so without this an upgrade received
+        // mid-run sits inert until something else happens to trigger a rebuild. Vanilla only rebuilds
+        // on heir spawn, a gear change, a relic pickup, or a window that calls UpdateCachedData (the
+        // stats screen among them), all of which are liable not to happen for significant time. 
+        //
+        // InitializeAllMods is the same full rebuild those paths use, and it is a pure recomputation:
+        // ResetMods zeroes the accumulators and each Initialize*Mods recomputes from equipment, the
+        // skill tree, mastery and the active traits, so running it spuriously costs nothing and
+        // destroys nothing. resetHP/resetMP stay false, so an upgrade raises the ceiling without
+        // refilling the bar. And InitializeHealthMods broadcasts PlayerHealthChange either way, so
+        // the HUD follows the new maximum.
+        if (_statsDirty && worldReady)
+        {
+            try
+            {
+                PlayerManager.GetPlayerController()?.InitializeAllMods(resetHP: false, resetMP: false);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.LogWarning($"[APSync] Could not refresh player stats: {ex.Message}");
             }
         }
 
@@ -232,7 +267,11 @@ internal static class APItemReconciler
     }
 
     /// <summary>Clears session-scoped state. Called when a session is torn down.</summary>
-    internal static void Reset() => s_reportedWrongClassItems.Clear();
+    internal static void Reset()
+    {
+        s_reportedWrongClassItems.Clear();
+        _statsDirty = false;
+    }
 
     private static int ApplyHeirloom(long itemId, HeirloomType heirloom, ref bool refreshAbilities)
     {
@@ -434,10 +473,21 @@ internal static class APItemReconciler
         int target = Math.Min(bundles * APClient.ManorUpgradeBundleSize, skillObj.MaxLevel);
         if (SkillTreeManager.GetSkillObjLevel(skill) >= target) return 0;
 
-        // runEvents: false keeps UnlockConnectedSkillSlots from revealing adjacent manor slots, which
-        // should only happen when the player physically buys the prerequisite.
-        SkillTreeManager.SetSkillObjLevel(skill, target, additive: false, runEvents: false);
+        SetManorSkillLevel(skill, target);
         return 1;
+    }
+
+    /// <summary>
+    /// The one place a manor skill level is written, so that the stat rebuild below cannot be
+    /// forgotten by a path added later.
+    ///
+    /// <para><c>runEvents: false</c> keeps <c>UnlockConnectedSkillSlots</c> from revealing adjacent
+    /// manor slots, which should only happen when the player physically buys the prerequisite.</para>
+    /// </summary>
+    private static void SetManorSkillLevel(SkillTreeType skill, int target)
+    {
+        SkillTreeManager.SetSkillObjLevel(skill, target, additive: false, runEvents: false);
+        _statsDirty = true;
     }
 
     private static int ApplyTeleporter(long itemId, BiomeType biome)
@@ -468,7 +518,7 @@ internal static class APItemReconciler
         int target = Math.Min((received + 1) * APClient.ManorUpgradeBundleSize, skillObj.MaxLevel);
         if (SkillTreeManager.GetSkillObjLevel(slot.Value) >= target) return 0;
 
-        SkillTreeManager.SetSkillObjLevel(slot.Value, target, additive: false, runEvents: false);
+        SetManorSkillLevel(slot.Value, target);
         Plugin.Log.LogDebug($"[APSync] Restored starting class slot '{slot.Value}' (level {target})");
         return 1;
     }

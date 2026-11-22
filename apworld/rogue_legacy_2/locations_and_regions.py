@@ -2,7 +2,14 @@ import math
 import typing
 from typing import NamedTuple
 
-from BaseClasses import Entrance, Item, ItemClassification, Location, Region
+from BaseClasses import (
+    Entrance,
+    Item,
+    ItemClassification,
+    Location,
+    LocationProgressType,
+    Region,
+)
 from worlds.generic.Rules import add_rule, set_rule
 
 if typing.TYPE_CHECKING:
@@ -60,7 +67,12 @@ from .constants import (
     MANOR_SHOP_ID_STRIDE,
     MANOR_SHOP_NAME_PREFIX,
     MANOR_SHOP_POSITIONS,
+    LOGICAL_MASTERY_RANKS_PER_CLASS,
+    MASTERY_CLASS_NAMES,
+    MASTERY_NAME_PREFIX,
     MAX_MANOR_SHOP_DEPTH,
+    MAX_MASTERY_RANK_PER_CLASS,
+    MAX_TOTAL_MASTERY_RANK,
     MAX_TREE_MANOR_DEPTH,
     NPC_MANOR_LOCATION_NAMES,
     NPC_MANOR_UPGRADES,
@@ -68,9 +80,11 @@ from .constants import (
     TELEPORTER_KERGUELEN_PLATEAU,
     TELEPORTER_SUN_TOWER,
     TREE_MANOR_LOCATION_NAME_SET,
+    class_mastery_location_name,
     manor_shop_location_name,
+    total_mastery_location_name,
 )
-from .options import ManorLayout
+from .options import ManorLayout, MasteryChecks
 from .items import BASE_ID
 
 # ---------------------------------------------------------------------------
@@ -95,6 +109,23 @@ JOURNAL_GROUPED_OFFSET    = 0x800  # BASE_ID + offset + biomeIndex (0-5)
 MEMORY_GROUPED_OFFSET     = 0x808  # BASE_ID + offset + biomeIndex (only 0, 2 active)
 JOURNAL_INDIVIDUAL_OFFSET = 0x810  # BASE_ID + offset + biomeIndex * 16 + journalIndex
 MEMORY_INDIVIDUAL_OFFSET  = 0x870  # BASE_ID + offset + biomeIndex * 16 + memoryIndex
+
+# Mastery rank locations. The two modes are mutually exclusive in any one seed but get
+# separate blocks so that a (mode, level) pair keeps the same ID either way.
+#
+# Total needs MAX_MASTERY_RANK_PER_CLASS * 15 = 750 consecutive IDs, so its block runs
+# 0xC00-0xEED and 0xC00-0xFFF is reserved for it. Per-class needs 15 * STRIDE = 960 and starts
+# after that at 0x1000, running to 0x13BF. Both stay far inside a signed 32-bit int once added
+# to BASE_ID (0x0BEEF000 + 0x13BF).
+MASTERY_TOTAL_OFFSET = 0xC00   # BASE_ID + offset + (level - 1), level 1..MAX_TOTAL_MASTERY_RANK
+MASTERY_CLASS_OFFSET = 0x1000  # BASE_ID + offset + classPosition * STRIDE + (level - 1)
+
+# Per-class stride, the same trick the blueprint and rune pools use: it keeps a class's IDs
+# stable at any MasteryLevelsPerClass setting. It must never drop below
+# MAX_MASTERY_RANK_PER_CLASS, or one class's deep ranks would collide with the next class's
+# shallow ones - which is why raising that cap to 50 took this from 16 to the next power of
+# two above it. Mirrors MASTERY_CLASS_ID_STRIDE in the C# mod.
+MASTERY_CLASS_ID_STRIDE = 64
 
 _JOURNAL_COUNTS = [4, 4, 4, 6, 7, 7]  # Citadel Agartha, Axis Mundi, Kerguelen Plateau, Stygian Study, Sun Tower, Pishon Dry Lake
 _MEMORY_COUNTS  = [4, 0, 5, 0, 0, 0]
@@ -310,6 +341,23 @@ for _bi, _biome_name in enumerate(BIOME_NAMES):
             address=BASE_ID + MEMORY_INDIVIDUAL_OFFSET + _bi * 16 + _m,
         )
 
+# Register every possible mastery location, at the maximum level count, so
+# location_name_to_id is complete and a given rank keeps the same ID at any
+# TotalMasteryLevels / MasteryLevelsPerClass setting. create_regions() instantiates only the
+# subset the chosen mode and level count call for, and none of them when mastery is disabled.
+for _level in range(1, MAX_TOTAL_MASTERY_RANK + 1):
+    location_data_table[total_mastery_location_name(_level)] = RogueLegacy2LocationData(
+        region="Mastery",
+        address=BASE_ID + MASTERY_TOTAL_OFFSET + _level - 1,
+    )
+
+for _pos in range(len(MASTERY_CLASS_NAMES)):
+    for _level in range(1, MAX_MASTERY_RANK_PER_CLASS + 1):
+        location_data_table[class_mastery_location_name(_pos, _level)] = RogueLegacy2LocationData(
+            region="Mastery",
+            address=BASE_ID + MASTERY_CLASS_OFFSET + _pos * MASTERY_CLASS_ID_STRIDE + _level - 1,
+        )
+
 # Convenience: name→ID dict used by World.location_name_to_id
 locations_table: dict[str, int] = {
     name: data.address
@@ -342,6 +390,41 @@ def create_regions(world: "RogueLegacy2World") -> None:
         for depth_index in range(shop_depth)
     } if shop_layout else set()
 
+    # Mastery: which rank locations exist, and which of them are filler-only.
+    #
+    # The exclusion is the whole gating mechanism for this category. Nothing in the chain has
+    # a requirement, so logic cannot express "rank 15 is thirty hours
+    # of farming away from rank 1" - but LocationProgressType.EXCLUDED can promise that the
+    # deep end never holds anything the player needs, and the fill algorithm enforces it
+    # rather than the logic sweep. create_items() reserves one filler item per excluded
+    # location, which is what makes that promise guaranteed affordable.
+    mastery_mode = world.options.mastery_checks.value
+    mastery_progression_pct = world.options.mastery_progression_percent.value
+    active_mastery_names: set[str] = set()
+    excluded_mastery_names: set[str] = set()
+
+    if mastery_mode == MasteryChecks.option_total:
+        mastery_levels = world.options.total_mastery_levels.value
+        mastery_groups: list[list[str]] = [
+            [total_mastery_location_name(level) for level in range(1, mastery_levels + 1)]
+        ]
+    elif mastery_mode == MasteryChecks.option_per_class:
+        mastery_levels = world.options.mastery_levels_per_class.value
+        mastery_groups = [
+            [class_mastery_location_name(position, level) for level in range(1, mastery_levels + 1)]
+            for position in range(len(MASTERY_CLASS_NAMES))
+        ]
+    else:
+        mastery_levels = 0
+        mastery_groups = []
+
+    # Applied per group so that in per_class mode every class keeps the same shallow stretch
+    # of live ranks, rather than the whole back half of the class list going filler-only.
+    open_mastery_levels = math.floor(mastery_levels * mastery_progression_pct / 100)
+    for group in mastery_groups:
+        active_mastery_names.update(group)
+        excluded_mastery_names.update(group[open_mastery_levels:])
+
     # The set of blueprint and rune location names active for this world.
     active_blueprint_names = {
         blueprint_chest_name(biome_name, slot)
@@ -355,7 +438,7 @@ def create_regions(world: "RogueLegacy2World") -> None:
     }
 
     # ── Build regions ────────────────────────────────────────────────────────
-    region_names = {"Menu", "Overworld", "Throne Room", "Manor"} | set(BIOME_NAMES)
+    region_names = {"Menu", "Overworld", "Throne Room", "Manor", "Mastery"} | set(BIOME_NAMES)
     regions: dict[str, Region] = {}
     for name in region_names:
         region = Region(name, player, multiworld)
@@ -380,6 +463,10 @@ def create_regions(world: "RogueLegacy2World") -> None:
         if "All Memories Read"  in location_name and journal_mode != 2: continue
         if "Journal Entry"      in location_name and journal_mode != 1: continue
         if "Memory Fragment"    in location_name and journal_mode != 1: continue
+        # Mastery locations: the two modes are mutually exclusive, and each instantiates
+        # only down to its configured level count.
+        if location_name.startswith(MASTERY_NAME_PREFIX) and location_name not in active_mastery_names:
+            continue
         region = regions[location_data.region]
         location = RogueLegacy2Location(
             player,
@@ -387,6 +474,8 @@ def create_regions(world: "RogueLegacy2World") -> None:
             location_data.address,
             region,
         )
+        if location_name in excluded_mastery_names:
+            location.progress_type = LocationProgressType.EXCLUDED
         region.locations.append(location)
 
     # ── Miniboss completion events ───────────────────────────────────────────
@@ -639,6 +728,57 @@ def create_regions(world: "RogueLegacy2World") -> None:
                     multiworld.get_location(all_memories_read_name(biome_name), player),
                     lambda state, p=player: state.has(HEIRLOOM_AESOPS_TOME, p),
                 )
+
+    # ── Mastery rank requirements ────────────────────────────────────────────
+    #
+    # The region itself is unconditional. In the base game the Sage Totem gates mastery XP
+    # accrual outright (EnemyHitResponse tests SkillTreeLogicHelper.IsTotemUnlocked before
+    # awarding anything), but the mod lifts that so the whole category does not hang off one
+    # manor item (see Patches/MasteryXPPatch.cs).
+    #
+    # That leaves the class requirements below as the only real logic on the chain, and
+    # MasteryProgressionPercent as the only thing keeping an important item out of its far end.
+    regions["Menu"].connect(regions["Mastery"], name="To Mastery")
+
+    if mastery_mode == MasteryChecks.option_per_class:
+        # A class's ranks need that class. The starting class is pre-unlocked, so its ranks
+        # ride on the entrance rule alone.
+        for position in range(len(MASTERY_CLASS_NAMES)):
+            if position == world.starting_class_position:
+                continue
+            class_item = world.class_item_names[position]
+            for level in range(1, mastery_levels + 1):
+                add_rule(
+                    multiworld.get_location(class_mastery_location_name(position, level), player),
+                    lambda state, n=class_item, p=player: state.has(n, p),
+                )
+
+    elif mastery_mode == MasteryChecks.option_total:
+        # An overall level needs enough classes to supply it, counting only
+        # LOGICAL_MASTERY_RANKS_PER_CLASS from each rather than the 50 one class could technically
+        # reach (see that constant for why logic refuses to expect a deep single-class grind).
+        # Which classes is immaterial to the game, hence a count, and the count is taken over the
+        # handful of class items the world picked for this job rather than all fourteen, so only
+        # those have to be progression. See RogueLegacy2World._pick_mastery_required_classes.
+        required_class_items = world.mastery_required_classes
+
+        def _count_classes_unlocked(state) -> int:
+            return 1 + sum(1 for name in required_class_items if state.has(name, player))
+
+        # The subset was sized for exactly the deepest requirement, so this clamp is normally a
+        # no-op. It bites once the level count passes what the assumed per-class budget can cover
+        # across all 15 classes, at which point every class is named and the budget has to give.
+        reachable_classes = 1 + len(required_class_items)
+
+        for level in range(1, mastery_levels + 1):
+            classes_req = min(
+                math.ceil(level / LOGICAL_MASTERY_RANKS_PER_CLASS), reachable_classes)
+            if classes_req <= 1:
+                continue
+            add_rule(
+                multiworld.get_location(total_mastery_location_name(level), player),
+                lambda state, n=classes_req: _count_classes_unlocked(state) >= n,
+            )
 
     # The below rules aren't technical requirements, but they help ensure that
     # spheres are reasonably sized and the player isn't forced into technically

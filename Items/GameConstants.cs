@@ -403,4 +403,37 @@ public static class GameConstants
     public static readonly string[] ManorItemNames     = [.. ManorSlots.Select(s => $"Upgrade: {s.ItemName}")];
     /// <summary>Ordered AP location names (with "Manor - " prefix), derived from <see cref="ManorSlots"/>.</summary>
     public static readonly string[] ManorLocationNames = [.. ManorSlots.Select(s => $"Manor - {s.LocationName}")];
+
+    // ── Mastery ranks ────────────────────────────────────────────────────────
+    //
+    // The canonical 15-class order is the same one the class item lists use: the 14 class
+    // manor slots in ManorSlots order, then Knight at KnightClassPosition. Position in
+    // these arrays is the class index in a mastery location ID, so the order is
+    // load-bearing and must match MASTERY_CLASS_NAMES in constants.py.
+
+    private static readonly ManorSlot[] s_classSlots = [.. ManorSlots.Where(s => s.IsClassUnlock)];
+
+    /// <summary>The 15 playable classes, as the game's <see cref="ClassType"/>.</summary>
+    public static readonly ClassType[] MasteryClassTypes =
+    [
+        .. s_classSlots.Select(s => SkillTreeLogicHelper.GetClassTypeFromSkill(s.SkillTree)),
+        ClassType.SwordClass,  // Knight, which has no manor slot of its own
+    ];
+
+    /// <summary>
+    /// Display names for <see cref="MasteryClassTypes"/>: the class item names with the
+    /// " Class" suffix dropped, so a location reads "Mastery - Boxer Rank 3".
+    /// </summary>
+    public static readonly string[] MasteryClassNames =
+    [
+        .. s_classSlots.Select(s => StripClassSuffix(s.ItemName)),
+        StripClassSuffix(KnightClassItemName),
+    ];
+
+    private const string ClassSuffix = " Class";
+
+    private static string StripClassSuffix(string itemName) =>
+        itemName.EndsWith(ClassSuffix)
+            ? itemName.Substring(0, itemName.Length - ClassSuffix.Length)
+            : itemName;
 }

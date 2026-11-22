@@ -2,7 +2,7 @@ import math
 import typing
 from typing import NamedTuple
 
-from BaseClasses import Item, ItemClassification
+from BaseClasses import Item, ItemClassification, LocationProgressType
 
 if typing.TYPE_CHECKING:
     from . import RogueLegacy2World
@@ -14,10 +14,8 @@ from .constants import (
     CORE_MANOR_UPGRADES,
     HEIRLOOM_NAMES,
     KNIGHT_CLASS_ITEM_NAME,
-    KNIGHT_CLASS_POSITION,
     MANOR_MAX_LEVELS,
     NPC_MANOR_UPGRADES,
-    PLAIN_CLASS_ITEM_NAMES,
     PROGRESSIVE_CLASS_ITEM_NAMES,
     RUNE_NAMES,
     STAT_UPGRADE_MANOR_UPGRADES,
@@ -181,21 +179,29 @@ def create_items(world: "RogueLegacy2World") -> None:
     )
     stat_upgrade_names = frozenset(STAT_UPGRADE_MANOR_UPGRADES)
 
+    # Class unlocks are the only items a mastery rule requires in order to be fulfilled,
+    # and a named item has to be marked as progression for Archipelago to enforce a rule
+    # during generation logic. We ensure that we only provide the shortest list of classes
+    # that need to be marked as progression to satisfy its rules (see 
+    # RogueLegacy2World._pick_mastery_required_classes). So in total mode
+    # this is usually one or two classes rather than all fourteen.
+    #
+    # The Sage Totem is deliberately not among them. It gates mastery XP accrual in the base game,
+    # but the mod lifts that (Patches/MasteryXPPatch.cs) so the category does not hang off one manor
+    # item, which leaves it an ordinary upgrade here.
+    mastery_required_classes = frozenset(world.mastery_required_classes)
+
     def manor_classification(name: str) -> ItemClassification:
         if stat_gating_enabled and name in stat_upgrade_names:
             return ItemClassification.progression_skip_balancing
         return ItemClassification.useful
 
-    # starting_class_index: 0 = Knight, 1–14 = one of CLASS_UNLOCK_ITEM_NAMES. Translated into a
-    # position in the 15-entry class lists, where Knight sits last rather than first.
-    starting_class_idx = getattr(world, '_starting_class_index', 0)
-    starting_class_pos = KNIGHT_CLASS_POSITION if starting_class_idx == 0 else starting_class_idx - 1
+    starting_class_pos = world.starting_class_position
+    class_item_names = world.class_item_names
 
-    # Which of the two parallel class item sets this seed uses. See constants.py.
-    # Only the randomized mode puts fabled weapons in the pool at all. soul_shop and
-    # unlocked both leave class items as plain one-stage unlocks.
+    # Whether this seed's class items are the two-stage progressive ones, which is also the
+    # only mode that puts a fabled weapon in the pool.
     fabled_weapons = world.options.fabled_weapons == FabledWeapons.option_randomized
-    class_item_names = PROGRESSIVE_CLASS_ITEM_NAMES if fabled_weapons else PLAIN_CLASS_ITEM_NAMES
 
     # The 14 class slots are handled by the dedicated block below, not by the generic
     # single-level manor loop, since which item represents a class depends on the option.
@@ -247,11 +253,45 @@ def create_items(world: "RogueLegacy2World") -> None:
     # With fabled_weapons on, each class gets one further copy that unlocks its fabled
     # weapon, including the starting class, whose single copy is therefore the weapon
     # rather than the class.
+    #
+    # Exactly one copy of a class a mastery rule names is progression, because the rule is a
+    # state.has() that asks for one. The fabled weapon copy gates nothing at all, and neither does
+    # anything the starting class holds, since its ranks are reachable from the start. Which object
+    # carries the classification does not matter: in game the player's first received copy unlocks
+    # the class whichever one it was, and logic only waits on the copy it can see.
     for position, name in enumerate(class_item_names):
         copies = 1 if fabled_weapons else 0
         if position != starting_class_pos:
             copies += 1
-        optional_priority.extend(create_item(player, name) for _ in range(copies))
+
+        data = item_data_table[name]
+        unlock_is_progression = (
+            position != starting_class_pos and name in mastery_required_classes
+        )
+        for copy_index in range(copies):
+            optional_priority.append(RogueLegacy2Item(
+                name,
+                ItemClassification.progression_skip_balancing
+                if copy_index == 0 and unlock_is_progression
+                else ItemClassification.useful,
+                data.code,
+                player,
+            ))
+
+    # ── Filler for the excluded mastery ranks ────────────────────────────────
+    #
+    # distribute_items_restrictive fills excluded locations from the filler pool alone, and
+    # raises "Not enough filler items for excluded locations" if it runs short - so marking
+    # the deep end of the mastery chain filler-only obliges this world to supply that much
+    # filler. Counted off the locations themselves rather than recomputed from the options,
+    # so the two can't disagree.
+    excluded_count = sum(
+        1 for location in multiworld.get_unfilled_locations(player)
+        if location.progress_type == LocationProgressType.EXCLUDED
+    )
+    reserved_filler_items: list[RogueLegacy2Item] = [
+        create_item(player, "Gold Coins") for _ in range(excluded_count)
+    ]
 
     # Traps: placed immediately after priority items, before useful items.
     # Distribute evenly across the 5 trap types by cycling through the list.
@@ -284,42 +324,57 @@ def create_items(world: "RogueLegacy2World") -> None:
     # than guaranteed items and nothing has to give. A very small world can invert that,
     # handing Archipelago more items than it has room for and surfacing an opaque FillError
     # deep inside Fill.py. Shed the least load-bearing items instead, in order: traps,
-    # then the optional priority tier.
-    if len(mandatory_items) > unfilled:
+    # then the optional priority tier. The reserved filler is never shed: dropping it would
+    # trade this clear error for the FillError it exists to prevent.
+    if len(mandatory_items) + len(reserved_filler_items) > unfilled:
         raise Exception(
             f"Rogue Legacy 2: this YAML leaves only {unfilled} locations, but "
-            f"{len(mandatory_items)} items are required to keep the seed completable "
-            f"(6 heirlooms"
-            + (" and 3 NPC unlocks, which early_npc_unlocks makes progression" if early_npcs else "")
+            f"{len(mandatory_items) + len(reserved_filler_items)} items are required to keep the seed "
+            f"completable (6 heirlooms"
+            + (", 3 NPC unlocks, which early_npc_unlocks makes progression" if early_npcs else "")
+            + (f" and {len(reserved_filler_items)} filler items for the mastery ranks that "
+               f"mastery_progression_percent excludes" if reserved_filler_items else "")
             + "). Raise manor_shop_depth, blueprint_checks_per_biome, rune_checks_per_biome "
             f"or journal_checks."
         )
 
-    overflow = len(mandatory_items) + len(optional_priority) + len(trap_items) - unfilled
+    overflow = (
+        len(mandatory_items) + len(optional_priority) + len(trap_items) + len(reserved_filler_items)
+        - unfilled
+    )
     if overflow > 0:
         dropped_traps = min(overflow, len(trap_items))
         if dropped_traps:
             trap_items = trap_items[: len(trap_items) - dropped_traps]
             overflow -= dropped_traps
     if overflow > 0:
-        # Float the stat upgrades to the front so the survivors are the ones the
-        # stat_upgrades_* gates count, then drop from the back. The shuffle keeps which
-        # class items are lost from being the same every seed, and mixes class unlocks
-        # and fabled weapons together rather than always losing one kind first.
+        # Float the items the access rules actually count to the front so the survivors are
+        # those, then drop from the back. The shuffle keeps which class items are lost from
+        # being the same every seed, and mixes class unlocks and fabled weapons together
+        # rather than always losing one kind first.
+        #
+        # Protection is by name, so a named class keeps its fabled weapon copy too. Only the
+        # unlock copy has to survive, but the two are indistinguishable by name and sparing both
+        # is cheaper than the bookkeeping to tell them apart.
+        protected_names = frozenset(
+            (stat_upgrade_names if stat_gating_enabled else frozenset())
+            | mastery_required_classes
+        )
         world.random.shuffle(optional_priority)
-        if stat_gating_enabled:
-            optional_priority.sort(key=lambda item: item.name not in stat_upgrade_names)
+        if protected_names:
+            optional_priority.sort(key=lambda item: item.name not in protected_names)
         optional_priority = optional_priority[: len(optional_priority) - overflow]
 
     priority_items = mandatory_items + optional_priority
 
-    # Traps are guaranteed slots; subtract them from remaining before the useful/filler split.
-    remaining    = unfilled - len(priority_items) - len(trap_items)
+    # Traps and reserved filler are guaranteed slots; subtract them from remaining before
+    # the useful/filler split.
+    remaining    = unfilled - len(priority_items) - len(trap_items) - len(reserved_filler_items)
     total_useful = len(blueprint_pool) + len(rune_pool) + len(manor_pool)
 
     if total_useful <= remaining:
         # All useful items fit.
-        pool = priority_items + trap_items + blueprint_pool + rune_pool + manor_pool
+        pool = priority_items + trap_items + reserved_filler_items + blueprint_pool + rune_pool + manor_pool
         padding_candidates = []
     else:
         # Truncation: distribute remaining slots 25% blueprints / 25% runes / 50% manor.
@@ -340,6 +395,7 @@ def create_items(world: "RogueLegacy2World") -> None:
         pool = (
             priority_items
             + trap_items
+            + reserved_filler_items
             + blueprint_pool[:blueprint_slots]
             + rune_pool[:rune_slots]
             + manor_pool[:manor_slots]

@@ -117,7 +117,7 @@ internal static class SuboptionsPatch
             });
 
         BuildToggleItem(clonedItemsParent, parentGO, template, disclaimerTemplate, disclaimerSlot, "Debug Keys",
-            description: "When enabled, debug keys for testing will be usable (number keys 6-0).\nNote: This is not intended for actual playthroughs",
+            description: "When enabled, debug keys for testing will be usable (number keys 5-0).\nNote: This is not intended for actual playthroughs",
             getter: () => APSettings.DebugKeysEnabled,
             setter: v =>
             {

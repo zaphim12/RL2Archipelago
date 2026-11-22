@@ -72,6 +72,29 @@ internal static class DebugPatch
             }
         }
 
+        if (keyboard.GetKeyDown(KeyCode.Alpha5))
+        {
+            // Granted straight to the class's banked total rather than to RunAccumulatedXP, so the
+            // rank moves now instead of on death - which also means MasteryRankPatch's postfix on
+            // SetClassXP sends any mastery checks immediately. 1000 is literal: the
+            // mastery_xp_multiplier option scales SetMasteryXP, the run-XP funnel, not this.
+            var saveData = SaveManager.PlayerSaveData;
+            var classType = saveData?.CurrentCharacter.ClassType ?? ClassType.None;
+            if (classType != ClassType.None)
+            {
+                int prevRank = saveData.GetClassMasteryRank(classType);
+                saveData.SetClassXP(classType, 1000, additive: true, forceOverride: false,
+                                    ignoreMaxLevelClamping: false);
+                Plugin.Log.LogInfo(
+                    $"[Debug] Added 1000 mastery XP to {classType}: now {saveData.GetClassXP(classType)} XP, " +
+                    $"rank {prevRank} -> {saveData.GetClassMasteryRank(classType)}.");
+            }
+            else
+            {
+                Plugin.Log.LogInfo("[Debug] Key 5 pressed but there is no current character to give XP to.");
+            }
+        }
+
         if (keyboard.GetKeyDown(KeyCode.Alpha7))
         {
             if (SaveManager.PlayerSaveData != null)

@@ -149,6 +149,53 @@ Rogue Legacy 2:
   # Valid values: disabled, individual, grouped  (default: grouped)
   journal_checks: grouped
 
+  # ── Mastery Rank Checks ──────────────────────────────────────────────────
+
+  # Controls whether gaining class mastery ranks awards AP checks.
+  #
+  # XP comes from killing enemies and the game converts this into mastery levels
+  # when the heir dies. Keep in mind, this means these checks are only awarded
+  # when you return to the manor.
+  #
+  # Note: in the base game no XP accrues all until the Sage Totem is acquired,
+  # However the mod allows you to gain levels immediately. The Sage Totem still
+  # gates the stat bonuses that come from mastery levels, though.
+  #
+  #   disabled  - no mastery checks (0 extra locations).
+  #   total     - each overall mastery level is one check. The overall level is
+  #               the sum of every class's rank.
+  #   per_class - each rank of each of the 15 classes is its own check, giving
+  #               15 * mastery_levels_per_class locations. Much grindier since
+  #               you can't guarantee getting an heir with the class you want to
+  #               rank.
+  # Valid values: disabled, total, per_class  (default: total)
+  mastery_checks: total
+
+  # How many overall mastery levels are checks. Used by "total" mode only, where
+  # it is exactly how many locations this adds. 
+  # Valid range: 1–750  (default: 50)
+  total_mastery_levels: 50
+
+  # How many ranks of each class are checks. Used by "per_class" mode only,
+  # adding 15 x this many locations.
+  # Valid range: 1–50  (default: 10)
+  mastery_levels_per_class: 10
+
+  # Mastery XP award multiplier, as a percentage. 100 is the base-game rate, 200
+  # doubles every award, 50 halves it.
+  #
+  # You can adjust this to be able to get more mastery rank levels in a reasonable
+  # amount of time. So if you want to have many locations come from mastery ranks,
+  # but not spend forever grinding, turn this up. 
+  #
+  # Works with mastery_checks disabled too. Note that in that case the base game's
+  # rule still stands: no mastery XP accrues until the Sage Totem is bought, so
+  # there is nothing to scale before then.
+  # The range goes as high as 10000 (100x) for chasing the deep end of the rank
+  # chain (rank 50 on one class needs 15.8 million XP).
+  # Valid range: 10–10000  (default: 300)
+  mastery_xp_multiplier: 300
+
   # ── Traps ────────────────────────────────────────────────────────────────
 
   # Total number of NG+ burden trap items placed in the item pool.
@@ -276,6 +323,20 @@ Rogue Legacy 2:
   # Set to 0 to disable stat-upgrade gating for biomes.
   # Valid range: 0–10  (default: 5)
   stat_upgrades_per_biome_tier: 5
+
+  # How much of the mastery chain may hold an item worth having. Only relevant
+  # when mastery_checks is enabled.
+  #
+  # Unlike other settings in this section, this is a guarantee rather than a
+  # nudge. Any mastery levels received after this point are guaranteed to 
+  # contain a filler item and not something useful or progrsesion. 
+  #
+  # With the default of 50 and total_mastery_levels: 50, ranks 1-25 can hold 
+  # potentially useful items, and ranks 26-50 hold filler. In per_class mode
+  # the split applies within each class. 
+  # 100 puts the whole chain in play, 0 makes all of it filler;
+  # Valid range: 0–100  (default: 50)
+  mastery_progression_percent: 50
 
   # Whether to push the three NPC unlock items (Living Safe, Blacksmith,
   # Enchantress) earlier in the run so they aren't gated too deep.

@@ -11,7 +11,8 @@ The run is completed as normal by defeating Cain. All biome bosses must be defea
   - Normal and Silver chests (items drop with the same probability as blueprints would in normal gameplay)
   - Boss and mini-boss kills
   - Journals and memories (configurable)
-  - Manor upgrades
+  - Class mastery ranks (configurable)
+  - Manor upgrades (configurable)
   - Pizza girl purchases
   - Heirloom statues (and Johann's conversation in Pishon Dry Lake after defeating Irad)
 
@@ -131,6 +132,38 @@ There are 41 total memories and journals, and 8 groups (some biomes have no memo
 
 ---
 
+### Mastery Level Checks (`mastery_checks`, `total_mastery_levels`, `mastery_levels_per_class`)
+
+| Setting | Values / Range | Default |
+|---|---|---|
+| `mastery_checks` | `disabled` / `total` / `per_class` | `total` |
+| `total_mastery_levels` | 1–750 | 50 |
+| `mastery_levels_per_class` | 1–50 | 10 |
+
+Controls how class mastery ranks award AP checks. XP comes from killing enemies and the game converts this XP into mastery rank levels when an heir dies. This does mean you will not receive mastery checks mid-run, they only come when you return to the manor.
+
+- **disabled** - no mastery checks
+- **total** - each overall mastery level is one check. The overall level is the sum of every class's rank. `total_mastery_levels` sets how many levels are checks, and therefore how many locations this adds.
+- **per_class** - each of the 15 classes' rank has its own checks, giving `15 × mastery_levels_per_class` locations. Considerably grindier than **total** and includes inherent randomization since you can't intentionally choose a class you want.
+
+#### How the Mastery Level Checks interact with the Sage Totem
+
+In the base game, no mastery XP accrues at all until the Sage Totem (the **Mastery Rank Unlock** manor upgrade) is bought. This seems silly for a randomizer, so the mod allows you to begin gaining XP immediately so mastery level locations can be checked from the start of a run. However, the stat bonuses that come from mastery level ranks are still gated behind the Sage Totem unlock, so it is still useful.
+
+---
+
+### Mastery XP Multiplier (`mastery_xp_multiplier`)
+
+**Range:** 10–10000 | **Default:** 300
+
+Scales every mastery XP award, as a percentage. 100 is the base-game rate, 200 doubles it, 50 halves it. The default is deliberately well above the base-game rate, because vanilla's XP curve is too slow for a reasonable Archipelago run.
+
+This is useful if you want many mastery rank checks without a long grind: raise `total_mastery_levels` (or `mastery_levels_per_class`) for more checks, then raise this so they still arrive at a reasonable pace.
+
+This setting still applies with `mastery_checks` set to `disabled`.
+
+---
+
 ### Trap Count (`trap_count`)
 
 **Range:** 0–25 | **Default:** 3
@@ -222,6 +255,18 @@ Set to 0 to disable stat-upgrade gating for bosses.
 The base number of received stat upgrade items logically required before each later biome's chest and journal/memory locations are considered in logic. The requirement scales per biome starting at biome 3: Kerguelen Plateau requires *x*, Stygian Study requires *2x*, Sun Tower requires *3x*, and Pishon Dry Lake requires *4x*. Citadel Agartha and Axis Mundi are never gated by this setting.
 
 Set to 0 to disable stat-upgrade gating for biomes.
+
+---
+
+#### Mastery Progression Percent (`mastery_progression_percent`)
+
+**Range:** 0–100 | **Default:** 50
+
+How much of the mastery chain is allowed to hold an item worth having. Only relevant when `mastery_checks` is enabled. Anything past this point in the mastery level rank locations is guaranteed not to have something useful or required. Instead they will just have filler.
+
+With the default of 50 and `total_mastery_levels: 25`, ranks 1–12 can hold real items and ranks 13–25 hold gold (or a trap). In **per_class** mode the split is applied within each class, so every class keeps the same shallow stretch of live ranks.
+
+Set it to 100 to put the whole chain in play, or 0 to make all of it filler. 
 
 ---
 

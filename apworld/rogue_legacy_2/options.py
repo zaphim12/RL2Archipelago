@@ -2,6 +2,8 @@ from dataclasses import dataclass
 
 from Options import Choice, DeathLink, PerGameCommonOptions, Range, Toggle
 
+from .constants import MAX_MASTERY_RANK_PER_CLASS, MAX_TOTAL_MASTERY_RANK
+
 
 class RL2DeathLink(DeathLink):
     """When you die, everyone dies. Of course the reverse is true too.
@@ -154,6 +156,79 @@ class JournalChecks(Choice):
     option_individual = 1
     option_grouped    = 2
     default = 2
+
+
+class MasteryChecks(Choice):
+    """Controls how class mastery ranks give out location checks.
+
+    XP is earned by killing enemies and is only converted to mastery levels when an heir dies.
+
+    In the base game nothing accrues at all until the Sage Totem manor upgrade is bought.
+    The mod lifts that so checks can be earned immediately.
+
+    disabled (0):  No mastery checks.
+    total (1):     Each overall mastery level (i.e. the sum of every class's rank) is one check.
+    per_class (2): Each rank of each of the 15 classes is its own check, so there are
+                   15 x MasteryLevelsPerClass of them. 
+
+    MasteryProgressionPercent decides how deep into the chain an important item may be
+    placed, and MasteryXpMultiplier affects how fast you earn XP.
+    """
+    display_name = "Mastery Checks"
+    option_disabled  = 0
+    option_total     = 1
+    option_per_class = 2
+    default = 1
+
+
+class TotalMasteryLevels(Range):
+    """How many overall mastery levels are checks. Only used when MasteryChecks is total.
+
+    Each mastery level is 1 check, so this exactly corresponds to how many checks are added.
+
+    The maximum is every playable class at the game's rank cap: 15 classes x rank 50. Reaching
+    anything near that is an enormous grind, so treat the upper end of this range as something
+    to pair with a high MasteryXpMultiplier and/or a low MasteryProgressionPercent.
+    """
+    display_name = "Total Mastery Levels"
+    range_start = 1
+    range_end = MAX_TOTAL_MASTERY_RANK
+    default = 50
+
+
+class MasteryLevelsPerClass(Range):
+    """How many ranks of each class are checks. Only used when MasteryChecks is per_class.
+
+    Adds 15 x this many checks, one per rank per class.
+    """
+    display_name = "Mastery Levels Per Class"
+    range_start = 1
+    range_end = MAX_MASTERY_RANK_PER_CLASS
+    default = 10
+
+
+class MasteryXpMultiplier(Range):
+    """Mastery XP award multiplier, as a percentage. The higher the number, the more XP is earned.
+
+    100 is the base-game rate. 200 doubles every XP award, 50 halves it.
+
+    This setting is useful if you want to have many checks coming from mastery ranks, but
+    you don't want to have a massive grind to unlock them. 
+
+    Note that this setting still applies with MasteryChecks disabled. However, in that case
+    the base game's rule for earning XP still stands: no mastery XP accrues at all until the
+    Sage Totem is found.
+
+    The default setting is actually higher than the base game's rate because vanilla's XP
+    earning is too slow for a reasonable Archipelago world.
+
+    The range reaches 100x for chasing the deep end of the rank chain, since rank 50 on one
+    class needs 15.8 million XP.
+    """
+    display_name = "Mastery XP Multiplier"
+    range_start = 10
+    range_end = 10000
+    default = 300
 
 
 class TrapCount(Range):
@@ -312,6 +387,26 @@ class StatUpgradesPerBiomeTier(Range):
     default = 5
 
 
+class MasteryProgressionPercent(Range):
+    """Percentage of the mastery chain that is allowed to hold an item worth having.
+
+    Unlike similar options in this list, this is a guarantee, not a nudge. Once you have
+    reached x% of the mastery chain, all remaining ranks will only have filler rewards. The
+    ranks before this percentage are free to hold any item, progression, useful, or filler.
+
+    This setting exists to ensure that you don't have to potentially grind through every 
+    single mastery rank to get a necessary item, since that may take a very long time.
+    
+    In per_class mode the split is applied within each class.
+
+    100 puts the whole chain in play and 0 makes all of it filler.
+    """
+    display_name = "Mastery Progression Percent"
+    range_start = 0
+    range_end = 100
+    default = 50
+
+
 class EarlyNPCUnlocks(Toggle):
     """Whether to shift the NPC unlocks earlier in the run to ensure they aren't gated too far into the game.
 
@@ -377,6 +472,10 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     manor_shop_depth: ManorShopDepth
     manor_upgrade_bundle_size: ManorUpgradeBundleSize
     journal_checks: JournalChecks
+    mastery_checks: MasteryChecks
+    total_mastery_levels: TotalMasteryLevels
+    mastery_levels_per_class: MasteryLevelsPerClass
+    mastery_xp_multiplier: MasteryXpMultiplier
     trap_count: TrapCount
     trap_appearance: TrapAppearance
     manor_cost_base: ManorCostBase
@@ -386,6 +485,7 @@ class RogueLegacy2GameOptions(PerGameCommonOptions):
     chest_pre_boss_percent: ChestPreBossPercent
     stat_upgrades_per_boss: StatUpgradesPerBoss
     stat_upgrades_per_biome_tier: StatUpgradesPerBiomeTier
+    mastery_progression_percent: MasteryProgressionPercent
     early_npc_unlocks: EarlyNPCUnlocks
     randomize_starting_class: RandomizeStartingClass
     fabled_weapons: FabledWeapons
