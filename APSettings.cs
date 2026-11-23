@@ -4,9 +4,15 @@ public static class APSettings
 {
     /// <summary>Null means no user preference - defer to the server value on connect.</summary>
     public static bool? DeathLink { get; set; } = null;
-/// <summary>When true, notifications are shown in the compact top-right text log
+    /// <summary>When true, notifications are shown in the compact top-right text log
     /// instead of the full-screen overlay HUD.</summary>
     public static bool UseMinimalistAPLog { get; set; } = false;
+
+    /// <summary>
+    /// When true, the biome tracker panel is shown while the player is inside one of the six biomes.
+    /// See <see cref="UI.APBiomeTracker"/>.
+    /// </summary>
+    public static bool ShowBiomeTracker { get; set; } = true;
 
     /// <summary>When true, debug hotkeys (0-9) defined in DebugPatch are active.</summary>
     public static bool DebugKeysEnabled { get; set; } = false;

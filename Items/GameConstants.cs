@@ -296,108 +296,126 @@ public static class GameConstants
         /// </summary>
         public bool IsClassUnlock => FabledVariant != SoulShopType.None;
 
+        /// <summary>
+        /// True when copies of this slot's item count toward the stat-upgrade total the apworld
+        /// gates later biomes behind (<c>stat_upgrades_per_biome_tier</c>). Mirrors the
+        /// <c>is_stat_upgrade</c> column of <c>_MANOR_SLOTS</c> in constants.py, which the client
+        /// needs in order to say which of a biome's locations are in logic.
+        ///
+        /// <para>Python states the column on every row; here it defaults to <c>false</c> so that a
+        /// slot added without thinking about it cannot silently inflate the count. The lockstep
+        /// diff is what actually keeps the two sides honest - see CLAUDE.md.</para>
+        /// </summary>
+        public readonly bool IsStatUpgrade;
+
         public ManorSlot(
             SkillTreeType skillTree, string itemName, string locationName,
-            SoulShopType fabledVariant = SoulShopType.None)
-            => (SkillTree, ItemName, LocationName, FabledVariant)
-             = (skillTree, itemName, locationName, fabledVariant);
+            SoulShopType fabledVariant = SoulShopType.None, bool isStatUpgrade = false)
+            => (SkillTree, ItemName, LocationName, FabledVariant, IsStatUpgrade)
+             = (skillTree, itemName, locationName, fabledVariant, isStatUpgrade);
     }
 
     public static readonly ManorSlot[] ManorSlots =
     [
         // ── Vitality ─────────────────────────────────────────────────────────
-        new(SkillTreeType.Health_Up,                 MessHallItemName,              MessHallLocationName),              // 0
-        new(SkillTreeType.Health_Up2,                FruitJuiceBarItemName,         FruitJuiceBarLocationName),         // 1
-        new(SkillTreeType.Health_Up3,                MeteoraGymItemName,            MeteoraGymLocationName),            // 2
+        new(SkillTreeType.Health_Up,                 MessHallItemName,              MessHallLocationName,              isStatUpgrade: true),             // 0
+        new(SkillTreeType.Health_Up2,                FruitJuiceBarItemName,         FruitJuiceBarLocationName,         isStatUpgrade: true),             // 1
+        new(SkillTreeType.Health_Up3,                MeteoraGymItemName,            MeteoraGymLocationName,            isStatUpgrade: true),             // 2
         // ── Strength ─────────────────────────────────────────────────────────
-        new(SkillTreeType.Attack_Up,                 ArsenalItemName,               ArsenalLocationName),               // 3
-        new(SkillTreeType.Attack_Up2,                SaunaItemName,                 SaunaLocationName),                 // 4
-        new(SkillTreeType.Attack_Up3,                RockClimbingWallItemName,      RockClimbingWallLocationName),      // 5
+        new(SkillTreeType.Attack_Up,                 ArsenalItemName,               ArsenalLocationName,               isStatUpgrade: true),             // 3
+        new(SkillTreeType.Attack_Up2,                SaunaItemName,                 SaunaLocationName,                 isStatUpgrade: true),             // 4
+        new(SkillTreeType.Attack_Up3,                RockClimbingWallItemName,      RockClimbingWallLocationName,      isStatUpgrade: true),             // 5
         // ── Dexterity ────────────────────────────────────────────────────────
-        new(SkillTreeType.Dexterity_Add1,            GymItemName,                   GymLocationName),                   // 6
-        new(SkillTreeType.Dexterity_Add2,            YogaClassItemName,             YogaClassLocationName),             // 7
-        new(SkillTreeType.Dexterity_Add3,            FlowerShopItemName,            FlowerShopLocationName),            // 8
+        new(SkillTreeType.Dexterity_Add1,            GymItemName,                   GymLocationName,                   isStatUpgrade: true),             // 6
+        new(SkillTreeType.Dexterity_Add2,            YogaClassItemName,             YogaClassLocationName,             isStatUpgrade: true),             // 7
+        new(SkillTreeType.Dexterity_Add3,            FlowerShopItemName,            FlowerShopLocationName,            isStatUpgrade: true),             // 8
         // ── Weapon crit ──────────────────────────────────────────────────────
-        new(SkillTreeType.Crit_Damage_Up,            LaundromatItemName,            LaundromatLocationName),            // 9
-        new(SkillTreeType.Crit_Chance_Flat_Up,       DicersDenItemName,             DicersDenLocationName),             // 10
+        new(SkillTreeType.Crit_Damage_Up,            LaundromatItemName,            LaundromatLocationName,            isStatUpgrade: true),             // 9
+        new(SkillTreeType.Crit_Chance_Flat_Up,       DicersDenItemName,             DicersDenLocationName,             isStatUpgrade: true),             // 10
         // ── Intelligence ─────────────────────────────────────────────────────
-        new(SkillTreeType.Magic_Attack_Up,           StudyHallItemName,             StudyHallLocationName),             // 11
-        new(SkillTreeType.Magic_Attack_Up2,          MathClubItemName,              MathClubLocationName),              // 12
-        new(SkillTreeType.Magic_Attack_Up3,          UniversityItemName,            UniversityLocationName),            // 13
+        new(SkillTreeType.Magic_Attack_Up,           StudyHallItemName,             StudyHallLocationName,             isStatUpgrade: true),             // 11
+        new(SkillTreeType.Magic_Attack_Up2,          MathClubItemName,              MathClubLocationName,              isStatUpgrade: true),             // 12
+        new(SkillTreeType.Magic_Attack_Up3,          UniversityItemName,            UniversityLocationName,            isStatUpgrade: true),             // 13
         // ── Focus ────────────────────────────────────────────────────────────
-        new(SkillTreeType.Focus_Up1,                 LibraryItemName,               LibraryLocationName),               // 14
-        new(SkillTreeType.Focus_Up2,                 HallOfWisdomItemName,          HallOfWisdomLocationName),          // 15
-        new(SkillTreeType.Focus_Up3,                 CourtOfTheWiseItemName,        CourtOfTheWiseLocationName),        // 16
+        new(SkillTreeType.Focus_Up1,                 LibraryItemName,               LibraryLocationName,               isStatUpgrade: true),             // 14
+        new(SkillTreeType.Focus_Up2,                 HallOfWisdomItemName,          HallOfWisdomLocationName,          isStatUpgrade: true),             // 15
+        new(SkillTreeType.Focus_Up3,                 CourtOfTheWiseItemName,        CourtOfTheWiseLocationName,        isStatUpgrade: true),             // 16
         // ── Magic crit ───────────────────────────────────────────────────────
-        new(SkillTreeType.Magic_Crit_Damage_Up,      LodgeItemName,                 LodgeLocationName),                 // 17
-        new(SkillTreeType.Magic_Crit_Chance_Flat_Up, QuantumObservatoryItemName,    QuantumObservatoryLocationName),    // 18
+        new(SkillTreeType.Magic_Crit_Damage_Up,      LodgeItemName,                 LodgeLocationName,                 isStatUpgrade: true),             // 17
+        new(SkillTreeType.Magic_Crit_Chance_Flat_Up, QuantumObservatoryItemName,    QuantumObservatoryLocationName,    isStatUpgrade: true),             // 18
         // ── Equipment weight ─────────────────────────────────────────────────
-        new(SkillTreeType.Equip_Up,                  FashionChambersItemName,       FashionChambersLocationName),       // 19
-        new(SkillTreeType.Equip_Up2,                 TailorsItemName,               TailorsLocationName),               // 20
-        new(SkillTreeType.Equip_Up3,                 ArtisanItemName,               ArtisanLocationName),               // 21
+        new(SkillTreeType.Equip_Up,                  FashionChambersItemName,       FashionChambersLocationName,       isStatUpgrade: true),             // 19
+        new(SkillTreeType.Equip_Up2,                 TailorsItemName,               TailorsLocationName,               isStatUpgrade: true),             // 20
+        new(SkillTreeType.Equip_Up3,                 ArtisanItemName,               ArtisanLocationName,               isStatUpgrade: true),             // 21
         // ── Rune weight ──────────────────────────────────────────────────────
-        new(SkillTreeType.Rune_Equip_Up,             EtchingChambersItemName,       EtchingChambersLocationName),       // 22
-        new(SkillTreeType.Rune_Equip_Up2,            PillowMillItemName,            PillowMillLocationName),            // 23
-        new(SkillTreeType.Rune_Equip_Up3,            BedMillItemName,               BedMillLocationName),               // 24
+        new(SkillTreeType.Rune_Equip_Up,             EtchingChambersItemName,       EtchingChambersLocationName,       isStatUpgrade: true),             // 22
+        new(SkillTreeType.Rune_Equip_Up2,            PillowMillItemName,            PillowMillLocationName,            isStatUpgrade: true),             // 23
+        new(SkillTreeType.Rune_Equip_Up3,            BedMillItemName,               BedMillLocationName,               isStatUpgrade: true),             // 24
         // ── Armor ────────────────────────────────────────────────────────────
-        new(SkillTreeType.Armor_Up,                  FoundryItemName,               FoundryLocationName),               // 25
-        new(SkillTreeType.Armor_Up2,                 BlastFurnaceItemName,          BlastFurnaceLocationName),          // 26
-        new(SkillTreeType.Armor_Up3,                 SomeKindOfKilnItemName,        SomeKindOfKilnLocationName),        // 27
+        new(SkillTreeType.Armor_Up,                  FoundryItemName,               FoundryLocationName,               isStatUpgrade: true),             // 25
+        new(SkillTreeType.Armor_Up2,                 BlastFurnaceItemName,          BlastFurnaceLocationName,          isStatUpgrade: true),             // 26
+        new(SkillTreeType.Armor_Up3,                 SomeKindOfKilnItemName,        SomeKindOfKilnLocationName,        isStatUpgrade: true),             // 27
         // ── Health restore ───────────────────────────────────────────────────
-        new(SkillTreeType.Potion_Up,                 InstituteOfGastronomyItemName, InstituteOfGastronomyLocationName), // 28
-        new(SkillTreeType.Boss_Health_Restore,       MeditationStudiesItemName,     MeditationStudiesLocationName),     // 29
+        new(SkillTreeType.Potion_Up,                 InstituteOfGastronomyItemName, InstituteOfGastronomyLocationName, isStatUpgrade: true),             // 28
+        new(SkillTreeType.Boss_Health_Restore,       MeditationStudiesItemName,     MeditationStudiesLocationName,     isStatUpgrade: true),             // 29
         // ── Spin kicks ───────────────────────────────────────────────────────
-        new(SkillTreeType.Down_Strike_Up,            BambooGardenItemName,          BambooGardenLocationName),          // 30
+        new(SkillTreeType.Down_Strike_Up,            BambooGardenItemName,          BambooGardenLocationName,          isStatUpgrade: true),             // 30
         // ── Gold & economy ───────────────────────────────────────────────────
-        new(SkillTreeType.Traits_Give_Gold,          UniversalHealthStairItemName,  UniversalHealthStairLocationName),  // 31
-        new(SkillTreeType.Traits_Give_Gold_Gain_Mod, RepurposedMiningShaftItemName, RepurposedMiningShaftLocationName), // 32
-        new(SkillTreeType.Equipment_Ore_Find_Up,     GeologistsCampItemName,        GeologistsCampLocationName),        // 33
-        new(SkillTreeType.Rune_Ore_Find_Up,          DowsingCenterItemName,         DowsingCenterLocationName),         // 34
-        new(SkillTreeType.Gold_Gain_Up,              MassiveVaultItemName,          MassiveVaultLocationName),          // 35
-        new(SkillTreeType.Equipment_Ore_Gain_Up,     JewelerItemName,               JewelerLocationName),               // 36
-        new(SkillTreeType.Rune_Ore_Gain_Up,          BuriedTombItemName,            BuriedTombLocationName),            // 37
+        new(SkillTreeType.Traits_Give_Gold,          UniversalHealthStairItemName,  UniversalHealthStairLocationName),                                   // 31
+        new(SkillTreeType.Traits_Give_Gold_Gain_Mod, RepurposedMiningShaftItemName, RepurposedMiningShaftLocationName),                                  // 32
+        new(SkillTreeType.Equipment_Ore_Find_Up,     GeologistsCampItemName,        GeologistsCampLocationName),                                         // 33
+        new(SkillTreeType.Rune_Ore_Find_Up,          DowsingCenterItemName,         DowsingCenterLocationName),                                          // 34
+        new(SkillTreeType.Gold_Gain_Up,              MassiveVaultItemName,          MassiveVaultLocationName),                                           // 35
+        new(SkillTreeType.Equipment_Ore_Gain_Up,     JewelerItemName,               JewelerLocationName),                                                // 36
+        new(SkillTreeType.Rune_Ore_Gain_Up,          BuriedTombItemName,            BuriedTombLocationName),                                             // 37
         // ── Heirs ────────────────────────────────────────────────────────────
-        new(SkillTreeType.Randomize_Children,        CareerCenterItemName,          CareerCenterLocationName),          // 38
-        new(SkillTreeType.More_Children,             AdoptionCenterItemName,        AdoptionCenterLocationName),        // 39
+        new(SkillTreeType.Randomize_Children,        CareerCenterItemName,          CareerCenterLocationName),                                           // 38
+        new(SkillTreeType.More_Children,             AdoptionCenterItemName,        AdoptionCenterLocationName),                                         // 39
         // ── Living safe ──────────────────────────────────────────────────────
-        new(SkillTreeType.Gold_Saved_Cap_Up,         CourthouseItemName,            CourthouseLocationName),            // 40
-        new(SkillTreeType.Gold_Saved_Amount_Saved,   ScribesOfficeItemName,         ScribesOfficeLocationName),         // 41
+        new(SkillTreeType.Gold_Saved_Cap_Up,         CourthouseItemName,            CourthouseLocationName),                                             // 40
+        new(SkillTreeType.Gold_Saved_Amount_Saved,   ScribesOfficeItemName,         ScribesOfficeLocationName),                                          // 41
         // ── Architect ────────────────────────────────────────────────────────
-        new(SkillTreeType.Architect,                 ScrewDistilleryItemName,       ScrewDistilleryLocationName),       // 42
-        new(SkillTreeType.Architect_Cost_Down,       DrillStoreItemName,            DrillStoreLocationName),            // 43
+        new(SkillTreeType.Architect,                 ScrewDistilleryItemName,       ScrewDistilleryLocationName,       isStatUpgrade: true),             // 42
+        new(SkillTreeType.Architect_Cost_Down,       DrillStoreItemName,            DrillStoreLocationName),                                             // 43
         // ── Class unlocks ────────────────────────────────────────────────────
-        new(SkillTreeType.BoxingGlove_Class_Unlock,  FightingRingItemName,          FightingRingLocationName,           SoulShopType.BoxerVariant),       // 44
-        new(SkillTreeType.Saber_Class_Unlock,        DanceHallItemName,             DanceHallLocationName,              SoulShopType.DuelistVariant),     // 45
-        new(SkillTreeType.DualBlades_Class_Unlock,   GuildOfDarkArtsItemName,       GuildOfDarkArtsLocationName,        SoulShopType.DualBladesVariant),  // 46
-        new(SkillTreeType.Ladle_Class_Unlock,        KitchenItemName,               KitchenLocationName,                SoulShopType.LadleVariant),       // 47
-        new(SkillTreeType.Axe_Class_Unlock,          ButchersShoppeItemName,        ButchersShoppeLocationName,         SoulShopType.AxeVariant),         // 48
-        new(SkillTreeType.Wand_Class_Unlock,         AcademyItemName,               AcademyLocationName,                SoulShopType.WandVariant),        // 49
-        new(SkillTreeType.Bow_Class_Unlock,          ArcheryRangeItemName,          ArcheryRangeLocationName,           SoulShopType.ArcherVariant),      // 50
-        new(SkillTreeType.Spear_Class_Unlock,        SandPitsItemName,              SandPitsLocationName,               SoulShopType.SpearVariant),       // 51
-        new(SkillTreeType.Gun_Class_Unlock,          SaltpeterMinesItemName,        SaltpeterMinesLocationName,         SoulShopType.GunslingerVariant),  // 52
-        new(SkillTreeType.Samurai_Class_Unlock,      RyokanItemName,                RyokanLocationName,                 SoulShopType.SamuraiVariant),     // 53
-        new(SkillTreeType.Music_Class_Unlock,        TavernItemName,                TavernLocationName,                 SoulShopType.LuteVariant),        // 54
-        new(SkillTreeType.Pirate_Class_Unlock,       FlyingDocksItemName,           FlyingDocksLocationName,            SoulShopType.PirateVariant),      // 55
-        new(SkillTreeType.Astro_Class_Unlock,        AstralGardensItemName,         AstralGardensLocationName,          SoulShopType.AstromancerVariant), // 56
-        new(SkillTreeType.Lancer_Class_Unlock,       AviaryItemName,                AviaryLocationName,                 SoulShopType.LancerVariant),      // 57
+        new(SkillTreeType.BoxingGlove_Class_Unlock,  FightingRingItemName,          FightingRingLocationName,          SoulShopType.BoxerVariant),       // 44
+        new(SkillTreeType.Saber_Class_Unlock,        DanceHallItemName,             DanceHallLocationName,             SoulShopType.DuelistVariant),     // 45
+        new(SkillTreeType.DualBlades_Class_Unlock,   GuildOfDarkArtsItemName,       GuildOfDarkArtsLocationName,       SoulShopType.DualBladesVariant),  // 46
+        new(SkillTreeType.Ladle_Class_Unlock,        KitchenItemName,               KitchenLocationName,               SoulShopType.LadleVariant),       // 47
+        new(SkillTreeType.Axe_Class_Unlock,          ButchersShoppeItemName,        ButchersShoppeLocationName,        SoulShopType.AxeVariant),         // 48
+        new(SkillTreeType.Wand_Class_Unlock,         AcademyItemName,               AcademyLocationName,               SoulShopType.WandVariant),        // 49
+        new(SkillTreeType.Bow_Class_Unlock,          ArcheryRangeItemName,          ArcheryRangeLocationName,          SoulShopType.ArcherVariant),      // 50
+        new(SkillTreeType.Spear_Class_Unlock,        SandPitsItemName,              SandPitsLocationName,              SoulShopType.SpearVariant),       // 51
+        new(SkillTreeType.Gun_Class_Unlock,          SaltpeterMinesItemName,        SaltpeterMinesLocationName,        SoulShopType.GunslingerVariant),  // 52
+        new(SkillTreeType.Samurai_Class_Unlock,      RyokanItemName,                RyokanLocationName,                SoulShopType.SamuraiVariant),     // 53
+        new(SkillTreeType.Music_Class_Unlock,        TavernItemName,                TavernLocationName,                SoulShopType.LuteVariant),        // 54
+        new(SkillTreeType.Pirate_Class_Unlock,       FlyingDocksItemName,           FlyingDocksLocationName,           SoulShopType.PirateVariant),      // 55
+        new(SkillTreeType.Astro_Class_Unlock,        AstralGardensItemName,         AstralGardensLocationName,         SoulShopType.AstromancerVariant), // 56
+        new(SkillTreeType.Lancer_Class_Unlock,       AviaryItemName,                AviaryLocationName,                SoulShopType.LancerVariant),      // 57
         // ── Relics ───────────────────────────────────────────────────────────
-        new(SkillTreeType.Relic_Cost_Down,           ArchaeologyCampItemName,       ArchaeologyCampLocationName),       // 58
-        new(SkillTreeType.Reroll_Relic,              MedievalForgeryItemName,       MedievalForgeryLocationName),       // 59
-        new(SkillTreeType.Reroll_Relic_Room_Cap,     BizarreBazaarItemName,         BizarreBazaarLocationName),         // 60
+        new(SkillTreeType.Relic_Cost_Down,           ArchaeologyCampItemName,       ArchaeologyCampLocationName,       isStatUpgrade: true),             // 58
+        new(SkillTreeType.Reroll_Relic,              MedievalForgeryItemName,       MedievalForgeryLocationName),                                        // 59
+        new(SkillTreeType.Reroll_Relic_Room_Cap,     BizarreBazaarItemName,         BizarreBazaarLocationName),                                          // 60
         // ── Progression & utility ────────────────────────────────────────────
-        new(SkillTreeType.Weight_CD_Reduce,          AerobicsClassroomItemName,     AerobicsClassroomLocationName),     // 61
-        new(SkillTreeType.XP_Up,                     TrophyRoomItemName,            TrophyRoomLocationName),            // 62
-        new(SkillTreeType.Resolve_Up,                PsychiatristItemName,          PsychiatristLocationName),          // 63
-        new(SkillTreeType.Unlock_Dummy,              DummyItemName,                 DummyLocationName),                 // 64
-        new(SkillTreeType.Unlock_Totem,              SageTotemItemName,             SageTotemLocationName),             // 65
-        new(SkillTreeType.Potion_Recharge_Talent,    AlchemyLabItemName,            AlchemyLabLocationName),            // 66
-        new(SkillTreeType.Dash_Strike_Up,            JoustingStudiesItemName,       JoustingStudiesLocationName),       // 67
-        new(SkillTreeType.Charon_Gold_Stat_Bonus,    CharityDungeonItemName,        CharityDungeonLocationName),        // 68
+        new(SkillTreeType.Weight_CD_Reduce,          AerobicsClassroomItemName,     AerobicsClassroomLocationName,     isStatUpgrade: true),             // 61
+        new(SkillTreeType.XP_Up,                     TrophyRoomItemName,            TrophyRoomLocationName),                                             // 62
+        new(SkillTreeType.Resolve_Up,                PsychiatristItemName,          PsychiatristLocationName,          isStatUpgrade: true),             // 63
+        new(SkillTreeType.Unlock_Dummy,              DummyItemName,                 DummyLocationName),                                                  // 64
+        new(SkillTreeType.Unlock_Totem,              SageTotemItemName,             SageTotemLocationName,             isStatUpgrade: true),             // 65
+        new(SkillTreeType.Potion_Recharge_Talent,    AlchemyLabItemName,            AlchemyLabLocationName),                                             // 66
+        new(SkillTreeType.Dash_Strike_Up,            JoustingStudiesItemName,       JoustingStudiesLocationName,       isStatUpgrade: true),             // 67
+        new(SkillTreeType.Charon_Gold_Stat_Bonus,    CharityDungeonItemName,        CharityDungeonLocationName),                                         // 68
         // ── NPC unlock slots ─────────────────────────────────────────────────
-        new(SkillTreeType.Gold_Saved_Unlock,         OffshoreBankAccountItemName,   OffshoreBankAccountLocationName),   // 69
-        new(SkillTreeType.Smithy,                    FoundationItemName,            FoundationLocationName),            // 70
-        new(SkillTreeType.Enchantress,               EnchantressQuartersItemName,   EnchantressQuartersLocationName),   // 71
+        new(SkillTreeType.Gold_Saved_Unlock,         OffshoreBankAccountItemName,   OffshoreBankAccountLocationName,   isStatUpgrade: true),             // 69
+        new(SkillTreeType.Smithy,                    FoundationItemName,            FoundationLocationName,            isStatUpgrade: true),             // 70
+        new(SkillTreeType.Enchantress,               EnchantressQuartersItemName,   EnchantressQuartersLocationName,   isStatUpgrade: true),             // 71
     ];
+
+    /// <summary>
+    /// How many of <see cref="ManorSlots"/> are core upgrades; the rest (69-71) are NPC unlock
+    /// slots. Mirrors <c>_CORE_COUNT</c> in constants.py.
+    /// </summary>
+    public const int CoreManorSlotCount = 69;
 
     /// <summary>Ordered AP item names (with "Upgrade: " prefix), derived from <see cref="ManorSlots"/>.</summary>
     public static readonly string[] ManorItemNames     = [.. ManorSlots.Select(s => $"Upgrade: {s.ItemName}")];

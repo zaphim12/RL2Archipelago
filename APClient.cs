@@ -121,6 +121,33 @@ public static class APClient
     /// <summary>Percent chance (1–100) a fairy chest triggers an AP check. Read from slot data on connect.</summary>
     public static int FairyChestApChance { get; private set; } = 100;
 
+    // ── Progression-gating parameters ────────────────────────────────────────
+    //
+    // These three are the apworld's soft anti-tedium rules. The mod does not enforce any of them,
+    // the generator did during placement. The mod just reads them so
+    // <see cref="Locations.APLogicSnapshot"/> can reproduce the biome rules client side for the
+    // biome tracker. Archipelago never tells a client what is reachable, so the only way to show
+    // an "in logic" count is to re-derive it from these parameters.
+
+    /// <summary>
+    /// Percentage of each biome's chest slots that are in logic before its boss is killed; the
+    /// remainder only come into logic once the boss is dead. Read from slot data on connect.
+    /// </summary>
+    public static int ChestPreBossPercent { get; private set; } = 75;
+
+    /// <summary>
+    /// Stat-upgrade items logically required per biome tier (Kerguelen 1x, Stygian 2x, Sun Tower
+    /// 3x, Pishon 4x; Citadel and Axis Mundi are never gated). 0 disables the gate.
+    /// Read from slot data on connect.
+    /// </summary>
+    public static int StatUpgradesPerBiomeTier { get; private set; } = 5;
+
+    /// <summary>
+    /// When true, the later biomes additionally require a number of NPC unlocks in logic.
+    /// Read from slot data on connect.
+    /// </summary>
+    public static bool EarlyNpcUnlocks { get; private set; } = false;
+
     /// <summary>
     /// When true, traps show their real identity wherever a scouted item is displayed.
     /// When false (the default) they are concealed behind a real item's identity by
@@ -372,6 +399,10 @@ public static class APClient
             BronzeChestApChance = Convert.ToInt32(SlotData["bronze_chest_ap_chance"]);
             SilverChestApChance = Convert.ToInt32(SlotData["silver_chest_ap_chance"]);
             FairyChestApChance = Convert.ToInt32(SlotData["fairy_chest_ap_chance"]);
+
+            ChestPreBossPercent = Convert.ToInt32(SlotData["chest_pre_boss_percent"]);
+            StatUpgradesPerBiomeTier = Convert.ToInt32(SlotData["stat_upgrades_per_biome_tier"]);
+            EarlyNpcUnlocks = Convert.ToInt32(SlotData["early_npc_unlocks"]) != 0;
 
             ManorUpgradeBundleSize = Convert.ToInt32(SlotData["manor_upgrade_bundle_size"]);
             JournalChecksMode = (JournalChecksMode)Convert.ToInt32(SlotData["journal_checks"]);
@@ -1558,6 +1589,7 @@ public static class APClient
     {
         public bool? DeathLink   { get; set; }
         public bool? UseMinimalistAPLog  { get; set; }
+        public bool? ShowBiomeTracker { get; set; }
         public bool? DebugKeysEnabled { get; set; }
     }
 
@@ -1573,8 +1605,9 @@ public static class APClient
             var data = JsonConvert.DeserializeObject<PlayerSettingsData>(File.ReadAllText(path));
             APSettings.DeathLink   = data.DeathLink;
             APSettings.UseMinimalistAPLog  = data.UseMinimalistAPLog ?? false;
+            APSettings.ShowBiomeTracker = data.ShowBiomeTracker ?? true;
             APSettings.DebugKeysEnabled = data.DebugKeysEnabled ?? false;
-            Plugin.Log.LogInfo($"[AP] Player settings loaded (DeathLink={APSettings.DeathLink}, UseMinimalistAPLog={APSettings.UseMinimalistAPLog}, DebugKeysEnabled={APSettings.DebugKeysEnabled}).");
+            Plugin.Log.LogInfo($"[AP] Player settings loaded (DeathLink={APSettings.DeathLink}, UseMinimalistAPLog={APSettings.UseMinimalistAPLog}, ShowBiomeTracker={APSettings.ShowBiomeTracker}, DebugKeysEnabled={APSettings.DebugKeysEnabled}).");
         }
         catch (Exception ex)
         {
@@ -1588,7 +1621,7 @@ public static class APClient
         var path = PlayerSettingsPath(APSaveDirectoryName);
         try
         {
-            var data = new PlayerSettingsData { DeathLink = APSettings.DeathLink, UseMinimalistAPLog = APSettings.UseMinimalistAPLog, DebugKeysEnabled = APSettings.DebugKeysEnabled };
+            var data = new PlayerSettingsData { DeathLink = APSettings.DeathLink, UseMinimalistAPLog = APSettings.UseMinimalistAPLog, ShowBiomeTracker = APSettings.ShowBiomeTracker, DebugKeysEnabled = APSettings.DebugKeysEnabled };
             APRunState.WriteTextAtomic(path, JsonConvert.SerializeObject(data, Formatting.Indented));
         }
         catch (Exception ex)

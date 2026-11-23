@@ -29,5 +29,10 @@ internal static class MainThreadDispatchPatch
         // is active. It self-shows while reconnecting and hides otherwise.
         if (APClient.ConnectionState != APConnectionState.Disconnected)
             APConnectionStatusOverlay.EnsureExists();
+
+        // Same deal for the biome tracker: created once a session exists, then it decides each
+        // frame whether it has anything to show.
+        if (APClient.IsSessionActive)
+            APBiomeTracker.EnsureExists();
     }
 }

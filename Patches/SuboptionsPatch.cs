@@ -116,6 +116,15 @@ internal static class SuboptionsPatch
                 if (!v) APTextLog.Instance?.Clear();
             });
 
+        BuildToggleItem(clonedItemsParent, parentGO, template, disclaimerTemplate, disclaimerSlot, "Biome Tracker",
+            description: "When enabled, displays a tracker for biome-specific checks under the map.\nChecks are shown as: collected / (in-logic) / total\nGrayed out categories are out-of-logic currently",
+            getter: () => APSettings.ShowBiomeTracker,
+            setter: v =>
+            {
+                APSettings.ShowBiomeTracker = v;
+                APClient.SavePlayerSettings();
+            });
+
         BuildToggleItem(clonedItemsParent, parentGO, template, disclaimerTemplate, disclaimerSlot, "Debug Keys",
             description: "When enabled, debug keys for testing will be usable (number keys 5-0).\nNote: This is not intended for actual playthroughs",
             getter: () => APSettings.DebugKeysEnabled,

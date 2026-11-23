@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using RL2Archipelago.Items;
 
@@ -30,8 +31,13 @@ public static class LocationRegistry
 
     private const long JOURNAL_GROUPED_OFFSET    = 0x800;  // BASE_ID + offset + biomeIndex (0-5)
     private const long MEMORY_GROUPED_OFFSET     = 0x808;  // BASE_ID + offset + biomeIndex (only 0, 2 active)
-    private const long JOURNAL_INDIVIDUAL_OFFSET = 0x810;  // BASE_ID + offset + biomeIndex * 16 + journalIndex
-    private const long MEMORY_INDIVIDUAL_OFFSET  = 0x870;  // BASE_ID + offset + biomeIndex * 16 + memoryIndex
+    private const long JOURNAL_INDIVIDUAL_OFFSET = 0x810;  // BASE_ID + offset + biomeIndex * JOURNAL_ID_STRIDE + journalIndex
+    private const long MEMORY_INDIVIDUAL_OFFSET  = 0x870;  // BASE_ID + offset + biomeIndex * JOURNAL_ID_STRIDE + memoryIndex
+
+    // Per-biome stride for the individual journal and memory pools, which both use it. Not strictly
+    // needed since memories and journals numbers are constants based on the vanilla game. But it
+    // helps when easily indexing the slots into biome + index numbers.
+    private const long JOURNAL_ID_STRIDE = 16;
 
     // Mastery rank locations. A seed uses one mode or the other, never both, but they get
     // separate blocks so a (mode, rank) pair keeps the same ID either way.
@@ -63,6 +69,13 @@ public static class LocationRegistry
     public const long GardenBossDefeated = BASE_ID + BOSS_KILL_OFFSET + 6;
     // Offset + 7 (FinalBoss/Cain) is intentionally absent: defeating Cain triggers
     // the goal status update (SetGoalAchieved), not a location check.
+
+    /// <summary>
+    /// The boss-defeat location ID of a biome, by its pool index. The first six boss offsets are
+    /// in biome index order, so this is the same arithmetic the constants above spell out.
+    /// </summary>
+    public static long BiomeBossDefeated(int biomeIndex) =>
+        BASE_ID + BOSS_KILL_OFFSET + biomeIndex;
 
     // ── Heirloom interaction locations ──────────────────────────────────────
 
@@ -249,6 +262,13 @@ public static class LocationRegistry
     public static void SetBlueprintChecksPerBiome(int n) =>
         _checksPerBiome = n < 0 ? 0 : n > MAX_CHEST_CHECKS_PER_BIOME ? MAX_CHEST_CHECKS_PER_BIOME : n;
 
+    /// <summary>How many blueprint chest slots each biome has in this seed.</summary>
+    public static int BlueprintChecksPerBiome => _checksPerBiome;
+
+    /// <summary>The location ID of a blueprint chest slot, by biome index and zero-based slot.</summary>
+    public static long BlueprintChestLocation(int biomeIndex, int slotIndex) =>
+        BASE_ID + BLUEPRINT_OFFSET + biomeIndex * CHEST_SLOT_ID_STRIDE + slotIndex;
+
     // ── Fairy chest (rune) locations (biome-slot based) ──────────────────────
     //
     // Same pooling strategy and stride as blueprints. Default 4 slots per biome
@@ -264,6 +284,13 @@ public static class LocationRegistry
     /// </summary>
     public static void SetRuneChecksPerBiome(int n) =>
         _runeChecksPerBiome = n < 0 ? 0 : n > MAX_CHEST_CHECKS_PER_BIOME ? MAX_CHEST_CHECKS_PER_BIOME : n;
+
+    /// <summary>How many fairy chest slots each biome has in this seed.</summary>
+    public static int RuneChecksPerBiome => _runeChecksPerBiome;
+
+    /// <summary>The location ID of a fairy chest slot, by biome index and zero-based slot.</summary>
+    public static long RuneChestLocation(int biomeIndex, int slotIndex) =>
+        BASE_ID + RUNE_OFFSET + biomeIndex * CHEST_SLOT_ID_STRIDE + slotIndex;
 
     // ── Mastery rank locations ──────────────────────────────────────────────
     //
@@ -359,24 +386,24 @@ public static class LocationRegistry
 
         for (int biome = 0; biome < GameConstants.BiomeNames.Length; biome++)
         {
-            if (s_journalCounts[biome] > 0)
-                d[BASE_ID + JOURNAL_GROUPED_OFFSET + biome] = $"{GameConstants.BiomeNames[biome]} - All Journals Read";
-            if (s_memoryCounts[biome] > 0)
-                d[BASE_ID + MEMORY_GROUPED_OFFSET + biome] = $"{GameConstants.BiomeNames[biome]} - All Memories Read";
+            if (GroupedJournalLocation(biome) is long journalGroup)
+                d[journalGroup] = $"{GameConstants.BiomeNames[biome]} - All Journals Read";
+            if (GroupedMemoryLocation(biome) is long memoryGroup)
+                d[memoryGroup] = $"{GameConstants.BiomeNames[biome]} - All Memories Read";
             for (int j = 0; j < s_journalCounts[biome]; j++)
-                d[BASE_ID + JOURNAL_INDIVIDUAL_OFFSET + biome * 16 + j] = $"{GameConstants.BiomeNames[biome]} - Journal Entry {j + 1}";
+                d[IndividualJournalLocation(biome, j)] = $"{GameConstants.BiomeNames[biome]} - Journal Entry {j + 1}";
             for (int m = 0; m < s_memoryCounts[biome]; m++)
-                d[BASE_ID + MEMORY_INDIVIDUAL_OFFSET + biome * 16 + m] = $"{GameConstants.BiomeNames[biome]} - Memory Fragment {m + 1}";
+                d[IndividualMemoryLocation(biome, m)] = $"{GameConstants.BiomeNames[biome]} - Memory Fragment {m + 1}";
         }
 
         // Registered at the maximum slot count so a name is available whatever the seed configured.
         for (int biome = 0; biome < 6; biome++)
             for (int slot = 0; slot < MAX_CHEST_CHECKS_PER_BIOME; slot++)
-                d[BASE_ID + BLUEPRINT_OFFSET + biome * CHEST_SLOT_ID_STRIDE + slot] = $"{GameConstants.BiomeNames[biome]} - Blueprint Chest {slot + 1}";
+                d[BlueprintChestLocation(biome, slot)] = $"{GameConstants.BiomeNames[biome]} - Blueprint Chest {slot + 1}";
 
         for (int biome = 0; biome < 6; biome++)
             for (int slot = 0; slot < MAX_CHEST_CHECKS_PER_BIOME; slot++)
-                d[BASE_ID + RUNE_OFFSET + biome * CHEST_SLOT_ID_STRIDE + slot] = $"{GameConstants.BiomeNames[biome]} - Fairy Chest {slot + 1}";
+                d[RuneChestLocation(biome, slot)] = $"{GameConstants.BiomeNames[biome]} - Fairy Chest {slot + 1}";
 
         // Manor upgrade location names
         for (int i = 0; i < GameConstants.ManorLocationNames.Length; i++)
@@ -470,7 +497,7 @@ public static class LocationRegistry
     {
         for (int i = 0; i < _checksPerBiome; i++)
         {
-            long id = BASE_ID + BLUEPRINT_OFFSET + biomeIndex * CHEST_SLOT_ID_STRIDE + i;
+            long id = BlueprintChestLocation(biomeIndex, i);
             if (!runState.IsPooledSlotConsumed(id))
                 return id;
         }
@@ -485,7 +512,7 @@ public static class LocationRegistry
     {
         for (int i = 0; i < _runeChecksPerBiome; i++)
         {
-            long id = BASE_ID + RUNE_OFFSET + biomeIndex * CHEST_SLOT_ID_STRIDE + i;
+            long id = RuneChestLocation(biomeIndex, i);
             if (!runState.IsPooledSlotConsumed(id))
                 return id;
         }
@@ -495,7 +522,7 @@ public static class LocationRegistry
     // Every pool is laid out as 6 biomes at a fixed stride regardless of how many slots per biome
     // the seed actually uses, so a whole pool is one contiguous block from its offset.
     private const long CHEST_POOL_SPAN   = 6 * CHEST_SLOT_ID_STRIDE;
-    private const long JOURNAL_POOL_SPAN = 6 * 16;  // journals and memories both stride by 16
+    private const long JOURNAL_POOL_SPAN = 6 * JOURNAL_ID_STRIDE;
 
     /// <summary>
     /// True for an ID in one of the pooled location categories: the blueprint and rune chest pools,
@@ -520,19 +547,60 @@ public static class LocationRegistry
     }
 
     /// <summary>
+    /// The <see cref="JournalCategoryType"/> of each biome pool index, in biome index order. Both
+    /// directions of the mapping are derived from this one table so they cannot drift.
+    /// </summary>
+    private static readonly JournalCategoryType[] s_journalCategories =
+    {
+        JournalCategoryType.Castle, JournalCategoryType.Bridge, JournalCategoryType.Forest,
+        JournalCategoryType.Study,  JournalCategoryType.Tower,  JournalCategoryType.Cave,
+    };
+
+    /// <summary>
     /// Maps a <see cref="JournalCategoryType"/> to the biome pool index (0–5) used for
     /// journal/memory location IDs, or <c>null</c> for untracked categories.
     /// </summary>
-    private static int? GetJournalBiomeIndex(JournalCategoryType cat) => cat switch
+    private static int? GetJournalBiomeIndex(JournalCategoryType cat)
     {
-        JournalCategoryType.Castle => 0,
-        JournalCategoryType.Bridge => 1,
-        JournalCategoryType.Forest => 2,
-        JournalCategoryType.Study  => 3,
-        JournalCategoryType.Tower  => 4,
-        JournalCategoryType.Cave   => 5,
-        _                          => null,
-    };
+        int index = Array.IndexOf(s_journalCategories, cat);
+        return index < 0 ? null : index;
+    }
+
+    /// <summary>
+    /// The <see cref="JournalCategoryType"/> for a biome pool index, for reading the save's own
+    /// journal counts (<c>PlayerSaveData.GetJournalsRead</c>). The inverse of
+    /// <see cref="GetJournalBiomeIndex"/>.
+    /// </summary>
+    public static JournalCategoryType ToJournalCategory(int biomeIndex) =>
+        s_journalCategories[biomeIndex];
+
+    /// <summary>How many journal entries the given biome has.</summary>
+    public static int JournalCount(int biomeIndex) => s_journalCounts[biomeIndex];
+
+    /// <summary>How many memory fragments the given biome has. Zero for four of the six.</summary>
+    public static int MemoryCount(int biomeIndex) => s_memoryCounts[biomeIndex];
+
+    /// <summary>
+    /// In Grouped mode, the location ID for completing all journals in the given biome, or
+    /// <c>null</c> for a biome with no journals.
+    /// </summary>
+    public static long? GroupedJournalLocation(int biomeIndex) =>
+        s_journalCounts[biomeIndex] == 0 ? null : BASE_ID + JOURNAL_GROUPED_OFFSET + biomeIndex;
+
+    /// <summary>
+    /// In Grouped mode, the location ID for completing all memories in the given biome, or
+    /// <c>null</c> for a biome with no memories.
+    /// </summary>
+    public static long? GroupedMemoryLocation(int biomeIndex) =>
+        s_memoryCounts[biomeIndex] == 0 ? null : BASE_ID + MEMORY_GROUPED_OFFSET + biomeIndex;
+
+    /// <summary>The location ID of an individual journal slot, by biome index and zero-based index.</summary>
+    public static long IndividualJournalLocation(int biomeIndex, int journalIndex) =>
+        BASE_ID + JOURNAL_INDIVIDUAL_OFFSET + biomeIndex * JOURNAL_ID_STRIDE + journalIndex;
+
+    /// <summary>The location ID of an individual memory slot, by biome index and zero-based index.</summary>
+    public static long IndividualMemoryLocation(int biomeIndex, int memoryIndex) =>
+        BASE_ID + MEMORY_INDIVIDUAL_OFFSET + biomeIndex * JOURNAL_ID_STRIDE + memoryIndex;
 
     /// <summary>
     /// In Grouped mode, returns the location ID for completing all journals in the given
@@ -541,8 +609,7 @@ public static class LocationRegistry
     public static long? GetGroupedJournalLocation(JournalCategoryType cat)
     {
         var bi = GetJournalBiomeIndex(cat);
-        if (bi is null || s_journalCounts[bi.Value] == 0) return null;
-        return BASE_ID + JOURNAL_GROUPED_OFFSET + bi.Value;
+        return bi is null ? null : GroupedJournalLocation(bi.Value);
     }
 
     /// <summary>
@@ -552,8 +619,7 @@ public static class LocationRegistry
     public static long? GetGroupedMemoryLocation(JournalCategoryType cat)
     {
         var bi = GetJournalBiomeIndex(cat);
-        if (bi is null || s_memoryCounts[bi.Value] == 0) return null;
-        return BASE_ID + MEMORY_GROUPED_OFFSET + bi.Value;
+        return bi is null ? null : GroupedMemoryLocation(bi.Value);
     }
 
     /// <summary>
@@ -586,14 +652,14 @@ public static class LocationRegistry
             MEMORY_INDIVIDUAL_OFFSET, bi.Value, s_memoryCounts[bi.Value], runState);
     }
 
-    // Shared by the journal and memory pools, which have the same stride-16 layout. Not usable for
-    // the chest pools, those stride by CHEST_SLOT_ID_STRIDE.
+    // Shared by the journal and memory pools, which have the same JOURNAL_ID_STRIDE layout. Not
+    // usable for the chest pools, those stride by CHEST_SLOT_ID_STRIDE.
     private static long? NextJournalPoolSlot(
         long poolOffset, int biomeIndex, int slotCount, APRunState runState)
     {
         for (int i = 0; i < slotCount; i++)
         {
-            long id = BASE_ID + poolOffset + biomeIndex * 16 + i;
+            long id = BASE_ID + poolOffset + biomeIndex * JOURNAL_ID_STRIDE + i;
             if (!runState.IsPooledSlotConsumed(id))
                 return id;
         }

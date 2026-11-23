@@ -39,6 +39,36 @@ public static class ItemRegistry
     internal static readonly SkillTreeType[] s_skillTreeTypes =
         GameConstants.ManorSlots.Select(s => s.SkillTree).ToArray();
 
+    /// <summary>The item ID of a manor slot, by its index in <see cref="GameConstants.ManorSlots"/>.</summary>
+    public static long ManorUpgradeItem(int slotIndex) => BASE_ID + MANOR_OFFSET + slotIndex;
+
+    /// <summary>
+    /// Item IDs of every manor slot whose copies count toward the stat-upgrade total that
+    /// <c>stat_upgrades_per_biome_tier</c> gates the later biomes behind. Derived from the
+    /// <see cref="GameConstants.ManorSlot.IsStatUpgrade"/> column, which mirrors
+    /// <c>is_stat_upgrade</c> in constants.py.
+    ///
+    /// <para>Counting is over copies, not slots, matching the apworld's
+    /// <c>sum(state.count(name) for name in _STAT_UPGRADE_ITEM_NAMES)</c>.</para>
+    /// </summary>
+    public static readonly long[] StatUpgradeItemIds =
+        GameConstants.ManorSlots
+            .Select((slot, index) => (slot, index))
+            .Where(pair => pair.slot.IsStatUpgrade)
+            .Select(pair => ManorUpgradeItem(pair.index))
+            .ToArray();
+
+    /// <summary>
+    /// Item IDs of the three NPC unlock slots (indices 69-71), which <c>early_npc_unlocks</c>
+    /// gates the later biomes behind. Unlike <see cref="StatUpgradeItemIds"/> the apworld counts
+    /// <em>slots owned</em> here, not copies, since each is single-level.
+    /// </summary>
+    public static readonly long[] NpcItemIds =
+        Enumerable.Range(GameConstants.CoreManorSlotCount,
+                         GameConstants.ManorSlots.Length - GameConstants.CoreManorSlotCount)
+            .Select(ManorUpgradeItem)
+            .ToArray();
+
     // ── Trap items ───────────────────────────────────────────────────────────
 
     public const long TrapCannonballRain  = BASE_ID + TRAP_OFFSET + 0;

@@ -56,6 +56,12 @@ internal class APConnectionStatusOverlay : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// True while a banner is actually on screen. Read by <see cref="APBiomeTracker"/>, which
+    /// shares this corner and stands down rather than risk drawing over the warning.
+    /// </summary>
+    internal static bool IsShowing => _instance != null && _instance._group.alpha > 0f;
+
     private CanvasGroup _group;
 
     // All five text layers, kept so the message can be swapped at runtime. The first four are the
